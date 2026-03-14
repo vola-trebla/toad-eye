@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
-    "@toad-eye/instrumentation": "*",
+    "toad-eye": "*",
     "dotenv": "^17.3.1",
     "hono": "^4.12.8"
   },

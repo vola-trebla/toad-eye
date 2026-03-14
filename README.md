@@ -23,7 +23,7 @@ LLM APIs are black boxes — you don't know what they cost, how slow they are, o
 ```mermaid
 flowchart LR
     App["🔮 Your LLM service"]
-    Inst["🐸 @toad-eye/instrumentation"]
+    Inst["🐸 toad-eye"]
     Coll["📡 OTel Collector"]
     Prom["📊 Prometheus"]
     Jaeger["🔍 Jaeger"]
@@ -60,7 +60,7 @@ npm run load --workspace=demo       # send test traffic
 ## Usage
 
 ```typescript
-import { initObservability, traceLLMCall } from "@toad-eye/instrumentation";
+import { initObservability, traceLLMCall } from "toad-eye";
 
 // one-line init
 initObservability({
@@ -117,7 +117,7 @@ All metrics are labeled with `provider` and `model` for filtering and grouping.
 ## Project structure
 
 ```
-packages/instrumentation/   — NPM package (@toad-eye/instrumentation)
+packages/instrumentation/   — NPM package (toad-eye)
 demo/                       — mock LLM service for testing
 infra/                      — docker-compose stack (OTel + Prometheus + Jaeger + Grafana)
 ```

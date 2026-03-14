@@ -1,4 +1,4 @@
-import { initObservability } from "@toad-eye/instrumentation";
+import { initObservability } from "toad-eye";
 
 initObservability({
   serviceName: "toad-eye-demo",
