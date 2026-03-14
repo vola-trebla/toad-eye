@@ -1,6 +1,6 @@
 {
   "name": "toad-eye",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "One-line OpenTelemetry instrumentation for LLM services",
   "type": "module",
   "main": "src/index.ts",
