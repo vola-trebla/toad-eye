@@ -18,7 +18,11 @@ One-line instrumentation for any LLM service — get traces, metrics, and Grafan
 
 LLM APIs are black boxes — you don't know what they cost, how slow they are, or why they fail. toad-eye gives you full visibility with one line of code.
 
-## Install
+- **LLM API observability** — track latency, token usage, cost, and error rates across multiple LLM providers
+- **Multi-provider gateways** — instrument routing services that switch between OpenAI, Anthropic, Gemini, etc.
+- **RAG pipelines** — monitor retrieval + generation latency and identify bottlenecks in AI pipelines
+- **Cost monitoring** — understand how much each model call costs in real time and detect cost spikes
+- **Production debugging** — use traces in Jaeger to inspect slow or failed LLM calls and understand what happened
 
 ```bash
 npm install toad-eye
