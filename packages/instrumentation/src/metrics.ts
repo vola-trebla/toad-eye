@@ -25,16 +25,15 @@ export function initMetrics() {
     unit: "USD",
   });
 
-  tokensTotal = meter.createCounter(LLM_METRICS.TOKENS_TOTAL, {
+  tokensTotal = meter.createCounter(LLM_METRICS.TOKENS, {
     description: "Total tokens consumed",
-    unit: "tokens",
   });
 
-  requestsTotal = meter.createCounter(LLM_METRICS.REQUESTS_TOTAL, {
+  requestsTotal = meter.createCounter(LLM_METRICS.REQUESTS, {
     description: "Total LLM requests",
   });
 
-  errorsTotal = meter.createCounter(LLM_METRICS.ERRORS_TOTAL, {
+  errorsTotal = meter.createCounter(LLM_METRICS.ERRORS, {
     description: "Total failed LLM requests",
   });
 
