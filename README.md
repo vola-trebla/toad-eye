@@ -18,6 +18,12 @@ One-line instrumentation for any LLM service — get traces, metrics, and Grafan
 
 LLM APIs are black boxes — you don't know what they cost, how slow they are, or why they fail. toad-eye gives you full visibility with one line of code.
 
+## Install
+
+```bash
+npm install toad-eye
+```
+
 ## Architecture
 
 ```mermaid
