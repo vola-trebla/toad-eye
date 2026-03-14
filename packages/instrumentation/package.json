@@ -1,12 +1,16 @@
 {
   "name": "toad-eye",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "One-line OpenTelemetry instrumentation for LLM services",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "toad-eye": "dist/cli.js"
+  },
   "files": [
     "dist",
+    "templates",
     "README.md"
   ],
   "scripts": {

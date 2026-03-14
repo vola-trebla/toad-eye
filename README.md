@@ -26,7 +26,18 @@ LLM APIs are black boxes — you don't know what they cost, how slow they are, o
 
 ```bash
 npm install toad-eye
+npx toad-eye init   # scaffold observability stack configs
+npx toad-eye up     # start the stack
 ```
+
+## CLI
+
+| Command               | Description                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `npx toad-eye init`   | Copies Docker Compose + OTel/Prometheus/Jaeger/Grafana configs into `infra/toad-eye/` |
+| `npx toad-eye up`     | Starts the observability stack (`docker compose up -d`)                               |
+| `npx toad-eye down`   | Stops the stack                                                                       |
+| `npx toad-eye status` | Shows running services and their URLs                                                 |
 
 ## Architecture
 
@@ -55,14 +66,15 @@ flowchart LR
 
 ```bash
 npm install
-cd infra && docker compose up -d   # start observability stack
+npx toad-eye init                   # scaffold infra configs
+npx toad-eye up                     # start observability stack
 npm run demo                        # start mock LLM service
 npm run load --workspace=demo       # send test traffic
 ```
 
 | Service        | URL                                       |
 | -------------- | ----------------------------------------- |
-| Grafana        | [localhost:3000](http://localhost:3000)   |
+| Grafana        | [localhost:3100](http://localhost:3100)   |
 | Jaeger UI      | [localhost:16686](http://localhost:16686) |
 | Prometheus     | [localhost:9090](http://localhost:9090)   |
 | OTel Collector | [localhost:4318](http://localhost:4318)   |
