@@ -20,25 +20,16 @@ LLM APIs are black boxes — you don't know what they cost, how slow they are, o
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    App["🔮 Your LLM service"]
-    Inst["🐸 @toad-eye/instrumentation"]
-    Coll["📡 OTel Collector"]
-    Prom["📊 Prometheus"]
-    Jaeger["🔍 Jaeger"]
-    Graf["📈 Grafana"]
-
-    App --> Inst --> Coll
-    Coll --> Prom --> Graf
-    Coll --> Jaeger
-
-    style App fill:#4a5568,stroke:#718096,color:#fff
-    style Inst fill:#2d6a4f,stroke:#40916c,color:#fff
-    style Coll fill:#1d4ed8,stroke:#3b82f6,color:#fff
-    style Prom fill:#e24d1e,stroke:#ff6633,color:#fff
-    style Jaeger fill:#00bcd4,stroke:#26c6da,color:#fff
-    style Graf fill:#f46800,stroke:#ff8c00,color:#fff
+```
+Your LLM service
+       │
+       ▼
+@toad-eye/instrumentation
+       │
+       ▼ OTLP/HTTP
+OTel Collector
+       ├──▶ Prometheus ──▶ Grafana
+       └──▶ Jaeger
 ```
 
 ## Quick start
@@ -108,11 +99,11 @@ All metrics are labeled with `provider` and `model` for filtering and grouping.
 
 ## Grafana dashboard
 
-![toad-eye Grafana dashboard](demo/grafana-dashboard.png)
+![toad-eye Grafana dashboard](https://raw.githubusercontent.com/vola-trebla/toad-eye/main/demo/grafana-dashboard.png)
 
 ## Jaeger traces
 
-![toad-eye Jaeger traces](demo/jaeger-traces.png)
+![toad-eye Jaeger traces](https://raw.githubusercontent.com/vola-trebla/toad-eye/main/demo/jaeger-traces.png)
 
 ## Project structure
 
