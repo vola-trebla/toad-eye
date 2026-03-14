@@ -1,0 +1,18 @@
+{
+  "name": "@toad-eye/demo",
+  "version": "0.1.0",
+  "description": "Mock LLM service for toad-eye demo",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@toad-eye/instrumentation": "*",
+    "dotenv": "^17.3.1",
+    "hono": "^4.12.8"
+  },
+  "license": "ISC"
+}
