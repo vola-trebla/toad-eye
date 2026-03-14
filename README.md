@@ -6,7 +6,7 @@
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?logo=prometheus&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?logo=grafana&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![npm](https://img.shields.io/npm/v/toad-eye?color=CB3837&logo=npm&logoColor=white)
+[![npm](https://img.shields.io/npm/v/toad-eye?color=CB3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/toad-eye)
 ![CI](https://github.com/vola-trebla/toad-eye/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-ISC-blue)
 
