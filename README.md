@@ -40,6 +40,10 @@ initObservability({
 
 ![toad-eye Grafana dashboard](demo/grafana-dashboard.png)
 
+## Jaeger traces
+
+![toad-eye Jaeger traces](demo/jaeger-traces.png)
+
 ## Project structure
 
 ```
