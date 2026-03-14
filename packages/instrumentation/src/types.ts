@@ -30,15 +30,15 @@ export interface LLMSpanAttributes {
  *
  * Naming convention follows OpenTelemetry semantic conventions:
  * - dots as separators: "llm.request.duration"
- * - unit in the name where ambiguous: "llm.tokens.total"
  * - Prometheus auto-converts dots to underscores: llm_request_duration
+ * - Prometheus adds _total suffix to counters automatically — do NOT include it in the name
  */
 export const LLM_METRICS = {
   REQUEST_DURATION: "llm.request.duration",
   REQUEST_COST: "llm.request.cost",
-  TOKENS_TOTAL: "llm.tokens.total",
-  REQUESTS_TOTAL: "llm.requests.total",
-  ERRORS_TOTAL: "llm.errors.total",
+  TOKENS: "llm.tokens",
+  REQUESTS: "llm.requests",
+  ERRORS: "llm.errors",
 } as const;
 
 /**

@@ -8,7 +8,7 @@ routes.post("/chat", async (c) => {
 
   try {
     const result = await mockLLMCall(body.prompt);
-    return c.json({ ok: true, ...result });
+    return c.json({ ok: true, model: "mock", ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return c.json({ ok: false, error: message }, 500);
