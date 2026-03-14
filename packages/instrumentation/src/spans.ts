@@ -1,5 +1,6 @@
-import { trace, SpanStatusCode } from "@opentelemetry/api";
+import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes } from "./types.js";
+import { LLM_ATTRS, INSTRUMENTATION_NAME } from "./types.js";
 import {
   recordRequestDuration,
   recordRequestCost,
@@ -7,6 +8,7 @@ import {
   recordRequest,
   recordError,
 } from "./metrics.js";
+import { getConfig } from "./tracer.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
 export interface LLMCallInput {
@@ -24,7 +26,20 @@ export interface LLMCallOutput {
   readonly cost: number;
 }
 
-const tracer = trace.getTracer("toad-eye");
+const tracer = trace.getTracer(INSTRUMENTATION_NAME);
+
+function shouldRecordContent() {
+  return getConfig()?.recordContent !== false;
+}
+
+function setBaseAttributes(span: Span, input: LLMCallInput) {
+  span.setAttributes({
+    [LLM_ATTRS.PROVIDER]: input.provider,
+    [LLM_ATTRS.MODEL]: input.model,
+    [LLM_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
+    ...(shouldRecordContent() && { [LLM_ATTRS.PROMPT]: input.prompt }),
+  });
+}
 
 export async function traceLLMCall(
   input: LLMCallInput,
@@ -34,23 +49,21 @@ export async function traceLLMCall(
     `llm.${input.provider}.${input.model}`,
     async (span) => {
       const start = performance.now();
+      setBaseAttributes(span, input);
 
       try {
         const output = await fn();
         const duration = performance.now() - start;
 
         span.setAttributes({
-          "llm.provider": input.provider,
-          "llm.model": input.model,
-          "llm.prompt": input.prompt,
-          "llm.completion": output.completion,
-          "llm.input_tokens": output.inputTokens,
-          "llm.output_tokens": output.outputTokens,
-          "llm.cost": output.cost,
-          "llm.temperature": input.temperature ?? 1.0,
-          "llm.status": "success",
+          ...(shouldRecordContent() && {
+            [LLM_ATTRS.COMPLETION]: output.completion,
+          }),
+          [LLM_ATTRS.INPUT_TOKENS]: output.inputTokens,
+          [LLM_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
+          [LLM_ATTRS.COST]: output.cost,
+          [LLM_ATTRS.STATUS]: "success",
         });
-
         span.setStatus({ code: SpanStatusCode.OK });
 
         recordRequest(input.provider, input.model);
@@ -68,18 +81,13 @@ export async function traceLLMCall(
         const message = error instanceof Error ? error.message : String(error);
 
         span.setAttributes({
-          "llm.provider": input.provider,
-          "llm.model": input.model,
-          "llm.prompt": input.prompt,
-          "llm.completion": "",
-          "llm.input_tokens": 0,
-          "llm.output_tokens": 0,
-          "llm.cost": 0,
-          "llm.temperature": input.temperature ?? 1.0,
-          "llm.status": "error",
-          "llm.error": message,
+          [LLM_ATTRS.COMPLETION]: "",
+          [LLM_ATTRS.INPUT_TOKENS]: 0,
+          [LLM_ATTRS.OUTPUT_TOKENS]: 0,
+          [LLM_ATTRS.COST]: 0,
+          [LLM_ATTRS.STATUS]: "error",
+          [LLM_ATTRS.ERROR]: message,
         });
-
         span.setStatus({ code: SpanStatusCode.ERROR, message });
 
         recordRequest(input.provider, input.model);

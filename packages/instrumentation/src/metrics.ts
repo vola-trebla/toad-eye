@@ -1,6 +1,6 @@
 import { metrics } from "@opentelemetry/api";
 import type { Counter, Histogram } from "@opentelemetry/api";
-import { LLM_METRICS } from "./types.js";
+import { LLM_METRICS, INSTRUMENTATION_NAME } from "./types.js";
 
 let requestDuration: Histogram;
 let requestCost: Histogram;
@@ -13,7 +13,7 @@ let initialized = false;
 export function initMetrics() {
   if (initialized) return;
 
-  const meter = metrics.getMeter("toad-eye");
+  const meter = metrics.getMeter(INSTRUMENTATION_NAME);
 
   requestDuration = meter.createHistogram(LLM_METRICS.REQUEST_DURATION, {
     description: "LLM request duration in milliseconds",

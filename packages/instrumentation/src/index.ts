@@ -1,4 +1,4 @@
-export { initObservability, shutdown } from "./tracer.js";
+export { initObservability, shutdown, getConfig } from "./tracer.js";
 export { traceLLMCall } from "./spans.js";
 export type { LLMCallInput, LLMCallOutput } from "./spans.js";
 export type {
@@ -8,4 +8,4 @@ export type {
   SpanStatus,
   MetricName,
 } from "./types.js";
-export { LLM_METRICS } from "./types.js";
+export { LLM_METRICS, LLM_ATTRS } from "./types.js";
