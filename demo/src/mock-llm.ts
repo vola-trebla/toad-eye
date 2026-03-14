@@ -1,5 +1,5 @@
-import { traceLLMCall } from "@toad-eye/instrumentation";
-import type { LLMCallOutput } from "@toad-eye/instrumentation";
+import { traceLLMCall } from "toad-eye";
+import type { LLMCallOutput } from "toad-eye";
 
 const MODELS = [
   {
