@@ -1,3 +1,5 @@
+export const INSTRUMENTATION_NAME = "toad-eye";
+
 /**
  * LLM providers supported by toad-eye
  */
@@ -39,6 +41,23 @@ export const LLM_METRICS = {
   TOKENS: "llm.tokens",
   REQUESTS: "llm.requests",
   ERRORS: "llm.errors",
+} as const;
+
+/**
+ * Span attribute keys attached to every LLM span.
+ * Using constants prevents typos and enables rename-refactoring.
+ */
+export const LLM_ATTRS = {
+  PROVIDER: "llm.provider",
+  MODEL: "llm.model",
+  PROMPT: "llm.prompt",
+  COMPLETION: "llm.completion",
+  INPUT_TOKENS: "llm.input_tokens",
+  OUTPUT_TOKENS: "llm.output_tokens",
+  COST: "llm.cost",
+  TEMPERATURE: "llm.temperature",
+  STATUS: "llm.status",
+  ERROR: "llm.error",
 } as const;
 
 /**

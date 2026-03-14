@@ -10,6 +10,11 @@ import { initMetrics } from "./metrics.js";
 const DEFAULT_ENDPOINT = "http://localhost:4318";
 
 let sdk: NodeSDK | null = null;
+let currentConfig: ToadEyeConfig | null = null;
+
+export function getConfig() {
+  return currentConfig;
+}
 
 export function initObservability(config: ToadEyeConfig) {
   if (sdk) return;
@@ -40,11 +45,13 @@ export function initObservability(config: ToadEyeConfig) {
   });
 
   sdk.start();
+  currentConfig = config;
   initMetrics();
 }
 
-export function shutdown() {
+export async function shutdown() {
   if (!sdk) return;
-  sdk.shutdown();
+  await sdk.shutdown();
   sdk = null;
+  currentConfig = null;
 }
