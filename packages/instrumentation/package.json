@@ -19,9 +19,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/albertalov/toad-eye"
+    "url": "https://github.com/vola-trebla/toad-eye"
   },
-  "homepage": "https://github.com/albertalov/toad-eye#readme",
+  "homepage": "https://github.com/vola-trebla/toad-eye#readme",
   "author": "albertalov",
   "keywords": [
     "opentelemetry",
