@@ -73,4 +73,5 @@ export interface ToadEyeConfig {
   readonly serviceName: string;
   readonly endpoint?: string | undefined;
   readonly recordContent?: boolean | undefined;
+  readonly instrument?: readonly LLMProvider[] | undefined;
 }
