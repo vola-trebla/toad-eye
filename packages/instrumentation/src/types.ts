@@ -99,6 +99,11 @@ export type MetricName = (typeof GEN_AI_METRICS)[keyof typeof GEN_AI_METRICS];
 export interface ToadEyeConfig {
   readonly serviceName: string;
   readonly endpoint?: string | undefined;
+  /** Set to false to disable recording prompt/completion text in spans. */
   readonly recordContent?: boolean | undefined;
+  /** Record SHA-256 hash of content instead of plain text. Allows prompt comparison without reading. */
+  readonly hashContent?: boolean | undefined;
+  /** Regex patterns to redact from prompt/completion text before recording. */
+  readonly redactPatterns?: readonly RegExp[] | undefined;
   readonly instrument?: readonly LLMProvider[] | undefined;
 }

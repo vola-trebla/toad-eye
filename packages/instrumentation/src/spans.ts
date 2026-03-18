@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes } from "./types.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types.js";
@@ -28,19 +29,37 @@ export interface LLMCallOutput {
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
-function shouldRecordContent() {
-  return getConfig()?.recordContent !== false;
+function sha256(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+function processContent(text: string): string | undefined {
+  const config = getConfig();
+  if (config?.recordContent === false) return undefined;
+
+  let processed = text;
+
+  if (config?.redactPatterns?.length) {
+    for (const pattern of config.redactPatterns) {
+      processed = processed.replace(pattern, "[REDACTED]");
+    }
+  }
+
+  if (config?.hashContent) {
+    return `sha256:${sha256(processed)}`;
+  }
+
+  return processed;
 }
 
 function setBaseAttributes(span: Span, input: LLMCallInput) {
+  const prompt = processContent(input.prompt);
   span.setAttributes({
     [GEN_AI_ATTRS.PROVIDER]: input.provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: input.model,
     [GEN_AI_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
     [GEN_AI_ATTRS.OPERATION]: "chat",
-    ...(shouldRecordContent() && {
-      [GEN_AI_ATTRS.PROMPT]: input.prompt,
-    }),
+    ...(prompt !== undefined && { [GEN_AI_ATTRS.PROMPT]: prompt }),
   });
 }
 
@@ -57,10 +76,11 @@ export async function traceLLMCall(
       try {
         const output = await fn();
         const duration = performance.now() - start;
+        const completion = processContent(output.completion);
 
         span.setAttributes({
-          ...(shouldRecordContent() && {
-            [GEN_AI_ATTRS.COMPLETION]: output.completion,
+          ...(completion !== undefined && {
+            [GEN_AI_ATTRS.COMPLETION]: completion,
           }),
           [GEN_AI_ATTRS.RESPONSE_MODEL]: input.model,
           [GEN_AI_ATTRS.INPUT_TOKENS]: output.inputTokens,
