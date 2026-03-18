@@ -13,8 +13,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le, model))",
-          "legendFormat": "p95 {{ model }}",
+          "expr": "histogram_quantile(0.95, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
+          "legendFormat": "p95 {{ gen_ai_request_model }}",
           "refId": "A"
         }
       ],
@@ -33,8 +33,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_request_cost_USD_sum{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model) / sum(rate(llm_request_cost_USD_count{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model)",
-          "legendFormat": "{{ model }}",
+          "expr": "sum(rate(gen_ai_client_request_cost_USD_sum{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) / sum(rate(gen_ai_client_request_cost_USD_count{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model)",
+          "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
       ],
@@ -53,8 +53,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_errors_total{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model) / sum(rate(llm_requests_total{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model) * 100",
-          "legendFormat": "{{ model }}",
+          "expr": "sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) / sum(rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) * 100",
+          "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
       ],
@@ -73,8 +73,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_requests_total{provider=~\"$provider\", model=~\"$model\"}[1m])) by (model) * 60",
-          "legendFormat": "{{ model }}",
+          "expr": "sum(rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_request_model) * 60",
+          "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
       ],
@@ -93,8 +93,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_tokens_total{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model) / sum(rate(llm_requests_total{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model)",
-          "legendFormat": "{{ model }}",
+          "expr": "sum(rate(gen_ai_client_token_usage_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) / sum(rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model)",
+          "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
       ],
@@ -116,7 +116,7 @@
         "name": "provider",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(llm_requests_total, provider)",
+        "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
         "includeAll": true,
         "allValue": ".*",
         "current": { "text": "All", "value": "$__all" },
@@ -126,7 +126,7 @@
         "name": "model",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(llm_requests_total{provider=~\"$provider\"}, model)",
+        "query": "label_values(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}, gen_ai_request_model)",
         "includeAll": true,
         "allValue": ".*",
         "current": { "text": "All", "value": "$__all" },
