@@ -28,8 +28,7 @@ services:
     image: grafana/grafana:latest
     volumes:
       - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
-      - ./grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-      - ./grafana/dashboards/llm-overview.json:/etc/grafana/provisioning/dashboards/llm-overview.json
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/llm-overview.json

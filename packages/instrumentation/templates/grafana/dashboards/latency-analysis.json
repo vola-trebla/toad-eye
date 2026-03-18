@@ -1,0 +1,134 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Latency p50 / p95 / p99 by Model",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le, model))",
+          "legendFormat": "p50 {{ model }}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le, model))",
+          "legendFormat": "p95 {{ model }}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le, model))",
+          "legendFormat": "p99 {{ model }}",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Latency Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le)",
+          "legendFormat": "{{ le }}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 50 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Avg Latency by Model",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(llm_request_duration_milliseconds_sum{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model) / sum(rate(llm_request_duration_milliseconds_count{provider=~\"$provider\", model=~\"$model\"}[5m])) by (model)",
+          "legendFormat": "{{ model }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Slow Requests p99 by Provider",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le, provider))",
+          "legendFormat": "p99 {{ provider }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["llm", "observability", "toad-eye"],
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(llm_requests_total, provider)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "multi": true
+      },
+      {
+        "name": "model",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(llm_requests_total{provider=~\"$provider\"}, model)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "multi": true
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "toad-eye: Latency Analysis",
+  "uid": "toad-eye-latency",
+  "version": 1
+}
