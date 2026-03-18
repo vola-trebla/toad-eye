@@ -1,6 +1,6 @@
 import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes } from "./types.js";
-import { LLM_ATTRS, INSTRUMENTATION_NAME } from "./types.js";
+import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types.js";
 import {
   recordRequestDuration,
   recordRequestCost,
@@ -34,10 +34,13 @@ function shouldRecordContent() {
 
 function setBaseAttributes(span: Span, input: LLMCallInput) {
   span.setAttributes({
-    [LLM_ATTRS.PROVIDER]: input.provider,
-    [LLM_ATTRS.MODEL]: input.model,
-    [LLM_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
-    ...(shouldRecordContent() && { [LLM_ATTRS.PROMPT]: input.prompt }),
+    [GEN_AI_ATTRS.PROVIDER]: input.provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: input.model,
+    [GEN_AI_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
+    [GEN_AI_ATTRS.OPERATION]: "chat",
+    ...(shouldRecordContent() && {
+      [GEN_AI_ATTRS.PROMPT]: input.prompt,
+    }),
   });
 }
 
@@ -46,7 +49,7 @@ export async function traceLLMCall(
   fn: () => Promise<LLMCallOutput>,
 ): Promise<LLMCallOutput> {
   return tracer.startActiveSpan(
-    `llm.${input.provider}.${input.model}`,
+    `gen_ai.${input.provider}.${input.model}`,
     async (span) => {
       const start = performance.now();
       setBaseAttributes(span, input);
@@ -57,12 +60,14 @@ export async function traceLLMCall(
 
         span.setAttributes({
           ...(shouldRecordContent() && {
-            [LLM_ATTRS.COMPLETION]: output.completion,
+            [GEN_AI_ATTRS.COMPLETION]: output.completion,
           }),
-          [LLM_ATTRS.INPUT_TOKENS]: output.inputTokens,
-          [LLM_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
-          [LLM_ATTRS.COST]: output.cost,
-          [LLM_ATTRS.STATUS]: "success",
+          [GEN_AI_ATTRS.RESPONSE_MODEL]: input.model,
+          [GEN_AI_ATTRS.INPUT_TOKENS]: output.inputTokens,
+          [GEN_AI_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
+          [GEN_AI_ATTRS.COST]: output.cost,
+          [GEN_AI_ATTRS.STATUS]: "success",
+          [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
         });
         span.setStatus({ code: SpanStatusCode.OK });
 
@@ -81,12 +86,11 @@ export async function traceLLMCall(
         const message = error instanceof Error ? error.message : String(error);
 
         span.setAttributes({
-          [LLM_ATTRS.COMPLETION]: "",
-          [LLM_ATTRS.INPUT_TOKENS]: 0,
-          [LLM_ATTRS.OUTPUT_TOKENS]: 0,
-          [LLM_ATTRS.COST]: 0,
-          [LLM_ATTRS.STATUS]: "error",
-          [LLM_ATTRS.ERROR]: message,
+          [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
+          [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
+          [GEN_AI_ATTRS.COST]: 0,
+          [GEN_AI_ATTRS.STATUS]: "error",
+          [GEN_AI_ATTRS.ERROR]: message,
         });
         span.setStatus({ code: SpanStatusCode.ERROR, message });
 

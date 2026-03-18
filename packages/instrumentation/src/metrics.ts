@@ -1,40 +1,43 @@
 import { metrics } from "@opentelemetry/api";
 import type { Counter, Histogram } from "@opentelemetry/api";
-import { LLM_METRICS, INSTRUMENTATION_NAME } from "./types.js";
+import { GEN_AI_METRICS, INSTRUMENTATION_NAME } from "./types.js";
 
 let requestDuration: Histogram;
 let requestCost: Histogram;
-let tokensTotal: Counter;
+let tokenUsage: Counter;
 let requestsTotal: Counter;
 let errorsTotal: Counter;
 
 let initialized = false;
+
+const LABEL_PROVIDER = "gen_ai.provider.name";
+const LABEL_MODEL = "gen_ai.request.model";
 
 export function initMetrics() {
   if (initialized) return;
 
   const meter = metrics.getMeter(INSTRUMENTATION_NAME);
 
-  requestDuration = meter.createHistogram(LLM_METRICS.REQUEST_DURATION, {
-    description: "LLM request duration in milliseconds",
+  requestDuration = meter.createHistogram(GEN_AI_METRICS.REQUEST_DURATION, {
+    description: "GenAI operation duration in milliseconds",
     unit: "ms",
   });
 
-  requestCost = meter.createHistogram(LLM_METRICS.REQUEST_COST, {
-    description: "LLM request cost in USD",
+  requestCost = meter.createHistogram(GEN_AI_METRICS.REQUEST_COST, {
+    description: "GenAI request cost in USD",
     unit: "USD",
   });
 
-  tokensTotal = meter.createCounter(LLM_METRICS.TOKENS, {
+  tokenUsage = meter.createCounter(GEN_AI_METRICS.TOKEN_USAGE, {
     description: "Total tokens consumed",
   });
 
-  requestsTotal = meter.createCounter(LLM_METRICS.REQUESTS, {
-    description: "Total LLM requests",
+  requestsTotal = meter.createCounter(GEN_AI_METRICS.REQUESTS, {
+    description: "Total GenAI requests",
   });
 
-  errorsTotal = meter.createCounter(LLM_METRICS.ERRORS, {
-    description: "Total failed LLM requests",
+  errorsTotal = meter.createCounter(GEN_AI_METRICS.ERRORS, {
+    description: "Total failed GenAI requests",
   });
 
   initialized = true;
@@ -45,7 +48,10 @@ export function recordRequestDuration(
   provider: string,
   model: string,
 ) {
-  requestDuration.record(ms, { provider, model });
+  requestDuration.record(ms, {
+    [LABEL_PROVIDER]: provider,
+    [LABEL_MODEL]: model,
+  });
 }
 
 export function recordRequestCost(
@@ -53,17 +59,29 @@ export function recordRequestCost(
   provider: string,
   model: string,
 ) {
-  requestCost.record(usd, { provider, model });
+  requestCost.record(usd, {
+    [LABEL_PROVIDER]: provider,
+    [LABEL_MODEL]: model,
+  });
 }
 
 export function recordTokens(count: number, provider: string, model: string) {
-  tokensTotal.add(count, { provider, model });
+  tokenUsage.add(count, {
+    [LABEL_PROVIDER]: provider,
+    [LABEL_MODEL]: model,
+  });
 }
 
 export function recordRequest(provider: string, model: string) {
-  requestsTotal.add(1, { provider, model });
+  requestsTotal.add(1, {
+    [LABEL_PROVIDER]: provider,
+    [LABEL_MODEL]: model,
+  });
 }
 
 export function recordError(provider: string, model: string) {
-  errorsTotal.add(1, { provider, model });
+  errorsTotal.add(1, {
+    [LABEL_PROVIDER]: provider,
+    [LABEL_MODEL]: model,
+  });
 }

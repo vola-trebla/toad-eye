@@ -19,4 +19,9 @@ export type {
   SpanStatus,
   MetricName,
 } from "./types.js";
-export { LLM_METRICS, LLM_ATTRS } from "./types.js";
+export {
+  GEN_AI_METRICS,
+  GEN_AI_ATTRS,
+  LLM_METRICS,
+  LLM_ATTRS,
+} from "./types.js";

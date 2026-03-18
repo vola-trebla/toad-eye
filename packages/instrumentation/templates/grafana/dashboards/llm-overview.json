@@ -13,7 +13,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_requests_total{provider=~\"$provider\", model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -38,7 +38,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_errors_total{provider=~\"$provider\", model=~\"$model\"}) / sum(llm_requests_total{provider=~\"$provider\", model=~\"$model\"}) * 100",
+          "expr": "sum(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) / sum(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) * 100",
           "refId": "A"
         }
       ],
@@ -63,7 +63,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_request_duration_milliseconds_sum{provider=~\"$provider\", model=~\"$model\"}[5m])) / sum(rate(llm_request_duration_milliseconds_count{provider=~\"$provider\", model=~\"$model\"}[5m]))",
+          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_sum{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) / sum(rate(gen_ai_client_operation_duration_milliseconds_count{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -88,7 +88,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_request_cost_USD_sum{provider=~\"$provider\", model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_request_cost_USD_sum{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -113,8 +113,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_requests_total{provider=~\"$provider\", model=~\"$model\"}[1m])) by (provider) * 60",
-          "legendFormat": "{{ provider }}",
+          "expr": "sum(rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_provider_name) * 60",
+          "legendFormat": "{{ gen_ai_provider_name }}",
           "refId": "A"
         }
       ],
@@ -133,8 +133,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_errors_total{provider=~\"$provider\", model=~\"$model\"}[1m])) by (provider) * 60",
-          "legendFormat": "{{ provider }}",
+          "expr": "sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_provider_name) * 60",
+          "legendFormat": "{{ gen_ai_provider_name }}",
           "refId": "A"
         }
       ],
@@ -154,12 +154,12 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(llm_request_duration_milliseconds_bucket{provider=~\"$provider\", model=~\"$model\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         }
@@ -179,8 +179,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(llm_request_cost_USD_sum{provider=~\"$provider\", model=~\"$model\"}[1m])) by (provider) * 60",
-          "legendFormat": "{{ provider }}",
+          "expr": "sum(rate(gen_ai_client_request_cost_USD_sum{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_provider_name) * 60",
+          "legendFormat": "{{ gen_ai_provider_name }}",
           "refId": "A"
         }
       ],
@@ -199,7 +199,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_tokens_total{provider=~\"$provider\", model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_token_usage_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -224,7 +224,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_requests_total{provider=~\"$provider\", model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -249,7 +249,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(llm_errors_total{provider=~\"$provider\", model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -277,7 +277,7 @@
         "name": "provider",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(llm_requests_total, provider)",
+        "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
         "includeAll": true,
         "allValue": ".*",
         "current": { "text": "All", "value": "$__all" },
@@ -287,7 +287,7 @@
         "name": "model",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(llm_requests_total{provider=~\"$provider\"}, model)",
+        "query": "label_values(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}, gen_ai_request_model)",
         "includeAll": true,
         "allValue": ".*",
         "current": { "text": "All", "value": "$__all" },
