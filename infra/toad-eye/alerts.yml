@@ -1,0 +1,51 @@
+prometheusUrl: http://localhost:9090
+grafanaUrl: http://localhost:3100
+# grafanaApiKey: your-api-key  # optional, needed if Grafana auth is enabled
+
+evalIntervalSeconds: 60
+cooldownMinutes: 30
+
+channels:
+  telegram:
+    type: telegram
+    token: ${TELEGRAM_BOT_TOKEN}
+    chatId: ${TELEGRAM_CHAT_ID}
+
+  slack:
+    type: slack_webhook
+    url: ${SLACK_WEBHOOK_URL}
+
+  ops_webhook:
+    type: webhook
+    url: https://your-service.example.com/alerts
+    headers:
+      Authorization: Bearer ${WEBHOOK_SECRET}
+
+  email:
+    type: email
+    host: smtp.example.com
+    port: 587
+    user: ${SMTP_USER}
+    password: ${SMTP_PASSWORD}
+    from: alerts@example.com
+    to:
+      - oncall@example.com
+
+alerts:
+  - name: cost_spike
+    metric: llm.request.cost
+    condition: sum_1h > 10
+    channels: [telegram, slack]
+    cooldown: 30
+
+  - name: high_error_rate
+    metric: llm.errors
+    condition: sum_5m > 20
+    channels: [telegram, ops_webhook]
+    cooldown: 10
+
+  - name: daily_budget
+    metric: llm.request.cost
+    condition: sum_24h > 100
+    channels: [email, slack]
+    cooldown: 60
