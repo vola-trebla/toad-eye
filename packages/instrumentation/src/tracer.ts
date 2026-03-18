@@ -6,6 +6,12 @@ import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "./types.js";
 import { initMetrics } from "./metrics.js";
+import { enableAll, disableAll } from "./instrumentations/registry.js";
+
+// Side-effect imports: register provider instrumentations
+import "./instrumentations/openai.js";
+import "./instrumentations/anthropic.js";
+import "./instrumentations/gemini.js";
 
 const DEFAULT_ENDPOINT = "http://localhost:4318";
 
@@ -47,10 +53,15 @@ export function initObservability(config: ToadEyeConfig) {
   sdk.start();
   currentConfig = config;
   initMetrics();
+
+  if (config.instrument?.length) {
+    enableAll(config.instrument);
+  }
 }
 
 export async function shutdown() {
   if (!sdk) return;
+  disableAll();
   await sdk.shutdown();
   sdk = null;
   currentConfig = null;
