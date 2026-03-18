@@ -11,6 +11,8 @@ export type {
   FiredAlert,
 } from "./alerts/index.js";
 export { traceLLMCall } from "./spans.js";
+export { calculateCost, setCustomPricing, getModelPricing } from "./pricing.js";
+export type { ModelPricing } from "./pricing.js";
 export type { LLMCallInput, LLMCallOutput } from "./spans.js";
 export type {
   ToadEyeConfig,

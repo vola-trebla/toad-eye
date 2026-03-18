@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { diag } from "@opentelemetry/api";
 import { traceLLMCall } from "../spans.js";
 import type { LLMCallOutput } from "../spans.js";
+import { calculateCost } from "../pricing.js";
 import { register } from "./registry.js";
 import type { Instrumentation } from "./types.js";
 
@@ -95,7 +96,11 @@ const anthropicInstrumentation: Instrumentation = {
               completion: extractCompletion(response?.content),
               inputTokens: response?.usage?.input_tokens ?? 0,
               outputTokens: response?.usage?.output_tokens ?? 0,
-              cost: 0,
+              cost: calculateCost(
+                response?.model ?? model,
+                response?.usage?.input_tokens ?? 0,
+                response?.usage?.output_tokens ?? 0,
+              ),
             };
           },
         );

@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { diag } from "@opentelemetry/api";
 import { traceLLMCall } from "../spans.js";
 import type { LLMCallOutput } from "../spans.js";
+import { calculateCost } from "../pricing.js";
 import { register } from "./registry.js";
 import type { Instrumentation } from "./types.js";
 
@@ -81,7 +82,11 @@ const openaiInstrumentation: Instrumentation = {
                 completion: response?.choices?.[0]?.message?.content ?? "",
                 inputTokens: response?.usage?.prompt_tokens ?? 0,
                 outputTokens: response?.usage?.completion_tokens ?? 0,
-                cost: 0,
+                cost: calculateCost(
+                  response?.model ?? model,
+                  response?.usage?.prompt_tokens ?? 0,
+                  response?.usage?.completion_tokens ?? 0,
+                ),
               };
             },
           );
@@ -120,7 +125,11 @@ const openaiInstrumentation: Instrumentation = {
                 completion: "[embedding]",
                 inputTokens: response?.usage?.prompt_tokens ?? 0,
                 outputTokens: 0,
-                cost: 0,
+                cost: calculateCost(
+                  response?.model ?? model,
+                  response?.usage?.prompt_tokens ?? 0,
+                  0,
+                ),
               };
             },
           );

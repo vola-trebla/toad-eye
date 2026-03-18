@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { diag } from "@opentelemetry/api";
 import { traceLLMCall } from "../spans.js";
 import type { LLMCallOutput } from "../spans.js";
+import { calculateCost } from "../pricing.js";
 import { register } from "./registry.js";
 import type { Instrumentation } from "./types.js";
 
@@ -88,7 +89,11 @@ const geminiInstrumentation: Instrumentation = {
               completion,
               inputTokens: response?.usageMetadata?.promptTokenCount ?? 0,
               outputTokens: response?.usageMetadata?.candidatesTokenCount ?? 0,
-              cost: 0,
+              cost: calculateCost(
+                model,
+                response?.usageMetadata?.promptTokenCount ?? 0,
+                response?.usageMetadata?.candidatesTokenCount ?? 0,
+              ),
             };
           },
         );
