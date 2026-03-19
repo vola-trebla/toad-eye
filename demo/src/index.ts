@@ -16,4 +16,7 @@ const port = 3001;
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`👁️🐸👁️ toad-eye demo running on http://localhost:${port}`);
+  console.log(`   Grafana:    http://localhost:3100`);
+  console.log(`   Jaeger:     http://localhost:16686`);
+  console.log(`   Prometheus: http://localhost:9090`);
 });
