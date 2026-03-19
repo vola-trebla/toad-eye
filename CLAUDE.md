@@ -39,18 +39,43 @@ npx toad-eye down       # docker compose down
 npx toad-eye status     # show running services
 ```
 
+## Local dev — full stack run
+
+```bash
+# 1. Build the library
+npm run build --workspace=packages/instrumentation
+
+# 2. Restart the observability stack (OTel Collector, Prometheus, Jaeger, Grafana)
+npx toad-eye down && npx toad-eye up
+
+# 3. Terminal 1 — start demo server (stays running, serves Hono endpoints)
+npm run demo
+
+# 4. Terminal 2 — send mock LLM traffic to demo server
+npm run load --workspace=demo
+```
+
+After ~15s check:
+
+- Grafana: http://localhost:3100 (admin/admin) — 5 dashboards
+- Jaeger: http://localhost:16686 — traces from `toad-eye-demo`
+- Prometheus: http://localhost:9090 — raw metrics
+
 ## Architecture
 
 `packages/instrumentation/src/` modules:
 
-| Module       | Role                                                                    |
-| ------------ | ----------------------------------------------------------------------- |
-| `types.ts`   | All types, constants (`LLM_METRICS`, `LLM_ATTRS`), provider union       |
-| `tracer.ts`  | `initObservability()` / `shutdown()` — sets up OTel SDK, OTLP exporters |
-| `metrics.ts` | Creates histograms and counters, records per-call metrics               |
-| `spans.ts`   | `traceLLMCall()` — wraps any async LLM call with a traced span          |
-| `cli.ts`     | CLI entry point (`init`, `up`, `down`, `status` commands)               |
-| `index.ts`   | Public API re-exports                                                   |
+| Module       | Role                                                                     |
+| ------------ | ------------------------------------------------------------------------ |
+| `types/`     | All types, constants (`GEN_AI_METRICS`, `GEN_AI_ATTRS`), provider union  |
+| `tracer.ts`  | `initObservability()` / `shutdown()` — sets up OTel SDK, OTLP exporters  |
+| `metrics.ts` | Creates histograms and counters, records per-call metrics                |
+| `spans.ts`   | `traceLLMCall()` — wraps any async LLM call with a traced span           |
+| `agent.ts`   | `traceAgentStep()` / `traceAgentQuery()` — ReAct agent step tracing      |
+| `guard.ts`   | `recordGuardResult()` — shadow guardrails integration with toad-guard    |
+| `export.ts`  | `exportTrace()` — Jaeger trace to toad-eval YAML export                  |
+| `cli.ts`     | CLI entry point (`init`, `up`, `down`, `status`, `demo`, `export-trace`) |
+| `index.ts`   | Public API re-exports                                                    |
 
 Data flow: App → `traceLLMCall()` → OTel SDK → OTLP HTTP → OTel Collector → Prometheus (metrics) + Jaeger (traces) → Grafana.
 
@@ -60,7 +85,7 @@ Data flow: App → `traceLLMCall()` → OTel SDK → OTLP HTTP → OTel Collecto
 - **TypeScript strict mode** — `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`
 - Build target: `ES2024`, module: `NodeNext`
 - Formatting: Prettier (no config file, defaults). Pre-commit hook via husky + lint-staged
-- CI: GitHub Actions — typecheck only (no test runner yet)
+- CI: GitHub Actions — typecheck + format check. Tests via `npx vitest run`
 - Supported LLM providers: `"anthropic" | "gemini" | "openai"` (type `LLMProvider`)
 
 ## Code style notes
