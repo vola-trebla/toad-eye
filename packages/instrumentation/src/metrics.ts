@@ -11,6 +11,8 @@ let requestCost: Histogram;
 let tokenUsage: Counter;
 let requestsTotal: Counter;
 let errorsTotal: Counter;
+let agentStepsPerQuery: Histogram;
+let agentToolUsage: Counter;
 
 let initialized = false;
 
@@ -39,6 +41,17 @@ export function initMetrics() {
 
   errorsTotal = meter.createCounter(GEN_AI_METRICS.ERRORS, {
     description: "Total failed GenAI requests",
+  });
+
+  agentStepsPerQuery = meter.createHistogram(
+    GEN_AI_METRICS.AGENT_STEPS_PER_QUERY,
+    {
+      description: "Number of agent steps per query",
+    },
+  );
+
+  agentToolUsage = meter.createCounter(GEN_AI_METRICS.AGENT_TOOL_USAGE, {
+    description: "Agent tool invocations by tool name",
   });
 
   initialized = true;
@@ -84,5 +97,15 @@ export function recordError(provider: string, model: string) {
   errorsTotal.add(1, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+  });
+}
+
+export function recordAgentSteps(stepCount: number) {
+  agentStepsPerQuery.record(stepCount);
+}
+
+export function recordAgentToolUsage(toolName: string) {
+  agentToolUsage.add(1, {
+    [GEN_AI_ATTRS.AGENT_TOOL_NAME]: toolName,
   });
 }
