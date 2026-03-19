@@ -14,6 +14,20 @@ export interface AgentStepInput {
   readonly toolName?: string | undefined;
 }
 
+/** Guard execution mode */
+export type GuardMode = "shadow" | "enforce";
+
+/**
+ * Result of a toad-guard validation — the contract between toad-guard and toad-eye.
+ * toad-guard produces this, toad-eye consumes it via recordGuardResult().
+ */
+export interface GuardResult {
+  readonly mode: GuardMode;
+  readonly passed: boolean;
+  readonly ruleName: string;
+  readonly failureReason?: string | undefined;
+}
+
 /**
  * Attributes attached to every LLM span (trace).
  * These become searchable fields in Jaeger and filterable dimensions in Grafana.

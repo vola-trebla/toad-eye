@@ -12,6 +12,7 @@ export type {
 } from "./alerts/index.js";
 export { traceLLMCall } from "./spans.js";
 export { traceAgentStep, traceAgentQuery } from "./agent.js";
+export { recordGuardResult } from "./guard.js";
 export { exportTrace, fetchTrace, traceToEvalYaml } from "./export.js";
 export type { ExportTraceOptions } from "./export.js";
 export { calculateCost, setCustomPricing, getModelPricing } from "./pricing.js";
@@ -25,6 +26,8 @@ export type {
   MetricName,
   AgentStepType,
   AgentStepInput,
+  GuardMode,
+  GuardResult,
 } from "./types/index.js";
 export {
   GEN_AI_METRICS,

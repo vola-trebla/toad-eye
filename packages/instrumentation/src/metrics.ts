@@ -13,6 +13,8 @@ let requestsTotal: Counter;
 let errorsTotal: Counter;
 let agentStepsPerQuery: Histogram;
 let agentToolUsage: Counter;
+let guardEvaluations: Counter;
+let guardWouldBlock: Counter;
 
 let initialized = false;
 
@@ -52,6 +54,14 @@ export function initMetrics() {
 
   agentToolUsage = meter.createCounter(GEN_AI_METRICS.AGENT_TOOL_USAGE, {
     description: "Agent tool invocations by tool name",
+  });
+
+  guardEvaluations = meter.createCounter(GEN_AI_METRICS.GUARD_EVALUATIONS, {
+    description: "Total guard evaluations (shadow + enforce)",
+  });
+
+  guardWouldBlock = meter.createCounter(GEN_AI_METRICS.GUARD_WOULD_BLOCK, {
+    description: "Guard evaluations that would have blocked the response",
   });
 
   initialized = true;
@@ -107,5 +117,17 @@ export function recordAgentSteps(stepCount: number) {
 export function recordAgentToolUsage(toolName: string) {
   agentToolUsage.add(1, {
     [GEN_AI_ATTRS.AGENT_TOOL_NAME]: toolName,
+  });
+}
+
+export function recordGuardEvaluation(ruleName: string) {
+  guardEvaluations.add(1, {
+    [GEN_AI_ATTRS.GUARD_RULE_NAME]: ruleName,
+  });
+}
+
+export function recordGuardWouldBlock(ruleName: string) {
+  guardWouldBlock.add(1, {
+    [GEN_AI_ATTRS.GUARD_RULE_NAME]: ruleName,
   });
 }

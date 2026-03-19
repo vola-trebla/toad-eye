@@ -15,6 +15,9 @@ export const GEN_AI_METRICS = {
   // Agent metrics
   AGENT_STEPS_PER_QUERY: "gen_ai.agent.steps_per_query",
   AGENT_TOOL_USAGE: "gen_ai.agent.tool_usage",
+  // Guard metrics
+  GUARD_EVALUATIONS: "gen_ai.toad_eye.guard.evaluations",
+  GUARD_WOULD_BLOCK: "gen_ai.toad_eye.guard.would_block",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */
