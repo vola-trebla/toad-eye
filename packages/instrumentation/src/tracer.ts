@@ -22,9 +22,21 @@ export function getConfig() {
   return currentConfig;
 }
 
+function validateConfig(config: ToadEyeConfig) {
+  if (!config.serviceName?.trim()) {
+    throw new Error("toad-eye: serviceName is required and cannot be empty");
+  }
+  if (config.endpoint !== undefined && !config.endpoint.startsWith("http")) {
+    throw new Error(
+      `toad-eye: endpoint must be a valid URL, got "${config.endpoint}"`,
+    );
+  }
+}
+
 export function initObservability(config: ToadEyeConfig) {
   if (sdk) return;
 
+  validateConfig(config);
   const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
 
   const resource = resourceFromAttributes({
