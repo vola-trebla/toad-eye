@@ -23,6 +23,12 @@ export const GEN_AI_ATTRS = {
   AGENT_TOOL_NAME: "gen_ai.agent.tool.name",
   AGENT_STEP_CONTENT: "gen_ai.agent.step.content",
 
+  // Guard (shadow mode) attributes
+  GUARD_MODE: "gen_ai.toad_eye.guard.mode",
+  GUARD_PASSED: "gen_ai.toad_eye.guard.passed",
+  GUARD_FAILURE_REASON: "gen_ai.toad_eye.guard.failure_reason",
+  GUARD_RULE_NAME: "gen_ai.toad_eye.guard.rule_name",
+
   // toad-eye extensions
   PROMPT: "gen_ai.toad_eye.prompt",
   COMPLETION: "gen_ai.toad_eye.completion",
