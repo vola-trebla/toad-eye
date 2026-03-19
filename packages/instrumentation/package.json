@@ -52,6 +52,22 @@
     "nodemailer": "^6.9.0",
     "yaml": "^2.7.0"
   },
+  "peerDependencies": {
+    "openai": ">=4.0.0",
+    "@anthropic-ai/sdk": ">=0.30.0",
+    "@google/generative-ai": ">=0.20.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@google/generative-ai": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/nodemailer": "^7.0.11",
     "vitest": "^4.1.0"
