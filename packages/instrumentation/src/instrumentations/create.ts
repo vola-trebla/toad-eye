@@ -15,6 +15,61 @@ interface ActivePatch {
   original: (...args: unknown[]) => unknown;
 }
 
+function isModuleInstalled(moduleName: string): boolean {
+  try {
+    require.resolve(moduleName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadModule(moduleName: string): any {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const sdk = require(moduleName);
+  return sdk.default ?? sdk;
+}
+
+function createPatchedMethod(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  original: (...args: any[]) => unknown,
+  patch: PatchTarget,
+  providerName: LLMProvider,
+) {
+  return function patchedMethod(
+    this: unknown,
+    body: unknown,
+    ...rest: unknown[]
+  ) {
+    if (patch.shouldSkip?.(body)) {
+      return original.call(this, body, ...rest);
+    }
+
+    const req = patch.extractRequest(body);
+
+    return traceLLMCall(
+      {
+        provider: providerName,
+        model: req.model,
+        prompt: req.prompt,
+        temperature: req.temperature,
+      },
+      async (): Promise<LLMCallOutput> => {
+        const response = await original.call(this, body, ...rest);
+        const res = patch.extractResponse(response, req.model);
+
+        return {
+          completion: res.completion,
+          inputTokens: res.inputTokens,
+          outputTokens: res.outputTokens,
+          cost: calculateCost(req.model, res.inputTokens, res.outputTokens),
+        };
+      },
+    );
+  };
+}
+
 /**
  * Factory for creating SDK instrumentations.
  * Eliminates boilerplate: SDK resolution, prototype patching, error handling, cleanup.
@@ -30,16 +85,10 @@ export function createInstrumentation(config: {
     name: config.name,
 
     enable() {
-      try {
-        require.resolve(config.moduleName);
-      } catch {
-        return false;
-      }
+      if (!isModuleInstalled(config.moduleName)) return false;
 
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const sdk = require(config.moduleName);
-        const mod = sdk.default ?? sdk;
+        const mod = loadModule(config.moduleName);
 
         for (const patch of config.patches) {
           const proto = patch.getPrototype(mod);
@@ -49,41 +98,11 @@ export function createInstrumentation(config: {
             ...args: unknown[]
           ) => unknown;
 
-          proto[patch.method] = function patchedMethod(
-            body: unknown,
-            ...rest: unknown[]
-          ) {
-            if (patch.shouldSkip?.(body)) {
-              return original.call(this, body, ...rest);
-            }
-
-            const req = patch.extractRequest(body);
-
-            return traceLLMCall(
-              {
-                provider: config.name,
-                model: req.model,
-                prompt: req.prompt,
-                temperature: req.temperature,
-              },
-              async (): Promise<LLMCallOutput> => {
-                const response = await original.call(this, body, ...rest);
-                const res = patch.extractResponse(response, req.model);
-
-                return {
-                  completion: res.completion,
-                  inputTokens: res.inputTokens,
-                  outputTokens: res.outputTokens,
-                  cost: calculateCost(
-                    req.model,
-                    res.inputTokens,
-                    res.outputTokens,
-                  ),
-                };
-              },
-            );
-          };
-
+          proto[patch.method] = createPatchedMethod(
+            original,
+            patch,
+            config.name,
+          );
           activePatches.push({ proto, method: patch.method, original });
         }
 

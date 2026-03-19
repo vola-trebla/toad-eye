@@ -70,6 +70,40 @@ function setBaseAttributes(span: Span, input: LLMCallInput) {
   });
 }
 
+function recordBaseMetrics(duration: number, provider: string, model: string) {
+  recordRequest(provider, model);
+  recordRequestDuration(duration, provider, model);
+}
+
+function setSuccessAttributes(
+  span: Span,
+  input: LLMCallInput,
+  output: LLMCallOutput,
+) {
+  const completion = processContent(output.completion);
+  span.setAttributes({
+    ...(completion !== undefined && { [GEN_AI_ATTRS.COMPLETION]: completion }),
+    [GEN_AI_ATTRS.RESPONSE_MODEL]: input.model,
+    [GEN_AI_ATTRS.INPUT_TOKENS]: output.inputTokens,
+    [GEN_AI_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
+    [GEN_AI_ATTRS.COST]: output.cost,
+    [GEN_AI_ATTRS.STATUS]: "success",
+    [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
+  });
+  span.setStatus({ code: SpanStatusCode.OK });
+}
+
+function setErrorAttributes(span: Span, message: string) {
+  span.setAttributes({
+    [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
+    [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
+    [GEN_AI_ATTRS.COST]: 0,
+    [GEN_AI_ATTRS.STATUS]: "error",
+    [GEN_AI_ATTRS.ERROR]: message,
+  });
+  span.setStatus({ code: SpanStatusCode.ERROR, message });
+}
+
 export async function traceLLMCall(
   input: LLMCallInput,
   fn: () => Promise<LLMCallOutput>,
@@ -83,23 +117,9 @@ export async function traceLLMCall(
       try {
         const output = await fn();
         const duration = performance.now() - start;
-        const completion = processContent(output.completion);
 
-        span.setAttributes({
-          ...(completion !== undefined && {
-            [GEN_AI_ATTRS.COMPLETION]: completion,
-          }),
-          [GEN_AI_ATTRS.RESPONSE_MODEL]: input.model,
-          [GEN_AI_ATTRS.INPUT_TOKENS]: output.inputTokens,
-          [GEN_AI_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
-          [GEN_AI_ATTRS.COST]: output.cost,
-          [GEN_AI_ATTRS.STATUS]: "success",
-          [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
-        });
-        span.setStatus({ code: SpanStatusCode.OK });
-
-        recordRequest(input.provider, input.model);
-        recordRequestDuration(duration, input.provider, input.model);
+        setSuccessAttributes(span, input, output);
+        recordBaseMetrics(duration, input.provider, input.model);
         recordRequestCost(output.cost, input.provider, input.model);
         recordTokens(
           output.inputTokens + output.outputTokens,
@@ -112,17 +132,8 @@ export async function traceLLMCall(
         const duration = performance.now() - start;
         const message = error instanceof Error ? error.message : String(error);
 
-        span.setAttributes({
-          [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
-          [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
-          [GEN_AI_ATTRS.COST]: 0,
-          [GEN_AI_ATTRS.STATUS]: "error",
-          [GEN_AI_ATTRS.ERROR]: message,
-        });
-        span.setStatus({ code: SpanStatusCode.ERROR, message });
-
-        recordRequest(input.provider, input.model);
-        recordRequestDuration(duration, input.provider, input.model);
+        setErrorAttributes(span, message);
+        recordBaseMetrics(duration, input.provider, input.model);
         recordError(input.provider, input.model);
 
         throw error;

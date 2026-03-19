@@ -13,6 +13,12 @@ import {
 import type { LLMCallOutput } from "./index.js";
 
 const INFRA_DIR = "infra/toad-eye";
+const DEMO_DELAY_MIN_MS = 200;
+const DEMO_DELAY_MAX_MS = 2000;
+const DEMO_ERROR_RATE = 0.1;
+const DEMO_TICK_INTERVAL_MS = 2000;
+const DEMO_TOKEN_INPUT_RANGE = [50, 500] as const;
+const DEMO_TOKEN_OUTPUT_RANGE = [20, 300] as const;
 
 const SERVICES = [
   { name: "Grafana", url: "http://localhost:3100", login: "admin / admin" },
@@ -29,6 +35,15 @@ function getTemplatesDir(): string {
 
 function getComposeFile(): string {
   return join(process.cwd(), INFRA_DIR, "docker-compose.yml");
+}
+
+function requireInfra(message = `Run \`npx toad-eye init\` first.`): string {
+  const composeFile = getComposeFile();
+  if (!existsSync(composeFile)) {
+    console.error(`\u274c ${INFRA_DIR}/ not found. ${message}`);
+    process.exit(1);
+  }
+  return composeFile;
 }
 
 function init() {
@@ -58,13 +73,7 @@ function init() {
 }
 
 function up() {
-  const composeFile = getComposeFile();
-  if (!existsSync(composeFile)) {
-    console.error(
-      `\u274c ${INFRA_DIR}/ not found. Run \`npx toad-eye init\` first.`,
-    );
-    process.exit(1);
-  }
+  const composeFile = requireInfra();
 
   console.log("\u{1f438} Starting observability stack...");
   execSync(`docker compose -f ${composeFile} up -d`, { stdio: "inherit" });
@@ -73,11 +82,7 @@ function up() {
 }
 
 function down() {
-  const composeFile = getComposeFile();
-  if (!existsSync(composeFile)) {
-    console.error(`\u274c ${INFRA_DIR}/ not found. Nothing to stop.`);
-    process.exit(1);
-  }
+  const composeFile = requireInfra("Nothing to stop.");
 
   console.log("\u{1f44b} Stopping observability stack...");
   execSync(`docker compose -f ${composeFile} down`, { stdio: "inherit" });
@@ -85,13 +90,7 @@ function down() {
 }
 
 function status() {
-  const composeFile = getComposeFile();
-  if (!existsSync(composeFile)) {
-    console.error(
-      `\u274c ${INFRA_DIR}/ not found. Run \`npx toad-eye init\` first.`,
-    );
-    process.exit(1);
-  }
+  const composeFile = requireInfra();
 
   try {
     const output = execSync(
@@ -150,14 +149,16 @@ async function simulateLLMCall(
   model: string,
   prompt: string,
 ): Promise<LLMCallOutput> {
-  await new Promise((r) => setTimeout(r, randomBetween(200, 2000)));
+  await new Promise((r) =>
+    setTimeout(r, randomBetween(DEMO_DELAY_MIN_MS, DEMO_DELAY_MAX_MS)),
+  );
 
-  if (Math.random() < 0.1) {
+  if (Math.random() < DEMO_ERROR_RATE) {
     throw new Error(`${provider} API error: rate limit exceeded`);
   }
 
-  const inputTokens = randomBetween(50, 500);
-  const outputTokens = randomBetween(20, 300);
+  const inputTokens = randomBetween(...DEMO_TOKEN_INPUT_RANGE);
+  const outputTokens = randomBetween(...DEMO_TOKEN_OUTPUT_RANGE);
 
   return {
     completion: `Mock response for: "${prompt}"`,
@@ -168,13 +169,7 @@ async function simulateLLMCall(
 }
 
 async function demo() {
-  const composeFile = getComposeFile();
-  if (!existsSync(composeFile)) {
-    console.error(
-      `\u274c ${INFRA_DIR}/ not found. Run \`npx toad-eye init\` first.`,
-    );
-    process.exit(1);
-  }
+  requireInfra();
 
   initObservability({
     serviceName: "toad-eye-demo",
@@ -208,7 +203,7 @@ async function demo() {
   };
 
   const run = () => {
-    tick().then(() => setTimeout(run, 2000));
+    tick().then(() => setTimeout(run, DEMO_TICK_INTERVAL_MS));
   };
   run();
 }
