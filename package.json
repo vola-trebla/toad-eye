@@ -1,6 +1,6 @@
 {
-  "name": "toad-eye",
-  "version": "1.0.0",
+  "name": "toad-eye-monorepo",
+  "version": "2.0.0",
   "description": "OpenTelemetry-based observability toolkit for LLM systems",
   "private": true,
   "type": "module",
@@ -9,19 +9,15 @@
     "demo"
   ],
   "scripts": {
+    "build": "npm run build --workspace=packages/instrumentation",
+    "test": "npm run test --workspace=packages/instrumentation",
     "demo": "npm run dev --workspace=demo",
+    "load": "npm run load --workspace=demo",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
   },
-  "keywords": [
-    "opentelemetry",
-    "llm",
-    "observability",
-    "tracing",
-    "metrics"
-  ],
-  "author": "",
+  "author": "albertalov",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^25.5.0",
