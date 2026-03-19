@@ -1,38 +1,67 @@
 import type { AlertRule } from "./types.js";
 
 // Maps OTel metric names to Prometheus metric names.
-// OTel Histogram "llm.request.cost" with unit "USD" → llm_request_cost_USD_sum
-// OTel Counter "llm.requests" → llm_requests_total
 const METRIC_MAP: Record<string, string> = {
-  "llm.request.cost": "llm_request_cost_USD_sum",
-  "llm.request.duration": "llm_request_duration_ms_sum",
-  "llm.requests": "llm_requests_total",
-  "llm.errors": "llm_errors_total",
-  "llm.tokens": "llm_tokens_total",
+  "gen_ai.client.request.cost": "gen_ai_client_request_cost_USD_sum",
+  "gen_ai.client.operation.duration":
+    "gen_ai_client_operation_duration_milliseconds",
+  "gen_ai.client.requests": "gen_ai_client_requests_total",
+  "gen_ai.client.errors": "gen_ai_client_errors_total",
+  "gen_ai.client.token.usage": "gen_ai_client_token_usage_total",
+  // Legacy names (backward compat)
+  "llm.request.cost": "gen_ai_client_request_cost_USD_sum",
+  "llm.request.duration": "gen_ai_client_operation_duration_milliseconds",
+  "llm.requests": "gen_ai_client_requests_total",
+  "llm.errors": "gen_ai_client_errors_total",
+  "llm.tokens": "gen_ai_client_token_usage_total",
 };
 
 function toPromMetric(metric: string): string {
   return METRIC_MAP[metric] ?? metric.replace(/\./g, "_");
 }
 
-type ConditionOperator = "sum" | "avg" | "rate" | "max";
+type ConditionOperator = "sum" | "avg" | "rate" | "max" | "p95_pct" | "ratio";
 type Comparator = ">" | ">=" | "<" | "<=";
 
 export interface ParsedCondition {
   readonly operator: ConditionOperator;
   readonly window: string;
+  readonly baselineWindow?: string | undefined;
   readonly comparator: Comparator;
   readonly threshold: number;
 }
 
+/**
+ * Parse condition string into structured form.
+ *
+ * Standard: "sum_1h > 10", "rate_5m > 0.05"
+ * Baseline: "p95_pct_5m_7d > 50" — p95 over 5m increased >50% vs 7d baseline
+ * Ratio:    "ratio_15m > 0.05"   — errors/requests ratio over 15m
+ */
 export function parseCondition(condition: string): ParsedCondition {
+  // Baseline percentage: p95_pct_<window>_<baseline> <cmp> <threshold>
+  const baselineMatch =
+    /^p95_pct_(\d+[smhd])_(\d+[smhd])\s*(>=|<=|>|<)\s*([\d.]+)$/.exec(
+      condition.trim(),
+    );
+  if (baselineMatch) {
+    return {
+      operator: "p95_pct",
+      window: baselineMatch[1]!,
+      baselineWindow: baselineMatch[2]!,
+      comparator: baselineMatch[3] as Comparator,
+      threshold: parseFloat(baselineMatch[4]!),
+    };
+  }
+
+  // Standard: sum_1h > 10, ratio_15m > 0.05
   const match =
-    /^(sum|avg|rate|max)_(\d+[smhd])\s*(>=|<=|>|<)\s*([\d.]+)$/.exec(
+    /^(sum|avg|rate|max|ratio)_(\d+[smhd])\s*(>=|<=|>|<)\s*([\d.]+)$/.exec(
       condition.trim(),
     );
   if (!match) {
     throw new Error(
-      `Invalid alert condition: "${condition}". Expected format: "sum_1h > 10"`,
+      `Invalid alert condition: "${condition}". Expected format: "sum_1h > 10" or "p95_pct_5m_7d > 50"`,
     );
   }
   return {
@@ -58,12 +87,16 @@ function buildPromQL(
       return `sum(rate(${m}[${window}])) * 60`;
     case "max":
       return `max(increase(${m}[${window}]))`;
+    case "p95_pct":
+    case "ratio":
+      // Handled separately in evaluateCondition
+      return "";
   }
 }
 
 function buildTopModelsQuery(metric: string, window: string): string {
   const m = toPromMetric(metric);
-  return `topk(5, sum by (model) (increase(${m}[${window}])))`;
+  return `topk(5, sum by (gen_ai_request_model) (increase(${m}[${window}])))`;
 }
 
 function matches(
@@ -109,15 +142,56 @@ async function queryTopModels(
   if (!res.ok) return [];
   const data = (await res.json()) as {
     data: {
-      result: Array<{ metric: { model?: string }; value: [number, string] }>;
+      result: Array<{
+        metric: { gen_ai_request_model?: string };
+        value: [number, string];
+      }>;
     };
   };
   return data.data.result
     .map((r) => ({
-      model: r.metric.model ?? "unknown",
+      model: r.metric.gen_ai_request_model ?? "unknown",
       value: parseFloat(r.value[1]),
     }))
     .sort((a, b) => b.value - a.value);
+}
+
+/** Evaluate p95 current vs baseline, return % increase */
+async function evalP95Baseline(
+  prometheusUrl: string,
+  metric: string,
+  window: string,
+  baselineWindow: string,
+): Promise<number> {
+  const m = toPromMetric(metric);
+  const bucketMetric = `${m}_bucket`;
+  const currentP95 = await queryScalar(
+    prometheusUrl,
+    `histogram_quantile(0.95, sum(rate(${bucketMetric}[${window}])) by (le))`,
+  );
+  const baselineP95 = await queryScalar(
+    prometheusUrl,
+    `histogram_quantile(0.95, sum(rate(${bucketMetric}[${baselineWindow}])) by (le))`,
+  );
+  if (baselineP95 === 0) return 0;
+  return ((currentP95 - baselineP95) / baselineP95) * 100;
+}
+
+/** Evaluate error ratio: errors / requests over window */
+async function evalErrorRatio(
+  prometheusUrl: string,
+  window: string,
+): Promise<number> {
+  const errors = await queryScalar(
+    prometheusUrl,
+    `sum(increase(gen_ai_client_errors_total[${window}]))`,
+  );
+  const requests = await queryScalar(
+    prometheusUrl,
+    `sum(increase(gen_ai_client_requests_total[${window}]))`,
+  );
+  if (requests === 0) return 0;
+  return errors / requests;
 }
 
 export interface EvalResult {
@@ -132,16 +206,28 @@ export async function evaluateCondition(
   rule: AlertRule,
 ): Promise<EvalResult | null> {
   try {
-    const { operator, window, comparator, threshold } = parseCondition(
-      rule.condition,
-    );
-    const promql = buildPromQL(rule.metric, operator, window);
-    const value = await queryScalar(prometheusUrl, promql);
-    const triggered = matches(value, comparator, threshold);
+    const parsed = parseCondition(rule.condition);
+    let value: number;
+
+    if (parsed.operator === "p95_pct") {
+      value = await evalP95Baseline(
+        prometheusUrl,
+        rule.metric,
+        parsed.window,
+        parsed.baselineWindow!,
+      );
+    } else if (parsed.operator === "ratio") {
+      value = await evalErrorRatio(prometheusUrl, parsed.window);
+    } else {
+      const promql = buildPromQL(rule.metric, parsed.operator, parsed.window);
+      value = await queryScalar(prometheusUrl, promql);
+    }
+
+    const triggered = matches(value, parsed.comparator, parsed.threshold);
     const topModels = triggered
-      ? await queryTopModels(prometheusUrl, rule.metric, window)
+      ? await queryTopModels(prometheusUrl, rule.metric, parsed.window)
       : [];
-    return { triggered, value, threshold, topModels };
+    return { triggered, value, threshold: parsed.threshold, topModels };
   } catch (err) {
     console.error(`[toad-eye alerts] Failed to evaluate "${rule.name}":`, err);
     return null;
