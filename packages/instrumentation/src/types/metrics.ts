@@ -12,6 +12,9 @@ export const GEN_AI_METRICS = {
   REQUEST_COST: "gen_ai.client.request.cost",
   REQUESTS: "gen_ai.client.requests",
   ERRORS: "gen_ai.client.errors",
+  // Agent metrics
+  AGENT_STEPS_PER_QUERY: "gen_ai.agent.steps_per_query",
+  AGENT_TOOL_USAGE: "gen_ai.agent.tool_usage",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

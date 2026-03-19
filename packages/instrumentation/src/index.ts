@@ -11,6 +11,7 @@ export type {
   FiredAlert,
 } from "./alerts/index.js";
 export { traceLLMCall } from "./spans.js";
+export { traceAgentStep, traceAgentQuery } from "./agent.js";
 export { calculateCost, setCustomPricing, getModelPricing } from "./pricing.js";
 export type { ModelPricing } from "./pricing.js";
 export type { LLMCallInput, LLMCallOutput } from "./spans.js";
@@ -20,6 +21,8 @@ export type {
   LLMProvider,
   SpanStatus,
   MetricName,
+  AgentStepType,
+  AgentStepInput,
 } from "./types/index.js";
 export {
   GEN_AI_METRICS,

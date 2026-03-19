@@ -16,4 +16,9 @@ export type { ToadEyeConfig } from "./config.js";
 export { GEN_AI_ATTRS, LLM_ATTRS } from "./attributes.js";
 export { GEN_AI_METRICS, LLM_METRICS } from "./metrics.js";
 export type { MetricName } from "./metrics.js";
-export type { SpanStatus, LLMSpanAttributes } from "./spans.js";
+export type {
+  SpanStatus,
+  LLMSpanAttributes,
+  AgentStepType,
+  AgentStepInput,
+} from "./spans.js";

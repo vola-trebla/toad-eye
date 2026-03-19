@@ -17,6 +17,12 @@ export const GEN_AI_ATTRS = {
   FINISH_REASONS: "gen_ai.response.finish_reasons",
   ERROR: "error.type",
 
+  // Agent step attributes
+  AGENT_STEP_TYPE: "gen_ai.agent.step.type",
+  AGENT_STEP_NUMBER: "gen_ai.agent.step.number",
+  AGENT_TOOL_NAME: "gen_ai.agent.tool.name",
+  AGENT_STEP_CONTENT: "gen_ai.agent.step.content",
+
   // toad-eye extensions
   PROMPT: "gen_ai.toad_eye.prompt",
   COMPLETION: "gen_ai.toad_eye.completion",
