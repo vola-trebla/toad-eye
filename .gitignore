@@ -4,3 +4,4 @@ dist/
 *.log
 infra/toad-eye/
 docs/
+demo-recording/
