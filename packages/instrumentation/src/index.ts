@@ -1,4 +1,4 @@
-export { initObservability, shutdown, getConfig } from "./tracer.js";
+export { initObservability, shutdown, getConfig } from "./core/tracer.js";
 export {
   AlertManager,
   startAlertsFromFile,
@@ -10,7 +10,7 @@ export type {
   AlertChannelConfig,
   FiredAlert,
 } from "./alerts/index.js";
-export { traceLLMCall } from "./spans.js";
+export { traceLLMCall } from "./core/spans.js";
 export { traceAgentStep, traceAgentQuery } from "./agent.js";
 export { recordGuardResult } from "./guard.js";
 export {
@@ -30,9 +30,13 @@ export type {
 } from "./drift/index.js";
 export { exportTrace, fetchTrace, traceToEvalYaml } from "./export.js";
 export type { ExportTraceOptions } from "./export.js";
-export { calculateCost, setCustomPricing, getModelPricing } from "./pricing.js";
-export type { ModelPricing } from "./pricing.js";
-export type { LLMCallInput, LLMCallOutput } from "./spans.js";
+export {
+  calculateCost,
+  setCustomPricing,
+  getModelPricing,
+} from "./core/pricing.js";
+export type { ModelPricing } from "./core/pricing.js";
+export type { LLMCallInput, LLMCallOutput } from "./core/spans.js";
 export type {
   ToadEyeConfig,
   LLMSpanAttributes,

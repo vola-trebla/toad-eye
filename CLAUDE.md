@@ -67,17 +67,19 @@ After ~15s check:
 
 `packages/instrumentation/src/` modules:
 
-| Module       | Role                                                                     |
-| ------------ | ------------------------------------------------------------------------ |
-| `types/`     | All types, constants (`GEN_AI_METRICS`, `GEN_AI_ATTRS`), provider union  |
-| `tracer.ts`  | `initObservability()` / `shutdown()` — sets up OTel SDK, OTLP exporters  |
-| `metrics.ts` | Creates histograms and counters, records per-call metrics                |
-| `spans.ts`   | `traceLLMCall()` — wraps any async LLM call with a traced span           |
-| `agent.ts`   | `traceAgentStep()` / `traceAgentQuery()` — ReAct agent step tracing      |
-| `guard.ts`   | `recordGuardResult()` — shadow guardrails integration with toad-guard    |
-| `export.ts`  | `exportTrace()` — Jaeger trace to toad-eval YAML export                  |
-| `cli.ts`     | CLI entry point (`init`, `up`, `down`, `status`, `demo`, `export-trace`) |
-| `index.ts`   | Public API re-exports                                                    |
+| Module              | Role                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `core/`             | OTel SDK init (`tracer`), metric recording (`metrics`), `traceLLMCall` (`spans`), cost calc (`pricing`) |
+| `types/`            | All types, constants (`GEN_AI_METRICS`, `GEN_AI_ATTRS`), provider union                                 |
+| `alerts/`           | Alerting engine — cost spikes, latency anomalies, error rate                                            |
+| `drift/`            | Semantic drift monitoring — embeddings, cosine distance, baseline                                       |
+| `instrumentations/` | Auto-instrumentation for OpenAI, Anthropic, Gemini SDKs                                                 |
+| `agent.ts`          | `traceAgentStep()` / `traceAgentQuery()` — ReAct agent step tracing                                     |
+| `guard.ts`          | `recordGuardResult()` — shadow guardrails integration with toad-guard                                   |
+| `export.ts`         | `exportTrace()` — Jaeger trace to toad-eval YAML export                                                 |
+| `cli.ts`            | CLI entry point (`init`, `up`, `down`, `status`, `demo`, `export-trace`)                                |
+| `index.ts`          | Public API re-exports                                                                                   |
+| `__tests__/`        | All unit tests (separated from source)                                                                  |
 
 Data flow: App → `traceLLMCall()` → OTel SDK → OTLP HTTP → OTel Collector → Prometheus (metrics) + Jaeger (traces) → Grafana.
 
@@ -96,3 +98,5 @@ Data flow: App → `traceLLMCall()` → OTel SDK → OTLP HTTP → OTel Collecto
 - Use `as const` for constant objects, derive types with `typeof`
 - `readonly` on interface properties and config types
 - Optional properties use explicit `| undefined` (`exactOptionalPropertyTypes`)
+- Tests live in `src/__tests__/`, not co-located with source
+- Directory per module only when 2+ files — single-file modules stay flat in `src/`

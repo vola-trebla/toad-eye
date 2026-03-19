@@ -27,16 +27,16 @@ vi.mock("@opentelemetry/api", () => ({
   diag: { warn: vi.fn(), debug: vi.fn() },
   trace: { getTracer: () => ({}) },
 }));
-vi.mock("./metrics.js", () => ({ initMetrics: vi.fn() }));
-vi.mock("./instrumentations/registry.js", () => ({
+vi.mock("../core/metrics.js", () => ({ initMetrics: vi.fn() }));
+vi.mock("../instrumentations/registry.js", () => ({
   enableAll: vi.fn(),
   disableAll: vi.fn(),
 }));
-vi.mock("./instrumentations/openai.js", () => ({}));
-vi.mock("./instrumentations/anthropic.js", () => ({}));
-vi.mock("./instrumentations/gemini.js", () => ({}));
+vi.mock("../instrumentations/openai.js", () => ({}));
+vi.mock("../instrumentations/anthropic.js", () => ({}));
+vi.mock("../instrumentations/gemini.js", () => ({}));
 
-const { initObservability, shutdown } = await import("./tracer.js");
+const { initObservability, shutdown } = await import("../core/tracer.js");
 
 describe("initObservability — config validation", () => {
   it("throws on empty serviceName", () => {

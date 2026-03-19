@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCondition } from "./conditions.js";
+import { parseCondition } from "../alerts/conditions.js";
 
 describe("parseCondition", () => {
   it("parses standard condition: sum_1h > 10", () => {

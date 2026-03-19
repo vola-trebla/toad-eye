@@ -25,18 +25,18 @@ vi.mock("@opentelemetry/api", () => ({
 const mockRecordAgentSteps = vi.fn();
 const mockRecordAgentToolUsage = vi.fn();
 
-vi.mock("./metrics.js", () => ({
+vi.mock("../core/metrics.js", () => ({
   recordAgentSteps: (...args: unknown[]) => mockRecordAgentSteps(...args),
   recordAgentToolUsage: (...args: unknown[]) =>
     mockRecordAgentToolUsage(...args),
 }));
 
 let mockConfig: Record<string, unknown> = {};
-vi.mock("./tracer.js", () => ({
+vi.mock("../core/tracer.js", () => ({
   getConfig: () => mockConfig,
 }));
 
-const { traceAgentStep, traceAgentQuery } = await import("./agent.js");
+const { traceAgentStep, traceAgentQuery } = await import("../agent.js");
 
 describe("traceAgentStep", () => {
   beforeEach(() => {

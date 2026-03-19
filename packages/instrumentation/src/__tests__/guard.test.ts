@@ -18,14 +18,14 @@ vi.mock("@opentelemetry/api", () => ({
 const mockRecordGuardEvaluation = vi.fn();
 const mockRecordGuardWouldBlock = vi.fn();
 
-vi.mock("./metrics.js", () => ({
+vi.mock("../core/metrics.js", () => ({
   recordGuardEvaluation: (...args: unknown[]) =>
     mockRecordGuardEvaluation(...args),
   recordGuardWouldBlock: (...args: unknown[]) =>
     mockRecordGuardWouldBlock(...args),
 }));
 
-const { recordGuardResult } = await import("./guard.js");
+const { recordGuardResult } = await import("../guard.js");
 
 describe("recordGuardResult", () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
-import type { LLMSpanAttributes } from "./types/index.js";
-import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
+import type { LLMSpanAttributes } from "../types/index.js";
+import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import {
   recordRequestDuration,
   recordRequestCost,
