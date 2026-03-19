@@ -49,13 +49,13 @@
     "@opentelemetry/sdk-metrics": "^2.6.0",
     "@opentelemetry/sdk-node": "^0.213.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
-    "nodemailer": "^6.9.0",
+    "nodemailer": "^8.0.3",
     "yaml": "^2.7.0"
   },
   "peerDependencies": {
-    "openai": ">=4.0.0",
     "@anthropic-ai/sdk": ">=0.30.0",
-    "@google/generative-ai": ">=0.20.0"
+    "@google/generative-ai": ">=0.20.0",
+    "openai": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "openai": {
