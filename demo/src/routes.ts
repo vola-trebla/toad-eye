@@ -18,3 +18,19 @@ routes.post("/chat", async (c) => {
 routes.get("/health", (c) => {
   return c.json({ status: "ok" });
 });
+
+routes.get("/", (c) => {
+  return c.json({
+    name: "toad-eye demo",
+    version: "2.0.0",
+    endpoints: {
+      "POST /chat": "Send { prompt: string } to mock LLM call",
+      "GET /health": "Healthcheck",
+    },
+    stack: {
+      grafana: "http://localhost:3100",
+      jaeger: "http://localhost:16686",
+      prometheus: "http://localhost:9090",
+    },
+  });
+});
