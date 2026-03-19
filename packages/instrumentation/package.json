@@ -1,7 +1,7 @@
 {
   "name": "toad-eye",
-  "version": "1.1.0",
-  "description": "One-line OpenTelemetry instrumentation for LLM services",
+  "version": "2.0.0",
+  "description": "Auto-instrumentation, cost tracking, and observability for LLM services",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,7 +30,13 @@
     "observability",
     "tracing",
     "metrics",
-    "grafana"
+    "grafana",
+    "openai",
+    "anthropic",
+    "gemini",
+    "cost-tracking",
+    "auto-instrumentation",
+    "gen-ai"
   ],
   "license": "ISC",
   "dependencies": {
