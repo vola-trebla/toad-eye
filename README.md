@@ -235,20 +235,42 @@ All dashboards have `$provider` and `$model` template variables for filtering.
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
     App["Your LLM service"]
-    Inst["toad-eye"]
-    Coll["OTel Collector"]
-    Prom["Prometheus"]
-    Jaeger["Jaeger"]
-    Graf["Grafana"]
 
-    App --> Inst --> Coll
+    subgraph ToadEye["toad-eye"]
+        Auto["Auto-instrumentation<br/>OpenAI · Anthropic · Gemini"]
+        Manual["Manual tracing<br/>traceLLMCall"]
+        Agent["Agent tracing<br/>traceAgentQuery"]
+        Guard["Shadow guardrails<br/>recordGuardResult"]
+        Drift["Drift monitor<br/>embedding comparison"]
+        Export["Trace export<br/>Jaeger → YAML"]
+    end
+
+    subgraph Stack["Observability stack"]
+        Coll["OTel Collector"]
+        Prom["Prometheus"]
+        Jaeger["Jaeger"]
+        Graf["Grafana<br/>5 dashboards"]
+    end
+
+    App --> Auto & Manual & Agent
+    Guard --> ToadEye
+    Drift --> ToadEye
+    Auto & Manual & Agent --> Coll
     Coll --> Prom --> Graf
     Coll --> Jaeger
+    Jaeger -.-> Export
 
     style App fill:#4a5568,stroke:#718096,color:#fff
-    style Inst fill:#2d6a4f,stroke:#40916c,color:#fff
+    style ToadEye fill:#1a3a2a,stroke:#40916c,color:#fff
+    style Auto fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Manual fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Agent fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Guard fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Drift fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Export fill:#2d6a4f,stroke:#52b788,color:#fff
+    style Stack fill:#1e293b,stroke:#475569,color:#fff
     style Coll fill:#1d4ed8,stroke:#3b82f6,color:#fff
     style Prom fill:#e24d1e,stroke:#ff6633,color:#fff
     style Jaeger fill:#00bcd4,stroke:#26c6da,color:#fff
