@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync, type ChildProcess, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -213,6 +213,49 @@ async function demo() {
   run();
 }
 
+async function exportTraceCommand() {
+  const traceId = process.argv[3];
+  if (!traceId) {
+    console.error(
+      "✗ Usage: npx toad-eye export-trace <trace_id> [--output dir] [--jaeger-url url]",
+    );
+    process.exit(1);
+  }
+
+  const args = process.argv.slice(4);
+  let outputDir = process.cwd();
+  let jaegerUrl: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--output" && args[i + 1]) {
+      outputDir = resolve(args[i + 1]!);
+      i++;
+    } else if (args[i] === "--jaeger-url" && args[i + 1]) {
+      jaegerUrl = args[i + 1];
+      i++;
+    }
+  }
+
+  const { exportTrace } = await import("./export.js");
+
+  try {
+    const yaml = await exportTrace(traceId, { jaegerUrl });
+    const filename = `trace-${traceId.slice(0, 8)}.eval.yaml`;
+    const filepath = join(outputDir, filename);
+
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
+    }
+
+    writeFileSync(filepath, yaml, "utf-8");
+    console.log(`✅ Exported trace ${traceId} → ${filepath}`);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`✗ ${msg}`);
+    process.exit(1);
+  }
+}
+
 function help() {
   console.log(`
 \u{1f438} toad-eye CLI — observability stack for LLM services
@@ -222,8 +265,9 @@ Commands:
   up       Start the stack (OTel Collector + Prometheus + Jaeger + Grafana)
   down     Stop the stack
   status   Show running services and URLs
-  demo     Send mock LLM traffic to see data in Grafana
-  help     Show this message
+  demo           Send mock LLM traffic to see data in Grafana
+  export-trace   Export a Jaeger trace to toad-eval YAML
+  help           Show this message
 `);
 }
 
@@ -244,6 +288,9 @@ switch (command) {
     break;
   case "demo":
     demo();
+    break;
+  case "export-trace":
+    exportTraceCommand();
     break;
   case "help":
   case "--help":
