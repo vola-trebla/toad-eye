@@ -12,6 +12,8 @@ export type {
 } from "./alerts/index.js";
 export { traceLLMCall } from "./spans.js";
 export { traceAgentStep, traceAgentQuery } from "./agent.js";
+export { exportTrace, fetchTrace, traceToEvalYaml } from "./export.js";
+export type { ExportTraceOptions } from "./export.js";
 export { calculateCost, setCustomPricing, getModelPricing } from "./pricing.js";
 export type { ModelPricing } from "./pricing.js";
 export type { LLMCallInput, LLMCallOutput } from "./spans.js";
