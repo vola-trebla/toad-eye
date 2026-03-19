@@ -1,4 +1,4 @@
-# toad-eye 🐸👁️
+# toad-eye
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-000000?logo=opentelemetry&logoColor=white)
@@ -12,43 +12,153 @@
 
 OpenTelemetry-based observability toolkit for LLM systems.
 
-One-line instrumentation for any LLM service — get traces, metrics, and Grafana dashboards out of the box.
+Auto-instrument any LLM SDK, get traces, metrics, cost tracking, and 5 Grafana dashboards out of the box.
 
-## Why toad-eye?
-
-LLM APIs are black boxes — you don't know what they cost, how slow they are, or why they fail. toad-eye gives you full visibility with one line of code.
-
-- **LLM API observability** — track latency, token usage, cost, and error rates across multiple LLM providers
-- **Multi-provider gateways** — instrument routing services that switch between OpenAI, Anthropic, Gemini, etc.
-- **RAG pipelines** — monitor retrieval + generation latency and identify bottlenecks in AI pipelines
-- **Cost monitoring** — understand how much each model call costs in real time and detect cost spikes
-- **Production debugging** — use traces in Jaeger to inspect slow or failed LLM calls and understand what happened
+## Quick start
 
 ```bash
 npm install toad-eye
-npx toad-eye init   # scaffold observability stack configs
-npx toad-eye up     # start the stack
+npx toad-eye init       # scaffold observability stack
+npx toad-eye up         # start Grafana + Prometheus + Jaeger
+npx toad-eye demo       # send mock LLM traffic, see data immediately
 ```
+
+Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
+
+## Auto-instrumentation
+
+Zero-code instrumentation for popular LLM SDKs. No wrappers needed.
+
+```typescript
+import { initObservability } from "toad-eye";
+
+initObservability({
+  serviceName: "my-app",
+  instrument: ["openai", "anthropic"],
+});
+
+// That's it. Every SDK call is auto-traced.
+const result = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Hello" }],
+});
+```
+
+**Supported SDKs:** OpenAI (`openai`), Anthropic (`@anthropic-ai/sdk`), Google GenAI (`@google/generative-ai`)
+
+### Manual instrumentation
+
+For custom providers or fine-grained control:
+
+```typescript
+import { initObservability, traceLLMCall } from "toad-eye";
+
+initObservability({ serviceName: "my-app" });
+
+const result = await traceLLMCall(
+  { provider: "anthropic", model: "claude-sonnet-4-20250514", prompt: "hello" },
+  () => callYourLLM(),
+);
+```
+
+## Features
+
+### Built-in cost tracking
+
+Automatic cost calculation for major models (GPT-4o, Claude, Gemini) based on token usage. Custom pricing for enterprise contracts:
+
+```typescript
+import { setCustomPricing } from "toad-eye";
+
+setCustomPricing({
+  "my-fine-tuned-model": { inputPer1M: 5, outputPer1M: 15 },
+});
+```
+
+### Privacy controls
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  recordContent: false, // disable prompt/completion recording
+  hashContent: true, // SHA-256 hash instead of plain text
+  redactPatterns: [/\b\S+@\S+\.\S+\b/g], // regex redaction
+});
+```
+
+### Session tracking
+
+Group traces by conversation session:
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  sessionId: "static-session-id",
+  // or dynamic:
+  sessionExtractor: () => getCurrentSessionId(),
+});
+```
+
+### Alerting
+
+Cost spikes, latency anomalies, error rate monitoring via YAML config:
+
+```yaml
+alerts:
+  - name: cost_spike
+    metric: gen_ai.client.request.cost
+    condition: sum_1h > 10
+    channels: [slack]
+
+  - name: latency_anomaly
+    metric: gen_ai.client.operation.duration
+    condition: p95_pct_5m_7d > 50 # p95 grew >50% vs 7-day baseline
+    channels: [slack]
+
+  - name: error_rate
+    metric: gen_ai.client.errors
+    condition: ratio_15m > 0.05 # >5% error rate
+    channels: [slack]
+```
+
+Delivery channels: Telegram, Slack webhook, generic HTTP webhook, email (SMTP).
+
+## Grafana dashboards
+
+5 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+
+| Dashboard            | What it shows                                           |
+| -------------------- | ------------------------------------------------------- |
+| **Overview**         | Request rate, error rate, latency p50/p95, cost, totals |
+| **Cost Breakdown**   | Spend by provider/model, daily trend, projected monthly |
+| **Latency Analysis** | p50/p95/p99 by model, distribution histogram            |
+| **Error Drill-down** | Error rate by provider/model, error vs success          |
+| **Model Comparison** | Latency vs cost vs error rate vs throughput per model   |
+
+All dashboards have `$provider` and `$model` template variables for filtering.
+
+![toad-eye Grafana dashboard](demo/grafana-dashboard.png)
 
 ## CLI
 
-| Command               | Description                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `npx toad-eye init`   | Copies Docker Compose + OTel/Prometheus/Jaeger/Grafana configs into `infra/toad-eye/` |
-| `npx toad-eye up`     | Starts the observability stack (`docker compose up -d`)                               |
-| `npx toad-eye down`   | Stops the stack                                                                       |
-| `npx toad-eye status` | Shows running services and their URLs                                                 |
+| Command               | Description                                     |
+| --------------------- | ----------------------------------------------- |
+| `npx toad-eye init`   | Scaffold Docker Compose + observability configs |
+| `npx toad-eye up`     | Start the stack                                 |
+| `npx toad-eye down`   | Stop the stack                                  |
+| `npx toad-eye status` | Show running services and URLs                  |
+| `npx toad-eye demo`   | Send mock LLM traffic to see data in Grafana    |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    App["🔮 Your LLM service"]
-    Inst["🐸 toad-eye"]
-    Coll["📡 OTel Collector"]
-    Prom["📊 Prometheus"]
-    Jaeger["🔍 Jaeger"]
-    Graf["📈 Grafana"]
+    App["Your LLM service"]
+    Inst["toad-eye"]
+    Coll["OTel Collector"]
+    Prom["Prometheus"]
+    Jaeger["Jaeger"]
+    Graf["Grafana"]
 
     App --> Inst --> Coll
     Coll --> Prom --> Graf
@@ -62,90 +172,43 @@ flowchart LR
     style Graf fill:#f46800,stroke:#ff8c00,color:#fff
 ```
 
-## Quick start
-
-```bash
-npm install
-npx toad-eye init                   # scaffold infra configs
-npx toad-eye up                     # start observability stack
-npm run demo                        # start mock LLM service
-npm run load --workspace=demo       # send test traffic
-```
-
-| Service        | URL                                       |
-| -------------- | ----------------------------------------- |
-| Grafana        | [localhost:3100](http://localhost:3100)   |
-| Jaeger UI      | [localhost:16686](http://localhost:16686) |
-| Prometheus     | [localhost:9090](http://localhost:9090)   |
-| OTel Collector | [localhost:4318](http://localhost:4318)   |
-
-## Usage
-
-```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
-
-// one-line init
-initObservability({
-  serviceName: "my-llm-service",
-  endpoint: "http://localhost:4318",
-});
-
-// wrap any LLM call
-const result = await traceLLMCall(
-  { provider: "anthropic", model: "claude-sonnet-4-20250514", prompt: "hello" },
-  () => callYourLLM(),
-);
-```
-
-> **Privacy mode:** pass `recordContent: false` to `initObservability()` to stop recording prompt/completion text in spans. Useful in production when prompts contain sensitive data.
-
 ## What it tracks
 
-### Metrics
+### Metrics (OTel GenAI semconv)
 
-| Metric                 | Type      | Description                            |
-| ---------------------- | --------- | -------------------------------------- |
-| `llm.request.duration` | Histogram | Request latency in milliseconds        |
-| `llm.request.cost`     | Histogram | Cost per request in USD                |
-| `llm.tokens`           | Counter   | Total tokens consumed (input + output) |
-| `llm.requests`         | Counter   | Total requests made                    |
-| `llm.errors`           | Counter   | Total failed requests                  |
+| Metric                             | Type      | Description            |
+| ---------------------------------- | --------- | ---------------------- |
+| `gen_ai.client.operation.duration` | Histogram | Request latency (ms)   |
+| `gen_ai.client.request.cost`       | Histogram | Cost per request (USD) |
+| `gen_ai.client.token.usage`        | Counter   | Total tokens consumed  |
+| `gen_ai.client.requests`           | Counter   | Total requests         |
+| `gen_ai.client.errors`             | Counter   | Total failed requests  |
 
-All metrics are labeled with `provider` and `model` for filtering and grouping.
+All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 
 ### Span attributes
 
-| Attribute           | Type   | Description                     |
-| ------------------- | ------ | ------------------------------- |
-| `llm.provider`      | string | `anthropic`, `gemini`, `openai` |
-| `llm.model`         | string | Model identifier                |
-| `llm.prompt`        | string | Prompt sent to the LLM          |
-| `llm.completion`    | string | Response from the LLM           |
-| `llm.input_tokens`  | number | Tokens in the prompt            |
-| `llm.output_tokens` | number | Tokens in the completion        |
-| `llm.cost`          | number | Cost in USD                     |
-| `llm.temperature`   | number | Temperature parameter           |
-| `llm.status`        | string | `success` or `error`            |
-| `llm.error`         | string | Error message (if failed)       |
+| Attribute                    | Description                        |
+| ---------------------------- | ---------------------------------- |
+| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`    |
+| `gen_ai.request.model`       | Model identifier                   |
+| `gen_ai.usage.input_tokens`  | Tokens in the prompt               |
+| `gen_ai.usage.output_tokens` | Tokens in the completion           |
+| `gen_ai.request.temperature` | Temperature parameter              |
+| `gen_ai.toad_eye.cost`       | Cost in USD                        |
+| `session.id`                 | Session identifier (if configured) |
 
-## Grafana dashboard
+## Services
 
-![toad-eye Grafana dashboard](demo/grafana-dashboard.png)
-
-## Jaeger traces
-
-![toad-eye Jaeger traces](demo/jaeger-traces.png)
-
-## Project structure
-
-```
-packages/instrumentation/   — NPM package (toad-eye)
-demo/                       — mock LLM service for testing
-infra/                      — docker-compose stack (OTel + Prometheus + Jaeger + Grafana)
-```
+| Service        | URL                                                     |
+| -------------- | ------------------------------------------------------- |
+| Grafana        | [localhost:3100](http://localhost:3100) (admin / admin) |
+| Jaeger UI      | [localhost:16686](http://localhost:16686)               |
+| Prometheus     | [localhost:9090](http://localhost:9090)                 |
+| OTel Collector | [localhost:4318](http://localhost:4318)                 |
 
 ## Tech stack
 
-- TypeScript, OpenTelemetry SDK 2.x, OTLP exporters
+- TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
