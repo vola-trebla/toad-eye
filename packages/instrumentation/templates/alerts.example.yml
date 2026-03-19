@@ -1,0 +1,54 @@
+# toad-eye alerts configuration
+# Copy to alerts.yml and customize
+
+# prometheusUrl: http://localhost:9090
+# grafanaUrl: http://localhost:3100
+# evalIntervalSeconds: 30
+# cooldownMinutes: 30
+
+# channels:
+#   telegram:
+#     type: telegram
+#     token: "BOT_TOKEN"
+#     chatId: "CHAT_ID"
+#   slack:
+#     type: slack_webhook
+#     url: "https://hooks.slack.com/services/..."
+
+alerts:
+  # Cost spike: $10 in 1 hour
+  - name: cost_spike
+    metric: gen_ai.client.request.cost
+    condition: sum_1h > 10
+    channels: [slack]
+
+  # Daily budget: $50 in 24 hours
+  - name: budget_daily
+    metric: gen_ai.client.request.cost
+    condition: sum_24h > 50
+    channels: [slack]
+
+  # Latency anomaly: p95 increased >50% vs 7-day baseline
+  - name: latency_anomaly
+    metric: gen_ai.client.operation.duration
+    condition: p95_pct_5m_7d > 50
+    channels: [slack]
+
+  # Latency critical: p95 increased >100% vs 7-day baseline
+  - name: latency_critical
+    metric: gen_ai.client.operation.duration
+    condition: p95_pct_5m_7d > 100
+    channels: [slack]
+
+  # Error rate warning: >5% over 15 minutes
+  - name: error_rate_warning
+    metric: gen_ai.client.errors
+    condition: ratio_15m > 0.05
+    channels: [slack]
+
+  # Error rate critical: >20% over 5 minutes (provider likely down)
+  - name: error_rate_critical
+    metric: gen_ai.client.errors
+    condition: ratio_5m > 0.2
+    channels: [slack]
+    cooldown: 15
