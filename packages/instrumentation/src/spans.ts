@@ -52,14 +52,21 @@ function processContent(text: string): string | undefined {
   return processed;
 }
 
+function resolveSessionId(): string | undefined {
+  const config = getConfig();
+  return config?.sessionExtractor?.() ?? config?.sessionId;
+}
+
 function setBaseAttributes(span: Span, input: LLMCallInput) {
   const prompt = processContent(input.prompt);
+  const sessionId = resolveSessionId();
   span.setAttributes({
     [GEN_AI_ATTRS.PROVIDER]: input.provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: input.model,
     [GEN_AI_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
     [GEN_AI_ATTRS.OPERATION]: "chat",
     ...(prompt !== undefined && { [GEN_AI_ATTRS.PROMPT]: prompt }),
+    ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
   });
 }
 
