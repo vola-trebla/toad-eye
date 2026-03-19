@@ -72,6 +72,7 @@ export const GEN_AI_ATTRS = {
   COST: "gen_ai.toad_eye.cost",
   STATUS: "gen_ai.toad_eye.status",
   ERROR: "error.type",
+  SESSION_ID: "session.id",
 } as const;
 
 /** @deprecated Use GEN_AI_ATTRS instead. Kept for backward compatibility. */
@@ -106,4 +107,8 @@ export interface ToadEyeConfig {
   /** Regex patterns to redact from prompt/completion text before recording. */
   readonly redactPatterns?: readonly RegExp[] | undefined;
   readonly instrument?: readonly LLMProvider[] | undefined;
+  /** Static session ID — all spans will carry this value as `session.id`. */
+  readonly sessionId?: string | undefined;
+  /** Dynamic session ID extractor — called per traceLLMCall to resolve session ID. */
+  readonly sessionExtractor?: (() => string | undefined) | undefined;
 }
