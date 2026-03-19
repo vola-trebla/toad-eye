@@ -59,7 +59,9 @@ After ~15s check:
 
 - Grafana: http://localhost:3100 (admin/admin) — 5 dashboards
 - Jaeger: http://localhost:16686 — traces from `toad-eye-demo`
-- Prometheus: http://localhost:9090 — raw metrics
+- Prometheus: http://localhost:9090 — raw metrics (search `gen_ai` for autocomplete)
+
+**Important:** After any feature work that touches metrics, spans, or dashboards — always do a full stack run to catch integration bugs (stale metric names, broken queries, missing labels). Suggest this to the user proactively.
 
 ## Architecture
 
