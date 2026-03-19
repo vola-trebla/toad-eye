@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../metrics.js", () => ({
+vi.mock("../core/metrics.js", () => ({
   recordSemanticDrift: vi.fn(),
 }));
 
@@ -20,12 +20,12 @@ const mockBaseline = {
 
 let baselineExists = true;
 
-vi.mock("./baseline.js", () => ({
+vi.mock("../drift/baseline.js", () => ({
   loadBaseline: () => (baselineExists ? mockBaseline : undefined),
 }));
 
-const { createDriftMonitor } = await import("./monitor.js");
-const { recordSemanticDrift } = await import("../metrics.js");
+const { createDriftMonitor } = await import("../drift/monitor.js");
+const { recordSemanticDrift } = await import("../core/metrics.js");
 
 const mockEmbed = vi.fn<(text: string) => Promise<readonly number[]>>();
 

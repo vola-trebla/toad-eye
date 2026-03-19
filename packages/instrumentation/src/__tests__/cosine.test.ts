@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cosineSimilarity, cosineDrift } from "./cosine.js";
+import { cosineSimilarity, cosineDrift } from "../drift/cosine.js";
 
 describe("cosineSimilarity", () => {
   it("returns 1 for identical vectors", () => {

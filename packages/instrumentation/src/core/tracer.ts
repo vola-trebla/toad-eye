@@ -4,14 +4,14 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import type { ToadEyeConfig } from "./types/index.js";
+import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics } from "./metrics.js";
-import { enableAll, disableAll } from "./instrumentations/registry.js";
+import { enableAll, disableAll } from "../instrumentations/registry.js";
 
 // Side-effect imports: register provider instrumentations
-import "./instrumentations/openai.js";
-import "./instrumentations/anthropic.js";
-import "./instrumentations/gemini.js";
+import "../instrumentations/openai.js";
+import "../instrumentations/anthropic.js";
+import "../instrumentations/gemini.js";
 
 const DEFAULT_ENDPOINT = "http://localhost:4318";
 

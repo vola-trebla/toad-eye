@@ -19,7 +19,10 @@
 import { trace } from "@opentelemetry/api";
 import type { GuardResult } from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
-import { recordGuardEvaluation, recordGuardWouldBlock } from "./metrics.js";
+import {
+  recordGuardEvaluation,
+  recordGuardWouldBlock,
+} from "./core/metrics.js";
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 

@@ -13,7 +13,7 @@ import type {
 import { createOpenAIEmbeddingProvider } from "./openai-embeddings.js";
 import { cosineDrift } from "./cosine.js";
 import { loadBaseline } from "./baseline.js";
-import { recordSemanticDrift } from "../metrics.js";
+import { recordSemanticDrift } from "../core/metrics.js";
 
 export interface DriftMonitorConfig {
   readonly embedding: EmbeddingConfig;

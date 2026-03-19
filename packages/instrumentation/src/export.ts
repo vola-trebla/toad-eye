@@ -66,6 +66,8 @@ export interface ExportTraceOptions {
 }
 
 const DEFAULT_JAEGER_URL = "http://localhost:16686";
+const LENGTH_BUFFER_MULTIPLIER = 1.5;
+const REFUSAL_MARKER = "i cannot";
 
 function getTagValue(
   tags: readonly JaegerTag[],
@@ -88,14 +90,12 @@ function buildAssertions(completion: string | undefined): EvalAssertion[] {
   const assertions: EvalAssertion[] = [];
 
   if (completion !== undefined) {
-    // Buffer 1.5x for response length variability
     assertions.push({
       type: "max_length",
-      value: Math.ceil(completion.length * 1.5),
+      value: Math.ceil(completion.length * LENGTH_BUFFER_MULTIPLIER),
     });
 
-    // If the response is not a refusal, assert it stays that way
-    if (!completion.toLowerCase().includes("i cannot")) {
+    if (!completion.toLowerCase().includes(REFUSAL_MARKER)) {
       assertions.push({ type: "not_contains", value: "I cannot" });
     }
 

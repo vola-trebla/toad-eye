@@ -6,7 +6,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 const { fetchTrace, traceToEvalYaml, exportTrace } =
-  await import("./export.js");
+  await import("../export.js");
 
 // -- Helpers --
 

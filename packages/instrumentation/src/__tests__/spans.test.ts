@@ -23,7 +23,7 @@ vi.mock("@opentelemetry/api", () => {
 });
 
 // Mock metrics to avoid initialization
-vi.mock("./metrics.js", () => ({
+vi.mock("../core/metrics.js", () => ({
   recordRequestDuration: vi.fn(),
   recordRequestCost: vi.fn(),
   recordTokens: vi.fn(),
@@ -33,11 +33,11 @@ vi.mock("./metrics.js", () => ({
 
 // Mock tracer config
 let mockConfig: Record<string, unknown> = {};
-vi.mock("./tracer.js", () => ({
+vi.mock("../core/tracer.js", () => ({
   getConfig: () => mockConfig,
 }));
 
-const { traceLLMCall } = await import("./spans.js");
+const { traceLLMCall } = await import("../core/spans.js");
 
 describe("traceLLMCall", () => {
   beforeEach(() => {

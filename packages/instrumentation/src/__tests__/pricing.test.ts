@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { calculateCost, getModelPricing, setCustomPricing } from "./pricing.js";
+import {
+  calculateCost,
+  getModelPricing,
+  setCustomPricing,
+} from "../core/pricing.js";
 
 describe("calculateCost", () => {
   it("calculates cost for known model", () => {

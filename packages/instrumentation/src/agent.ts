@@ -1,8 +1,8 @@
 import { trace, SpanStatusCode } from "@opentelemetry/api";
 import type { AgentStepInput } from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
-import { recordAgentSteps, recordAgentToolUsage } from "./metrics.js";
-import { getConfig } from "./tracer.js";
+import { recordAgentSteps, recordAgentToolUsage } from "./core/metrics.js";
+import { getConfig } from "./core/tracer.js";
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
