@@ -14,6 +14,8 @@ OpenTelemetry-based observability toolkit for LLM systems.
 
 Auto-instrument any LLM SDK, get traces, metrics, cost tracking, agent observability, guardrail monitoring, and 5 Grafana dashboards out of the box.
 
+![toad-eye demo](demo/toad-eye-demo-gifski.gif)
+
 ## Quick start
 
 ```bash
@@ -218,8 +220,6 @@ Delivery channels: Telegram, Slack webhook, generic HTTP webhook, email (SMTP).
 | **Model Comparison** | Latency vs cost vs error rate vs throughput per model   |
 
 All dashboards have `$provider` and `$model` template variables for filtering.
-
-![toad-eye Grafana dashboard](demo/grafana-dashboard.png)
 
 ## CLI
 
