@@ -18,6 +18,8 @@ export const GEN_AI_METRICS = {
   // Guard metrics
   GUARD_EVALUATIONS: "gen_ai.toad_eye.guard.evaluations",
   GUARD_WOULD_BLOCK: "gen_ai.toad_eye.guard.would_block",
+  // Drift metrics
+  SEMANTIC_DRIFT: "gen_ai.toad_eye.semantic_drift",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

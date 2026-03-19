@@ -15,6 +15,7 @@ let agentStepsPerQuery: Histogram;
 let agentToolUsage: Counter;
 let guardEvaluations: Counter;
 let guardWouldBlock: Counter;
+let semanticDrift: Histogram;
 
 let initialized = false;
 
@@ -62,6 +63,11 @@ export function initMetrics() {
 
   guardWouldBlock = meter.createCounter(GEN_AI_METRICS.GUARD_WOULD_BLOCK, {
     description: "Guard evaluations that would have blocked the response",
+  });
+
+  semanticDrift = meter.createHistogram(GEN_AI_METRICS.SEMANTIC_DRIFT, {
+    description:
+      "Semantic drift from baseline (0 = identical, 1 = completely different)",
   });
 
   initialized = true;
@@ -129,5 +135,16 @@ export function recordGuardEvaluation(ruleName: string) {
 export function recordGuardWouldBlock(ruleName: string) {
   guardWouldBlock.add(1, {
     [GEN_AI_ATTRS.GUARD_RULE_NAME]: ruleName,
+  });
+}
+
+export function recordSemanticDrift(
+  drift: number,
+  provider: string,
+  model: string,
+) {
+  semanticDrift.record(drift, {
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
