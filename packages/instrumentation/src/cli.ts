@@ -4,7 +4,12 @@ import { execSync, type ChildProcess, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { initObservability, traceLLMCall, shutdown } from "./index.js";
+import {
+  initObservability,
+  traceLLMCall,
+  shutdown,
+  calculateCost,
+} from "./index.js";
 import type { LLMCallOutput } from "./index.js";
 
 const INFRA_DIR = "infra/toad-eye";
@@ -118,16 +123,48 @@ function status() {
   }
 }
 
-const PROVIDERS = ["anthropic", "gemini", "openai"] as const;
-const MODELS: Record<string, { costPer1k: number }> = {
-  "claude-sonnet-4-20250514": { costPer1k: 0.003 },
-  "gemini-2.5-flash": { costPer1k: 0.001 },
-  "gpt-4o": { costPer1k: 0.005 },
-};
-const MODEL_NAMES = Object.keys(MODELS);
+const DEMO_MODELS = [
+  { provider: "anthropic", model: "claude-sonnet-4-20250514" },
+  { provider: "gemini", model: "gemini-2.5-flash" },
+  { provider: "openai", model: "gpt-4o" },
+] as const;
 
 function randomBetween(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const DEMO_PROMPTS = [
+  "Explain quantum computing",
+  "Write a haiku about frogs",
+  "What is the capital of Uruguay?",
+  "How does TCP work?",
+  "Translate hello to Japanese",
+];
+
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[randomBetween(0, arr.length - 1)]!;
+}
+
+async function simulateLLMCall(
+  provider: string,
+  model: string,
+  prompt: string,
+): Promise<LLMCallOutput> {
+  await new Promise((r) => setTimeout(r, randomBetween(200, 2000)));
+
+  if (Math.random() < 0.1) {
+    throw new Error(`${provider} API error: rate limit exceeded`);
+  }
+
+  const inputTokens = randomBetween(50, 500);
+  const outputTokens = randomBetween(20, 300);
+
+  return {
+    completion: `Mock response for: "${prompt}"`,
+    inputTokens,
+    outputTokens,
+    cost: calculateCost(model, inputTokens, outputTokens),
+  };
 }
 
 async function demo() {
@@ -144,51 +181,24 @@ async function demo() {
     endpoint: "http://localhost:4318",
   });
 
-  const prompts = [
-    "Explain quantum computing",
-    "Write a haiku about frogs",
-    "What is the capital of Uruguay?",
-    "How does TCP work?",
-    "Translate hello to Japanese",
-  ];
-
   console.log(
     "\u{1f438}\u{1f441}\u{fe0f} toad-eye demo — sending mock LLM traffic",
   );
   console.log("    Press Ctrl+C to stop\n");
 
+  process.on("SIGINT", async () => {
+    console.log("\n\u{1f44b} Shutting down...");
+    await shutdown();
+    process.exit(0);
+  });
+
   const tick = async () => {
-    const providerIdx = randomBetween(0, PROVIDERS.length - 1);
-    const provider = PROVIDERS[providerIdx]!;
-    const model = MODEL_NAMES[providerIdx]!;
-    const prompt = prompts[randomBetween(0, prompts.length - 1)]!;
-    const costPer1k = MODELS[model]!.costPer1k;
+    const { provider, model } = pickRandom(DEMO_MODELS);
+    const prompt = pickRandom(DEMO_PROMPTS);
 
     try {
-      const result = await traceLLMCall(
-        { provider, model, prompt, temperature: 0.7 },
-        async (): Promise<LLMCallOutput> => {
-          const latency = randomBetween(200, 2000);
-          await new Promise((r) => setTimeout(r, latency));
-
-          if (Math.random() < 0.1) {
-            throw new Error(`${provider} API error: rate limit exceeded`);
-          }
-
-          const inputTokens = randomBetween(50, 500);
-          const outputTokens = randomBetween(20, 300);
-          const cost =
-            Math.round(
-              ((inputTokens + outputTokens) / 1000) * costPer1k * 1000000,
-            ) / 1000000;
-
-          return {
-            completion: `Mock response for: "${prompt}"`,
-            inputTokens,
-            outputTokens,
-            cost,
-          };
-        },
+      await traceLLMCall({ provider, model, prompt, temperature: 0.7 }, () =>
+        simulateLLMCall(provider, model, prompt),
       );
       console.log(`  \u2705 [${provider}/${model}] ${prompt}`);
     } catch (err) {
@@ -197,13 +207,6 @@ async function demo() {
     }
   };
 
-  process.on("SIGINT", async () => {
-    console.log("\n\u{1f44b} Shutting down...");
-    await shutdown();
-    process.exit(0);
-  });
-
-  // Send a request every 2 seconds
   const run = () => {
     tick().then(() => setTimeout(run, 2000));
   };

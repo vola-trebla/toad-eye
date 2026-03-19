@@ -1,6 +1,6 @@
 import { metrics } from "@opentelemetry/api";
 import type { Counter, Histogram } from "@opentelemetry/api";
-import { GEN_AI_METRICS, INSTRUMENTATION_NAME } from "./types.js";
+import { GEN_AI_ATTRS, GEN_AI_METRICS, INSTRUMENTATION_NAME } from "./types.js";
 
 let requestDuration: Histogram;
 let requestCost: Histogram;
@@ -9,9 +9,6 @@ let requestsTotal: Counter;
 let errorsTotal: Counter;
 
 let initialized = false;
-
-const LABEL_PROVIDER = "gen_ai.provider.name";
-const LABEL_MODEL = "gen_ai.request.model";
 
 export function initMetrics() {
   if (initialized) return;
@@ -49,8 +46,8 @@ export function recordRequestDuration(
   model: string,
 ) {
   requestDuration.record(ms, {
-    [LABEL_PROVIDER]: provider,
-    [LABEL_MODEL]: model,
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
 
@@ -60,28 +57,28 @@ export function recordRequestCost(
   model: string,
 ) {
   requestCost.record(usd, {
-    [LABEL_PROVIDER]: provider,
-    [LABEL_MODEL]: model,
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
 
 export function recordTokens(count: number, provider: string, model: string) {
   tokenUsage.add(count, {
-    [LABEL_PROVIDER]: provider,
-    [LABEL_MODEL]: model,
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
 
 export function recordRequest(provider: string, model: string) {
   requestsTotal.add(1, {
-    [LABEL_PROVIDER]: provider,
-    [LABEL_MODEL]: model,
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
 
 export function recordError(provider: string, model: string) {
   errorsTotal.add(1, {
-    [LABEL_PROVIDER]: provider,
-    [LABEL_MODEL]: model,
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }
