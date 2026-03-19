@@ -1,4 +1,4 @@
-import type { LLMProvider } from "../types.js";
+import type { LLMProvider } from "../types/index.js";
 
 export interface Instrumentation {
   readonly name: LLMProvider;
