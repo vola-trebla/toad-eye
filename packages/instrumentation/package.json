@@ -15,6 +15,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "repository": {
@@ -51,6 +53,7 @@
     "yaml": "^2.7.0"
   },
   "devDependencies": {
-    "@types/nodemailer": "^7.0.11"
+    "@types/nodemailer": "^7.0.11",
+    "vitest": "^4.1.0"
   }
 }
