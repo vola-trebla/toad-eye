@@ -1,6 +1,10 @@
 import { metrics } from "@opentelemetry/api";
 import type { Counter, Histogram } from "@opentelemetry/api";
-import { GEN_AI_ATTRS, GEN_AI_METRICS, INSTRUMENTATION_NAME } from "./types.js";
+import {
+  GEN_AI_ATTRS,
+  GEN_AI_METRICS,
+  INSTRUMENTATION_NAME,
+} from "./types/index.js";
 
 let requestDuration: Histogram;
 let requestCost: Histogram;

@@ -1,5 +1,5 @@
 import { diag } from "@opentelemetry/api";
-import type { LLMProvider } from "../types.js";
+import type { LLMProvider } from "../types/index.js";
 import type { Instrumentation } from "./types.js";
 
 const instrumentations = new Map<LLMProvider, Instrumentation>();

@@ -20,10 +20,10 @@ export type {
   LLMProvider,
   SpanStatus,
   MetricName,
-} from "./types.js";
+} from "./types/index.js";
 export {
   GEN_AI_METRICS,
   GEN_AI_ATTRS,
   LLM_METRICS,
   LLM_ATTRS,
-} from "./types.js";
+} from "./types/index.js";

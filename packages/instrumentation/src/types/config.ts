@@ -1,0 +1,27 @@
+import type { LLMProvider } from "./providers.js";
+
+/**
+ * Configuration for initObservability().
+ * This is what the user passes when connecting toad-eye to their service.
+ */
+export interface ToadEyeConfig {
+  readonly serviceName: string;
+  readonly endpoint?: string | undefined;
+
+  // Privacy
+  /** Set to false to disable recording prompt/completion text in spans. */
+  readonly recordContent?: boolean | undefined;
+  /** Record SHA-256 hash of content instead of plain text. Allows prompt comparison without reading. */
+  readonly hashContent?: boolean | undefined;
+  /** Regex patterns to redact from prompt/completion text before recording. */
+  readonly redactPatterns?: readonly RegExp[] | undefined;
+
+  // Auto-instrumentation
+  readonly instrument?: readonly LLMProvider[] | undefined;
+
+  // Session tracking
+  /** Static session ID — all spans will carry this value as `session.id`. */
+  readonly sessionId?: string | undefined;
+  /** Dynamic session ID extractor — called per traceLLMCall to resolve session ID. */
+  readonly sessionExtractor?: (() => string | undefined) | undefined;
+}

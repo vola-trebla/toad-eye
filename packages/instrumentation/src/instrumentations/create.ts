@@ -3,7 +3,7 @@ import { diag } from "@opentelemetry/api";
 import { traceLLMCall } from "../spans.js";
 import type { LLMCallOutput } from "../spans.js";
 import { calculateCost } from "../pricing.js";
-import type { LLMProvider } from "../types.js";
+import type { LLMProvider } from "../types/index.js";
 import type { Instrumentation, PatchTarget } from "./types.js";
 
 const require = createRequire(import.meta.url);
