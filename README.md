@@ -12,7 +12,7 @@
 
 OpenTelemetry-based observability toolkit for LLM systems.
 
-Auto-instrument any LLM SDK, get traces, metrics, cost tracking, and 5 Grafana dashboards out of the box.
+Auto-instrument any LLM SDK, get traces, metrics, cost tracking, agent observability, guardrail monitoring, and 5 Grafana dashboards out of the box.
 
 ## Quick start
 
@@ -60,6 +60,88 @@ const result = await traceLLMCall(
   () => callYourLLM(),
 );
 ```
+
+## Agent observability
+
+Structured tracing for ReAct agents (think / act / observe / answer) as nested OpenTelemetry spans.
+
+```typescript
+import { traceAgentQuery } from "toad-eye";
+
+const result = await traceAgentQuery(
+  "Is anything dangerous near Earth?",
+  async (step) => {
+    step({
+      type: "think",
+      stepNumber: 1,
+      content: "I need to check asteroids",
+    });
+    const data = await callTool("near-earth-asteroids");
+    step({ type: "act", stepNumber: 2, toolName: "near-earth-asteroids" });
+    step({
+      type: "observe",
+      stepNumber: 3,
+      content: `${data.length} asteroids found`,
+    });
+    step({
+      type: "answer",
+      stepNumber: 4,
+      content: "7 asteroids passing safely",
+    });
+    return { answer: "7 asteroids passing safely" };
+  },
+);
+```
+
+Metrics: steps per query (histogram), tool usage frequency (counter per tool name).
+
+## Shadow guardrails
+
+Validate LLM responses without blocking them. Record what _would_ have been blocked, then decide when to enforce.
+
+```typescript
+import { recordGuardResult } from "toad-eye";
+
+// toad-guard validates, toad-eye records
+const result = guard.validate(response);
+recordGuardResult({
+  mode: "shadow",
+  passed: false,
+  ruleName: "pii_filter",
+  failureReason: "SSN detected in response",
+});
+```
+
+Metrics: `guard.evaluations` (total checks), `guard.would_block` (would-have-blocked count) per rule name.
+
+## Semantic drift monitoring
+
+Detect silent LLM quality degradation by comparing current responses to a saved baseline via embeddings.
+
+```typescript
+import { createDriftMonitor, saveBaseline } from "toad-eye";
+
+const monitor = createDriftMonitor({
+  embedding: { provider: "openai", apiKey: process.env.OPENAI_API_KEY! },
+  baselinePath: "./baseline.json",
+  sampleRate: 10, // check every 10th response
+});
+
+// In your LLM call handler:
+const drift = await monitor.check(response, "openai", "gpt-4o");
+// drift = 0 → identical to baseline
+// drift > 0.3 → significant deviation
+```
+
+## Trace-to-dataset export
+
+Convert production Jaeger traces into test cases. Production failure becomes a regression test.
+
+```bash
+npx toad-eye export-trace <trace_id> --output ./evals/
+```
+
+Generates YAML in toad-eval format with auto-generated assertions (max length, refusal detection, JSON validation).
 
 ## Features
 
@@ -112,12 +194,12 @@ alerts:
 
   - name: latency_anomaly
     metric: gen_ai.client.operation.duration
-    condition: p95_pct_5m_7d > 50 # p95 grew >50% vs 7-day baseline
+    condition: p95_pct_5m_7d > 50
     channels: [slack]
 
   - name: error_rate
     metric: gen_ai.client.errors
-    condition: ratio_15m > 0.05 # >5% error rate
+    condition: ratio_15m > 0.05
     channels: [slack]
 ```
 
@@ -141,13 +223,14 @@ All dashboards have `$provider` and `$model` template variables for filtering.
 
 ## CLI
 
-| Command               | Description                                     |
-| --------------------- | ----------------------------------------------- |
-| `npx toad-eye init`   | Scaffold Docker Compose + observability configs |
-| `npx toad-eye up`     | Start the stack                                 |
-| `npx toad-eye down`   | Stop the stack                                  |
-| `npx toad-eye status` | Show running services and URLs                  |
-| `npx toad-eye demo`   | Send mock LLM traffic to see data in Grafana    |
+| Command                          | Description                                     |
+| -------------------------------- | ----------------------------------------------- |
+| `npx toad-eye init`              | Scaffold Docker Compose + observability configs |
+| `npx toad-eye up`                | Start the stack                                 |
+| `npx toad-eye down`              | Stop the stack                                  |
+| `npx toad-eye status`            | Show running services and URLs                  |
+| `npx toad-eye demo`              | Send mock LLM traffic to see data in Grafana    |
+| `npx toad-eye export-trace <id>` | Export a Jaeger trace to toad-eval YAML         |
 
 ## Architecture
 
@@ -176,27 +259,35 @@ flowchart LR
 
 ### Metrics (OTel GenAI semconv)
 
-| Metric                             | Type      | Description            |
-| ---------------------------------- | --------- | ---------------------- |
-| `gen_ai.client.operation.duration` | Histogram | Request latency (ms)   |
-| `gen_ai.client.request.cost`       | Histogram | Cost per request (USD) |
-| `gen_ai.client.token.usage`        | Counter   | Total tokens consumed  |
-| `gen_ai.client.requests`           | Counter   | Total requests         |
-| `gen_ai.client.errors`             | Counter   | Total failed requests  |
+| Metric                              | Type      | Description                         |
+| ----------------------------------- | --------- | ----------------------------------- |
+| `gen_ai.client.operation.duration`  | Histogram | Request latency (ms)                |
+| `gen_ai.client.request.cost`        | Histogram | Cost per request (USD)              |
+| `gen_ai.client.token.usage`         | Counter   | Total tokens consumed               |
+| `gen_ai.client.requests`            | Counter   | Total requests                      |
+| `gen_ai.client.errors`              | Counter   | Total failed requests               |
+| `gen_ai.agent.steps_per_query`      | Histogram | Agent steps per query               |
+| `gen_ai.agent.tool_usage`           | Counter   | Agent tool invocations by tool name |
+| `gen_ai.toad_eye.guard.evaluations` | Counter   | Guard evaluations per rule          |
+| `gen_ai.toad_eye.guard.would_block` | Counter   | Would-have-blocked per rule         |
+| `gen_ai.toad_eye.semantic_drift`    | Histogram | Semantic drift from baseline (0..1) |
 
 All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 
 ### Span attributes
 
-| Attribute                    | Description                        |
-| ---------------------------- | ---------------------------------- |
-| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`    |
-| `gen_ai.request.model`       | Model identifier                   |
-| `gen_ai.usage.input_tokens`  | Tokens in the prompt               |
-| `gen_ai.usage.output_tokens` | Tokens in the completion           |
-| `gen_ai.request.temperature` | Temperature parameter              |
-| `gen_ai.toad_eye.cost`       | Cost in USD                        |
-| `session.id`                 | Session identifier (if configured) |
+| Attribute                    | Description                          |
+| ---------------------------- | ------------------------------------ |
+| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`      |
+| `gen_ai.request.model`       | Model identifier                     |
+| `gen_ai.usage.input_tokens`  | Tokens in the prompt                 |
+| `gen_ai.usage.output_tokens` | Tokens in the completion             |
+| `gen_ai.request.temperature` | Temperature parameter                |
+| `gen_ai.toad_eye.cost`       | Cost in USD                          |
+| `gen_ai.agent.step.type`     | Agent step: think/act/observe/answer |
+| `gen_ai.agent.tool.name`     | Tool name for agent act steps        |
+| `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce           |
+| `session.id`                 | Session identifier (if configured)   |
 
 ## Services
 
