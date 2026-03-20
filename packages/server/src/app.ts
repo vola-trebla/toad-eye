@@ -11,6 +11,7 @@ import { createIngestRoutes } from "./routes/ingest.js";
 import { createHealthRoutes } from "./routes/health.js";
 import { createBaselineRoutes } from "./routes/baselines.js";
 import { createQueryRoutes } from "./routes/query.js";
+import { createProviderRoutes } from "./routes/providers.js";
 
 export function createApp(config: ServerConfig) {
   const app = new Hono();
@@ -26,6 +27,7 @@ export function createApp(config: ServerConfig) {
   app.use("/api/*", createAuthMiddleware(config.apiKeys));
   app.route("/", createBaselineRoutes(store));
   app.route("/", createQueryRoutes(store));
+  app.route("/", createProviderRoutes(store));
 
   // Ingestion routes — auth + rate limiting
   app.use(

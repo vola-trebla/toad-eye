@@ -1,0 +1,191 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Provider Status",
+      "description": "healthy (< 10% errors) / degraded (10-50%) / down (> 50%)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_provider_name) (rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\"}[5m])) / sum by (gen_ai_provider_name) (rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}[5m]))",
+          "legendFormat": "{{gen_ai_provider_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.1,
+                "result": { "text": "HEALTHY", "color": "green" }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.1,
+                "to": 0.5,
+                "result": { "text": "DEGRADED", "color": "yellow" }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1,
+                "result": { "text": "DOWN", "color": "red" }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Request Volume by Provider",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_provider_name) (rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}[5m]))",
+          "legendFormat": "{{gen_ai_provider_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 15 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Error Rate by Provider (5m window)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_provider_name) (rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\"}[5m])) / sum by (gen_ai_provider_name) (rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}[5m]))",
+          "legendFormat": "{{gen_ai_provider_name}} error rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Error Breakdown by Type",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_provider_name, error_type) (rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\"}[5m]))",
+          "legendFormat": "{{gen_ai_provider_name}} — {{error_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Provider Availability (24h / 7d / 30d)",
+      "description": "Percentage of time with error rate below 10%",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "1 - (sum by (gen_ai_provider_name) (rate(gen_ai_client_errors_total[24h])) / sum by (gen_ai_provider_name) (rate(gen_ai_client_requests_total[24h])))",
+          "format": "table",
+          "instant": true,
+          "refId": "uptime_24h"
+        },
+        {
+          "expr": "1 - (sum by (gen_ai_provider_name) (rate(gen_ai_client_errors_total[7d])) / sum by (gen_ai_provider_name) (rate(gen_ai_client_requests_total[7d])))",
+          "format": "table",
+          "instant": true,
+          "refId": "uptime_7d"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "gen_ai_provider_name": "Provider",
+              "Value #uptime_24h": "Uptime 24h",
+              "Value #uptime_7d": "Uptime 7d"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "decimals": 2 },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["toad-eye", "provider-health"],
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "regex": ""
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "toad-eye / Provider Health",
+  "uid": "toad-eye-provider-health",
+  "version": 1
+}
