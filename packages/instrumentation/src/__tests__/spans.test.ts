@@ -185,6 +185,66 @@ describe("privacy — error messages (#92)", () => {
   });
 });
 
+describe("salted hashing (#98)", () => {
+  beforeEach(() => {
+    mockConfig = {};
+    mockSpan.setAttributes.mockClear();
+  });
+
+  it("produces different hash with salt vs without", async () => {
+    // Without salt
+    mockConfig = { hashContent: true };
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "Yes" },
+      async () => ({
+        completion: "ok",
+        inputTokens: 1,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    const noSaltCall = mockSpan.setAttributes.mock.calls.find(
+      (call: unknown[]) =>
+        typeof (call[0] as Record<string, unknown>)[
+          "gen_ai.toad_eye.prompt"
+        ] === "string",
+    );
+    const noSaltHash = (noSaltCall![0] as Record<string, string>)[
+      "gen_ai.toad_eye.prompt"
+    ];
+
+    mockSpan.setAttributes.mockClear();
+
+    // With salt
+    mockConfig = { hashContent: true, salt: "my-secret-salt" };
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "Yes" },
+      async () => ({
+        completion: "ok",
+        inputTokens: 1,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    const saltCall = mockSpan.setAttributes.mock.calls.find(
+      (call: unknown[]) =>
+        typeof (call[0] as Record<string, unknown>)[
+          "gen_ai.toad_eye.prompt"
+        ] === "string",
+    );
+    const saltHash = (saltCall![0] as Record<string, string>)[
+      "gen_ai.toad_eye.prompt"
+    ];
+
+    // Both should be sha256 hashes but different values
+    expect(noSaltHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(saltHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(noSaltHash).not.toBe(saltHash);
+  });
+});
+
 describe("FinOps attributes", () => {
   beforeEach(() => {
     mockConfig = {};
