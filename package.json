@@ -6,6 +6,7 @@
   "type": "module",
   "workspaces": [
     "packages/instrumentation",
+    "packages/server",
     "demo"
   ],
   "scripts": {

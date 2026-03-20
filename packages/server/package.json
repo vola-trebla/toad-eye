@@ -1,0 +1,21 @@
+{
+  "name": "@toad-eye/server",
+  "version": "0.1.0",
+  "description": "HTTP ingestion endpoint for toad-eye cloud mode",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "hono": "^4.7.11",
+    "@hono/node-server": "^1.14.3",
+    "hono-rate-limiter": "^0.4.2"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.3"
+  }
+}
