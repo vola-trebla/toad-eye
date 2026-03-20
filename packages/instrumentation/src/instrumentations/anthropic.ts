@@ -30,7 +30,6 @@ function extractCompletion(content: unknown): string {
 const messagesCreate: PatchTarget = {
   getPrototype: (sdk) => sdk?.Messages?.prototype,
   method: "create",
-  shouldSkip: (body) => !!(body as { stream?: boolean })?.stream,
   extractRequest: (body) => {
     const b = body as Record<string, unknown>;
     return {
@@ -50,6 +49,33 @@ const messagesCreate: PatchTarget = {
       inputTokens: r?.usage?.input_tokens ?? 0,
       outputTokens: r?.usage?.output_tokens ?? 0,
     };
+  },
+  isStreaming: (body) => !!(body as { stream?: boolean })?.stream,
+  extractStreamResponse: (chunks) => {
+    // Anthropic stream events: message_start, content_block_delta, message_delta, message_stop
+    let completion = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for (const chunk of chunks) {
+      const event = chunk as {
+        type?: string;
+        message?: { usage?: { input_tokens?: number } };
+        delta?: { text?: string; usage?: { output_tokens?: number } };
+        usage?: { output_tokens?: number };
+      };
+      if (event.type === "content_block_delta" && event.delta?.text) {
+        completion += event.delta.text;
+      }
+      if (event.type === "message_start" && event.message?.usage) {
+        inputTokens = event.message.usage.input_tokens ?? 0;
+      }
+      if (event.type === "message_delta" && event.usage) {
+        outputTokens = event.usage.output_tokens ?? 0;
+      }
+    }
+
+    return { completion, inputTokens, outputTokens };
   },
 };
 

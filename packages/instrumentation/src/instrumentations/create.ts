@@ -1,8 +1,16 @@
 import { createRequire } from "node:module";
-import { diag } from "@opentelemetry/api";
+import { trace, diag, SpanStatusCode, type Span } from "@opentelemetry/api";
 import { traceLLMCall } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
 import { calculateCost } from "../core/pricing.js";
+import {
+  recordRequestDuration,
+  recordRequestCost,
+  recordTokens,
+  recordRequest,
+  recordError,
+} from "../core/metrics.js";
+import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
 import type { Instrumentation, PatchTarget } from "./types.js";
 
@@ -31,12 +39,126 @@ function loadModule(moduleName: string): any {
   return sdk.default ?? sdk;
 }
 
+/**
+ * Wrap an async iterable stream to intercept chunks.
+ * Yields every chunk transparently to the caller while collecting them.
+ * On stream end, calls onComplete with all accumulated chunks.
+ */
+async function* wrapAsyncIterable<T>(
+  stream: AsyncIterable<T>,
+  onChunk: (chunk: T) => void,
+  onComplete: (chunks: T[]) => void,
+  onError: (err: unknown) => void,
+): AsyncGenerator<T> {
+  const chunks: T[] = [];
+  try {
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+      onChunk(chunk);
+      yield chunk;
+    }
+    onComplete(chunks);
+  } catch (err) {
+    onError(err);
+    throw err;
+  }
+}
+
+function createStreamingHandler(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  original: (...args: any[]) => unknown,
+  patch: PatchTarget,
+  providerName: LLMProvider,
+) {
+  const tracer = trace.getTracer(INSTRUMENTATION_NAME);
+
+  return async function handleStreaming(
+    thisArg: unknown,
+    body: unknown,
+    rest: unknown[],
+  ) {
+    const req = patch.extractRequest(body);
+    const start = performance.now();
+    const response = await original.call(thisArg, body, ...rest);
+
+    // The response should be an async iterable (Stream, MessageStream, etc.)
+    // We wrap it to intercept chunks
+    const span: Span = tracer.startSpan(`gen_ai.${providerName}.${req.model}`);
+
+    span.setAttributes({
+      [GEN_AI_ATTRS.PROVIDER]: providerName,
+      [GEN_AI_ATTRS.REQUEST_MODEL]: req.model,
+      [GEN_AI_ATTRS.TEMPERATURE]: req.temperature ?? 1.0,
+      [GEN_AI_ATTRS.OPERATION]: "chat",
+    });
+
+    const wrapped = wrapAsyncIterable(
+      response as AsyncIterable<unknown>,
+      () => {},
+      (chunks) => {
+        const duration = performance.now() - start;
+        const res = patch.extractStreamResponse!(chunks);
+        const cost = calculateCost(
+          req.model,
+          res.inputTokens,
+          res.outputTokens,
+        );
+
+        span.setAttributes({
+          [GEN_AI_ATTRS.RESPONSE_MODEL]: req.model,
+          [GEN_AI_ATTRS.INPUT_TOKENS]: res.inputTokens,
+          [GEN_AI_ATTRS.OUTPUT_TOKENS]: res.outputTokens,
+          [GEN_AI_ATTRS.COST]: cost,
+          [GEN_AI_ATTRS.STATUS]: "success",
+        });
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+
+        recordRequest(providerName, req.model);
+        recordRequestDuration(duration, providerName, req.model);
+        recordRequestCost(cost, providerName, req.model);
+        recordTokens(
+          res.inputTokens + res.outputTokens,
+          providerName,
+          req.model,
+        );
+      },
+      (err) => {
+        const duration = performance.now() - start;
+        const message = err instanceof Error ? err.message : String(err);
+        span.setAttributes({
+          [GEN_AI_ATTRS.STATUS]: "error",
+          [GEN_AI_ATTRS.ERROR]: message,
+        });
+        span.setStatus({ code: SpanStatusCode.ERROR, message });
+        span.end();
+
+        recordRequest(providerName, req.model);
+        recordRequestDuration(duration, providerName, req.model);
+        recordError(providerName, req.model);
+      },
+    );
+
+    // Return an object that looks like the original stream but with our wrapper
+    // Preserve the original object shape — SDKs may have extra methods/properties
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proxy = Object.create(response as any);
+    proxy[Symbol.asyncIterator] = () => wrapped[Symbol.asyncIterator]();
+    return proxy;
+  };
+}
+
 function createPatchedMethod(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   original: (...args: any[]) => unknown,
   patch: PatchTarget,
   providerName: LLMProvider,
 ) {
+  const streamHandler =
+    patch.isStreaming && patch.extractStreamResponse
+      ? createStreamingHandler(original, patch, providerName)
+      : null;
+
   return function patchedMethod(
     this: unknown,
     body: unknown,
@@ -44,6 +166,11 @@ function createPatchedMethod(
   ) {
     if (patch.shouldSkip?.(body)) {
       return original.call(this, body, ...rest);
+    }
+
+    // Handle streaming calls
+    if (streamHandler && patch.isStreaming?.(body)) {
+      return streamHandler(this, body, rest);
     }
 
     const req = patch.extractRequest(body);
