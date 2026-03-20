@@ -1,0 +1,73 @@
+{
+  "name": "toad-eye",
+  "description": "Live LLM observability queries from toad-eye server",
+  "tools": [
+    {
+      "name": "toad_query_metrics",
+      "description": "Query aggregated LLM telemetry — total spans, providers, models, cost, tokens, error rate over a time period.",
+      "endpoint": "GET /api/query",
+      "parameters": {
+        "period": {
+          "type": "string",
+          "description": "Time window: 1h, 6h, 1d, 7d, 30d",
+          "default": "7d"
+        }
+      },
+      "example": "GET /api/query?period=7d"
+    },
+    {
+      "name": "toad_recent_errors",
+      "description": "Get recent LLM errors with context — trace ID, error type, provider, model, duration.",
+      "endpoint": "GET /api/errors",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "description": "Max errors to return (1-100)",
+          "default": 10
+        },
+        "period": {
+          "type": "string",
+          "description": "Time window: 1h, 6h, 1d, 7d, 30d",
+          "default": "1d"
+        }
+      },
+      "example": "GET /api/errors?limit=5&period=1d"
+    },
+    {
+      "name": "toad_compare_models",
+      "description": "Compare LLM models side by side — latency, cost, tokens, error rate.",
+      "endpoint": "GET /api/models/compare",
+      "parameters": {
+        "models": {
+          "type": "string",
+          "description": "Comma-separated model names to compare",
+          "required": true
+        },
+        "period": {
+          "type": "string",
+          "description": "Time window: 1h, 6h, 1d, 7d, 30d",
+          "default": "7d"
+        }
+      },
+      "example": "GET /api/models/compare?models=gpt-4o,gpt-4o-mini,claude-sonnet&period=7d"
+    },
+    {
+      "name": "toad_baselines",
+      "description": "Get production baselines for a prompt/span — avg/p95 latency, cost, tokens, error rate. Used for CI quality gates.",
+      "endpoint": "GET /api/baselines",
+      "parameters": {
+        "prompt": {
+          "type": "string",
+          "description": "Span name pattern to match",
+          "required": true
+        },
+        "period": {
+          "type": "string",
+          "description": "Baseline period: 1d, 7d, 14d, 30d",
+          "default": "7d"
+        }
+      },
+      "example": "GET /api/baselines?prompt=gpt-4o&period=7d"
+    }
+  ]
+}
