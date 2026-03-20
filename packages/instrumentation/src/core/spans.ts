@@ -36,7 +36,10 @@ export interface LLMCallOutput {
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
 function sha256(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+  const salt = getConfig()?.salt ?? "";
+  return createHash("sha256")
+    .update(salt + text)
+    .digest("hex");
 }
 
 function processContent(text: string): string | undefined {

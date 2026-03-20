@@ -27,6 +27,8 @@ export interface ToadEyeConfig {
   readonly recordContent?: boolean | undefined;
   /** Record SHA-256 hash of content instead of plain text. Allows prompt comparison without reading. */
   readonly hashContent?: boolean | undefined;
+  /** Salt for hashContent — prepended before hashing to prevent rainbow table attacks on short strings. */
+  readonly salt?: string | undefined;
   /** Regex patterns to redact from prompt/completion text before recording. */
   readonly redactPatterns?: readonly RegExp[] | undefined;
 

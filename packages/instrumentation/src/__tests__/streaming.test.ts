@@ -1,6 +1,83 @@
 import { describe, it, expect, vi } from "vitest";
 
-// Test the stream wrapping logic and extractors without real SDK imports
+// Test the stream wrapping logic, extractors, and message parsing
+
+describe("OpenAI multi-modal extraction (#98)", () => {
+  // Inline the same logic as openai.ts extractMessages
+  function extractMessages(messages: unknown): string {
+    if (!Array.isArray(messages)) return "";
+    return messages
+      .map((m: { content?: unknown }) => {
+        if (typeof m.content === "string") return m.content;
+        if (Array.isArray(m.content)) {
+          return (m.content as { type?: string; text?: string }[])
+            .map((part) => {
+              if (part.type === "text") return part.text ?? "";
+              if (part.type === "image_url") return "[image]";
+              if (part.type === "input_audio") return "[audio]";
+              return "";
+            })
+            .filter(Boolean)
+            .join("");
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  it("extracts plain string content", () => {
+    const result = extractMessages([{ content: "Hello world" }]);
+    expect(result).toBe("Hello world");
+  });
+
+  it("extracts text from ContentPart array", () => {
+    const result = extractMessages([
+      {
+        content: [
+          { type: "text", text: "What is in this image?" },
+          { type: "image_url", image_url: { url: "https://..." } },
+        ],
+      },
+    ]);
+    expect(result).toBe("What is in this image?[image]");
+  });
+
+  it("handles image-only messages", () => {
+    const result = extractMessages([
+      {
+        content: [{ type: "image_url", image_url: { url: "https://..." } }],
+      },
+    ]);
+    expect(result).toBe("[image]");
+  });
+
+  it("handles audio content", () => {
+    const result = extractMessages([
+      {
+        content: [
+          { type: "input_audio", input_audio: { data: "base64..." } },
+          { type: "text", text: "Transcribe this" },
+        ],
+      },
+    ]);
+    expect(result).toBe("[audio]Transcribe this");
+  });
+
+  it("handles mixed string and multi-modal messages", () => {
+    const result = extractMessages([
+      { role: "system", content: "You are helpful" },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Describe:" },
+          { type: "image_url", image_url: { url: "https://..." } },
+        ],
+      },
+    ]);
+    expect(result).toBe("You are helpful\nDescribe:[image]");
+  });
+});
 
 describe("OpenAI stream extraction", () => {
   it("accumulates content from delta chunks", async () => {

@@ -5,9 +5,21 @@ import type { PatchTarget } from "./types.js";
 function extractMessages(messages: unknown): string {
   if (!Array.isArray(messages)) return "";
   return messages
-    .map((m: { content?: unknown }) =>
-      typeof m.content === "string" ? m.content : "",
-    )
+    .map((m: { content?: unknown }) => {
+      if (typeof m.content === "string") return m.content;
+      if (Array.isArray(m.content)) {
+        return (m.content as { type?: string; text?: string }[])
+          .map((part) => {
+            if (part.type === "text") return part.text ?? "";
+            if (part.type === "image_url") return "[image]";
+            if (part.type === "input_audio") return "[audio]";
+            return "";
+          })
+          .filter(Boolean)
+          .join("");
+      }
+      return "";
+    })
     .filter(Boolean)
     .join("\n");
 }
