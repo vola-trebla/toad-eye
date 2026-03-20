@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
+import { trace, diag, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes } from "../types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import {
@@ -35,8 +35,19 @@ export interface LLMCallOutput {
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
+let saltWarningEmitted = false;
+
 function sha256(text: string): string {
-  const salt = getConfig()?.salt ?? "";
+  const config = getConfig();
+  const salt = config?.salt ?? "";
+
+  if (config?.hashContent && !config.salt && !saltWarningEmitted) {
+    diag.warn(
+      "toad-eye: hashContent is enabled without salt — short strings may be reversible. Set salt in config for stronger privacy.",
+    );
+    saltWarningEmitted = true;
+  }
+
   return createHash("sha256")
     .update(salt + text)
     .digest("hex");

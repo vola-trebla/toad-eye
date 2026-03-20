@@ -1,5 +1,11 @@
 import { createRequire } from "node:module";
-import { trace, diag, SpanStatusCode, type Span } from "@opentelemetry/api";
+import {
+  trace,
+  context,
+  diag,
+  SpanStatusCode,
+  type Span,
+} from "@opentelemetry/api";
 import { traceLLMCall } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
 import { calculateCost } from "../core/pricing.js";
@@ -81,9 +87,9 @@ function createStreamingHandler(
     const start = performance.now();
     const response = await original.call(thisArg, body, ...rest);
 
-    // The response should be an async iterable (Stream, MessageStream, etc.)
-    // We wrap it to intercept chunks
+    // Use startActiveSpan to preserve parent-child context (e.g. inside traceAgentQuery)
     const span: Span = tracer.startSpan(`gen_ai.${providerName}.${req.model}`);
+    const ctx = trace.setSpan(context.active(), span);
 
     span.setAttributes({
       [GEN_AI_ATTRS.PROVIDER]: providerName,
@@ -92,51 +98,54 @@ function createStreamingHandler(
       [GEN_AI_ATTRS.OPERATION]: "chat",
     });
 
-    const wrapped = wrapAsyncIterable(
-      response as AsyncIterable<unknown>,
-      () => {},
-      (chunks) => {
-        const duration = performance.now() - start;
-        const res = patch.extractStreamResponse!(chunks);
-        const cost = calculateCost(
-          req.model,
-          res.inputTokens,
-          res.outputTokens,
-        );
+    const wrapped = context.bind(
+      ctx,
+      wrapAsyncIterable(
+        response as AsyncIterable<unknown>,
+        () => {},
+        (chunks) => {
+          const duration = performance.now() - start;
+          const res = patch.extractStreamResponse!(chunks);
+          const cost = calculateCost(
+            req.model,
+            res.inputTokens,
+            res.outputTokens,
+          );
 
-        span.setAttributes({
-          [GEN_AI_ATTRS.RESPONSE_MODEL]: req.model,
-          [GEN_AI_ATTRS.INPUT_TOKENS]: res.inputTokens,
-          [GEN_AI_ATTRS.OUTPUT_TOKENS]: res.outputTokens,
-          [GEN_AI_ATTRS.COST]: cost,
-          [GEN_AI_ATTRS.STATUS]: "success",
-        });
-        span.setStatus({ code: SpanStatusCode.OK });
-        span.end();
+          span.setAttributes({
+            [GEN_AI_ATTRS.RESPONSE_MODEL]: req.model,
+            [GEN_AI_ATTRS.INPUT_TOKENS]: res.inputTokens,
+            [GEN_AI_ATTRS.OUTPUT_TOKENS]: res.outputTokens,
+            [GEN_AI_ATTRS.COST]: cost,
+            [GEN_AI_ATTRS.STATUS]: "success",
+          });
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.end();
 
-        recordRequest(providerName, req.model);
-        recordRequestDuration(duration, providerName, req.model);
-        recordRequestCost(cost, providerName, req.model);
-        recordTokens(
-          res.inputTokens + res.outputTokens,
-          providerName,
-          req.model,
-        );
-      },
-      (err) => {
-        const duration = performance.now() - start;
-        const message = err instanceof Error ? err.message : String(err);
-        span.setAttributes({
-          [GEN_AI_ATTRS.STATUS]: "error",
-          [GEN_AI_ATTRS.ERROR]: message,
-        });
-        span.setStatus({ code: SpanStatusCode.ERROR, message });
-        span.end();
+          recordRequest(providerName, req.model);
+          recordRequestDuration(duration, providerName, req.model);
+          recordRequestCost(cost, providerName, req.model);
+          recordTokens(
+            res.inputTokens + res.outputTokens,
+            providerName,
+            req.model,
+          );
+        },
+        (err) => {
+          const duration = performance.now() - start;
+          const message = err instanceof Error ? err.message : String(err);
+          span.setAttributes({
+            [GEN_AI_ATTRS.STATUS]: "error",
+            [GEN_AI_ATTRS.ERROR]: message,
+          });
+          span.setStatus({ code: SpanStatusCode.ERROR, message });
+          span.end();
 
-        recordRequest(providerName, req.model);
-        recordRequestDuration(duration, providerName, req.model);
-        recordError(providerName, req.model);
-      },
+          recordRequest(providerName, req.model);
+          recordRequestDuration(duration, providerName, req.model);
+          recordError(providerName, req.model);
+        },
+      ),
     );
 
     // Return an object that looks like the original stream but with our wrapper
