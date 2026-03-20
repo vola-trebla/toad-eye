@@ -12,7 +12,7 @@
 
 OpenTelemetry-based observability toolkit for LLM systems.
 
-Auto-instrument any LLM SDK, get traces, metrics, cost tracking, agent observability, guardrail monitoring, and 5 Grafana dashboards out of the box.
+Auto-instrument any LLM SDK (including streaming), get traces, metrics, cost tracking, budget guards, agent observability, guardrail monitoring, and 6 Grafana dashboards out of the box. Self-hosted or cloud mode.
 
 ![toad-eye demo](demo/toad-eye-demo-gifski.gif)
 
@@ -26,6 +26,20 @@ npx toad-eye demo       # send mock LLM traffic, see data immediately
 ```
 
 Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
+
+### Cloud mode
+
+No Docker needed. Send telemetry to toad-eye cloud with one line:
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  apiKey: "toad_xxxxxxxx",
+  instrument: ["openai"],
+});
+```
+
+Self-hosted mode remains the default. Cloud mode activates automatically when `apiKey` is set.
 
 ## Auto-instrumentation
 
@@ -47,6 +61,8 @@ const result = await openai.chat.completions.create({
 ```
 
 **Supported SDKs:** OpenAI (`openai`), Anthropic (`@anthropic-ai/sdk`), Google GenAI (`@google/generative-ai`)
+
+Both regular and **streaming** calls are fully instrumented — spans, metrics, and cost tracking work transparently for `stream: true`.
 
 ### Manual instrumentation
 
@@ -207,6 +223,28 @@ alerts:
 
 Delivery channels: Telegram, Slack webhook, generic HTTP webhook, email (SMTP).
 
+### Budget guards
+
+Prevent cost overruns at runtime. Three modes: warn, block, or auto-downgrade to a cheaper model.
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  budgets: {
+    daily: 50, // $50/day max
+    perUser: 5, // $5/day per user
+    perModel: { "gpt-4o": 30 }, // $30/day on GPT-4o
+  },
+  onBudgetExceeded: "block", // throws ToadBudgetExceededError
+});
+```
+
+| Mode        | Behavior                                            |
+| ----------- | --------------------------------------------------- |
+| `warn`      | Log warning, continue normally                      |
+| `block`     | Throw `ToadBudgetExceededError` before LLM call     |
+| `downgrade` | Call `downgradeCallback` to switch to cheaper model |
+
 ## FinOps attribution
 
 Track costs by team, user, feature, or any business dimension:
@@ -276,6 +314,9 @@ All dashboards have template variables for filtering (`$provider`, `$model`, `$t
 | `gen_ai.toad_eye.guard.evaluations` | Counter   | Guard evaluations per rule          |
 | `gen_ai.toad_eye.guard.would_block` | Counter   | Would-have-blocked per rule         |
 | `gen_ai.toad_eye.semantic_drift`    | Histogram | Semantic drift from baseline (0..1) |
+| `gen_ai.toad_eye.budget.exceeded`   | Counter   | Budget limit exceeded events        |
+| `gen_ai.toad_eye.budget.blocked`    | Counter   | LLM calls blocked by budget         |
+| `gen_ai.toad_eye.budget.downgraded` | Counter   | LLM calls downgraded by budget      |
 
 All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 
@@ -306,5 +347,6 @@ All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 ## Tech stack
 
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
-- Hono (demo server)
+- Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
+- Vitest (154 tests)
