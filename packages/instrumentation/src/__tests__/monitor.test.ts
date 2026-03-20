@@ -94,3 +94,48 @@ describe("createDriftMonitor", () => {
     expect(drift).toBeCloseTo(1);
   });
 });
+
+describe("checkInBackground", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    baselineExists = true;
+    mockEmbed.mockResolvedValue([1, 0, 0]);
+  });
+
+  it("does not block the caller", () => {
+    const monitor = makeMonitor();
+    // checkInBackground returns void, not a Promise
+    const result = monitor.checkInBackground("response", "openai", "gpt-4o");
+    expect(result).toBeUndefined();
+  });
+
+  it("records drift metric in background", async () => {
+    const monitor = makeMonitor();
+    monitor.checkInBackground("response", "openai", "gpt-4o");
+
+    // Wait for the background promise to settle
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(recordSemanticDrift).toHaveBeenCalledWith(
+      expect.closeTo(0),
+      "openai",
+      "gpt-4o",
+    );
+  });
+
+  it("swallows errors silently", async () => {
+    mockEmbed.mockRejectedValue(new Error("API key invalid"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const monitor = makeMonitor();
+    // Should not throw
+    monitor.checkInBackground("response", "openai", "gpt-4o");
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Drift check failed"),
+    );
+    warnSpy.mockRestore();
+  });
+});
