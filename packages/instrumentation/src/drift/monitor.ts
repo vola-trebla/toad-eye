@@ -32,6 +32,14 @@ export interface DriftMonitor {
     provider: string,
     model: string,
   ): Promise<number | undefined>;
+
+  /**
+   * Fire-and-forget drift check — does NOT block the caller.
+   * Errors are logged to console.warn, never thrown.
+   * Use this in hot paths (e.g. inside traceLLMCall) to avoid
+   * blocking the LLM response delivery.
+   */
+  checkInBackground(response: string, provider: string, model: string): void;
 }
 
 function createProvider(config: EmbeddingConfig): EmbeddingProvider {
@@ -55,19 +63,33 @@ export function createDriftMonitor(config: DriftMonitorConfig): DriftMonitor {
     );
   }
 
+  async function performCheck(
+    response: string,
+    providerName: string,
+    model: string,
+  ): Promise<number | undefined> {
+    if (baseline === undefined) return undefined;
+
+    counter++;
+    if (counter % sampleRate !== 0) return undefined;
+
+    const embedding = await provider.embed(response);
+    const drift = cosineDrift(embedding, baseline.embeddings);
+
+    recordSemanticDrift(drift, providerName, model);
+
+    return drift;
+  }
+
   return {
-    async check(response, providerName, model) {
-      if (baseline === undefined) return undefined;
+    check: performCheck,
 
-      counter++;
-      if (counter % sampleRate !== 0) return undefined;
-
-      const embedding = await provider.embed(response);
-      const drift = cosineDrift(embedding, baseline.embeddings);
-
-      recordSemanticDrift(drift, providerName, model);
-
-      return drift;
+    checkInBackground(response, providerName, model) {
+      void performCheck(response, providerName, model).catch((err) => {
+        console.warn(
+          `[toad-eye] Drift check failed (non-blocking): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
     },
   };
 }
