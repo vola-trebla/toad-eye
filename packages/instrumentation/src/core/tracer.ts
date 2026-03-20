@@ -7,6 +7,7 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics } from "./metrics.js";
 import { enableAll, disableAll } from "../instrumentations/registry.js";
+import { BudgetTracker } from "../budget/index.js";
 
 // Side-effect imports: register provider instrumentations
 import "../instrumentations/openai.js";
@@ -18,9 +19,14 @@ const DEFAULT_CLOUD_ENDPOINT = "https://cloud.toad-eye.dev";
 
 let sdk: NodeSDK | null = null;
 let currentConfig: ToadEyeConfig | null = null;
+let budgetTracker: BudgetTracker | null = null;
 
 export function getConfig() {
   return currentConfig;
+}
+
+export function getBudgetTracker() {
+  return budgetTracker;
 }
 
 function validateConfig(config: ToadEyeConfig) {
@@ -93,6 +99,14 @@ export function initObservability(config: ToadEyeConfig) {
     );
   }
 
+  if (config.budgets) {
+    budgetTracker = new BudgetTracker(
+      config.budgets,
+      config.onBudgetExceeded ?? "warn",
+      config.downgradeCallback,
+    );
+  }
+
   if (config.instrument?.length) {
     enableAll(config.instrument);
   }
@@ -104,4 +118,5 @@ export async function shutdown() {
   await sdk.shutdown();
   sdk = null;
   currentConfig = null;
+  budgetTracker = null;
 }

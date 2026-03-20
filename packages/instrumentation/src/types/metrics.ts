@@ -20,6 +20,10 @@ export const GEN_AI_METRICS = {
   GUARD_WOULD_BLOCK: "gen_ai.toad_eye.guard.would_block",
   // Drift metrics
   SEMANTIC_DRIFT: "gen_ai.toad_eye.semantic_drift",
+  // Budget metrics
+  BUDGET_EXCEEDED: "gen_ai.toad_eye.budget.exceeded",
+  BUDGET_BLOCKED: "gen_ai.toad_eye.budget.blocked",
+  BUDGET_DOWNGRADED: "gen_ai.toad_eye.budget.downgraded",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

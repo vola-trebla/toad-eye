@@ -16,6 +16,9 @@ let agentToolUsage: Counter;
 let guardEvaluations: Counter;
 let guardWouldBlock: Counter;
 let semanticDrift: Histogram;
+let budgetExceeded: Counter;
+let budgetBlocked: Counter;
+let budgetDowngraded: Counter;
 
 let initialized = false;
 
@@ -68,6 +71,18 @@ export function initMetrics() {
   semanticDrift = meter.createHistogram(GEN_AI_METRICS.SEMANTIC_DRIFT, {
     description:
       "Semantic drift from baseline (0 = identical, 1 = completely different)",
+  });
+
+  budgetExceeded = meter.createCounter(GEN_AI_METRICS.BUDGET_EXCEEDED, {
+    description: "Number of times a budget limit was exceeded",
+  });
+
+  budgetBlocked = meter.createCounter(GEN_AI_METRICS.BUDGET_BLOCKED, {
+    description: "Number of LLM calls blocked due to budget limits",
+  });
+
+  budgetDowngraded = meter.createCounter(GEN_AI_METRICS.BUDGET_DOWNGRADED, {
+    description: "Number of LLM calls downgraded due to budget limits",
   });
 
   initialized = true;
@@ -160,4 +175,16 @@ export function recordSemanticDrift(
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
+}
+
+export function recordBudgetExceeded(budgetType: string) {
+  budgetExceeded.add(1, { budget_type: budgetType });
+}
+
+export function recordBudgetBlocked(budgetType: string) {
+  budgetBlocked.add(1, { budget_type: budgetType });
+}
+
+export function recordBudgetDowngraded(budgetType: string) {
+  budgetDowngraded.add(1, { budget_type: budgetType });
 }
