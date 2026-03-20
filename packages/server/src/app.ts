@@ -9,6 +9,7 @@ import { createAuthMiddleware } from "./middleware/auth.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createIngestRoutes } from "./routes/ingest.js";
 import { createHealthRoutes } from "./routes/health.js";
+import { createBaselineRoutes } from "./routes/baselines.js";
 
 export function createApp(config: ServerConfig) {
   const app = new Hono();
@@ -19,6 +20,10 @@ export function createApp(config: ServerConfig) {
 
   // Health check — no auth required
   app.route("/", createHealthRoutes(store));
+
+  // Baselines API — auth required
+  app.use("/api/*", createAuthMiddleware(config.apiKeys));
+  app.route("/", createBaselineRoutes(store));
 
   // Ingestion routes — auth + rate limiting
   app.use(

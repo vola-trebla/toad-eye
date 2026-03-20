@@ -4,6 +4,7 @@
 import type {
   OtlpTracePayload,
   OtlpMetricsPayload,
+  OtlpSpan,
   StoredTrace,
   StoredMetrics,
 } from "../types.js";
@@ -64,6 +65,32 @@ export class MemoryStore {
       }
     }
     return count;
+  }
+
+  /**
+   * Query spans matching a name pattern within a time period.
+   * Used by the baselines API to compute aggregated stats.
+   */
+  querySpans(namePattern: string, periodMs: number): readonly OtlpSpan[] {
+    const cutoff = Date.now() - periodMs;
+    const result: OtlpSpan[] = [];
+
+    for (const t of this.traces) {
+      const receivedAt = new Date(t.receivedAt).getTime();
+      if (receivedAt < cutoff) continue;
+
+      for (const rs of t.payload.resourceSpans) {
+        for (const ss of rs.scopeSpans) {
+          for (const span of ss.spans) {
+            if (span.name.includes(namePattern)) {
+              result.push(span);
+            }
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   clear() {
