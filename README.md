@@ -207,19 +207,43 @@ alerts:
 
 Delivery channels: Telegram, Slack webhook, generic HTTP webhook, email (SMTP).
 
+## FinOps attribution
+
+Track costs by team, user, feature, or any business dimension:
+
+```typescript
+// Global attributes — applied to all spans/metrics
+initObservability({
+  serviceName: "my-app",
+  attributes: { team: "checkout", environment: "production" },
+});
+
+// Per-request attributes — override or extend global
+await traceLLMCall(
+  {
+    provider: "openai",
+    model: "gpt-4o",
+    prompt: "Summarize order",
+    attributes: { userId: "user-123", feature: "order-summary" },
+  },
+  () => callLLM(),
+);
+```
+
 ## Grafana dashboards
 
-5 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+6 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
-| Dashboard            | What it shows                                           |
-| -------------------- | ------------------------------------------------------- |
-| **Overview**         | Request rate, error rate, latency p50/p95, cost, totals |
-| **Cost Breakdown**   | Spend by provider/model, daily trend, projected monthly |
-| **Latency Analysis** | p50/p95/p99 by model, distribution histogram            |
-| **Error Drill-down** | Error rate by provider/model, error vs success          |
-| **Model Comparison** | Latency vs cost vs error rate vs throughput per model   |
+| Dashboard              | What it shows                                             |
+| ---------------------- | --------------------------------------------------------- |
+| **Overview**           | Request rate, error rate, latency p50/p95, cost, totals   |
+| **Cost Breakdown**     | Spend by provider/model, daily trend, projected monthly   |
+| **Latency Analysis**   | p50/p95/p99 by model, distribution histogram              |
+| **Error Drill-down**   | Error rate by provider/model, error vs success            |
+| **Model Comparison**   | Latency vs cost vs error rate vs throughput per model     |
+| **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table |
 
-All dashboards have `$provider` and `$model` template variables for filtering.
+All dashboards have template variables for filtering (`$provider`, `$model`, `$team`, `$feature`).
 
 ## CLI
 

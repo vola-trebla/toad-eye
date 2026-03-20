@@ -35,6 +35,12 @@ export const GEN_AI_ATTRS = {
   COST: "gen_ai.toad_eye.cost",
   STATUS: "gen_ai.toad_eye.status",
   SESSION_ID: "session.id",
+
+  // FinOps attribution
+  TEAM: "toad_eye.team",
+  USER_ID: "toad_eye.user_id",
+  FEATURE: "toad_eye.feature",
+  ENVIRONMENT: "toad_eye.environment",
 } as const;
 
 /** @deprecated Use GEN_AI_ATTRS instead. Kept for backward compatibility. */
