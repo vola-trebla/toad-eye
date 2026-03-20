@@ -117,14 +117,18 @@ function setSuccessAttributes(
 }
 
 function setErrorAttributes(span: Span, message: string) {
+  const sanitized = processContent(message);
   span.setAttributes({
     [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
     [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
     [GEN_AI_ATTRS.COST]: 0,
     [GEN_AI_ATTRS.STATUS]: "error",
-    [GEN_AI_ATTRS.ERROR]: message,
+    ...(sanitized !== undefined && { [GEN_AI_ATTRS.ERROR]: sanitized }),
   });
-  span.setStatus({ code: SpanStatusCode.ERROR, message });
+  span.setStatus({
+    code: SpanStatusCode.ERROR,
+    ...(sanitized !== undefined && { message: sanitized }),
+  });
 }
 
 export async function traceLLMCall(

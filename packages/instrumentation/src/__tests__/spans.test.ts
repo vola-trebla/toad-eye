@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Shared mock span — accessible in tests for assertion
+const mockSpan = {
+  setAttributes: vi.fn(),
+  setStatus: vi.fn(),
+  end: vi.fn(),
+};
+
 // Mock tracer before importing spans
 vi.mock("@opentelemetry/api", () => {
-  const mockSpan = {
-    setAttributes: vi.fn(),
-    setStatus: vi.fn(),
-    end: vi.fn(),
-  };
   return {
     trace: {
       getTracer: () => ({
@@ -46,6 +48,8 @@ const { traceLLMCall } = await import("../core/spans.js");
 describe("traceLLMCall", () => {
   beforeEach(() => {
     mockConfig = {};
+    mockSpan.setAttributes.mockClear();
+    mockSpan.setStatus.mockClear();
   });
 
   it("returns output from wrapped function", async () => {
@@ -77,6 +81,8 @@ describe("traceLLMCall", () => {
 describe("privacy — processContent", () => {
   beforeEach(() => {
     mockConfig = {};
+    mockSpan.setAttributes.mockClear();
+    mockSpan.setStatus.mockClear();
   });
 
   it("records content by default", async () => {
@@ -105,6 +111,77 @@ describe("privacy — processContent", () => {
       }),
     );
     expect(output.completion).toBe("response");
+  });
+});
+
+describe("privacy — error messages (#92)", () => {
+  beforeEach(() => {
+    mockConfig = {};
+    mockSpan.setAttributes.mockClear();
+    mockSpan.setStatus.mockClear();
+  });
+
+  it("redacts PII from error messages", async () => {
+    mockConfig = { redactPatterns: [/\b\S+@\S+\.\S+\b/g] };
+
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "test" },
+      async () => {
+        throw new Error("Rate limit for user john@secret.com exceeded");
+      },
+    ).catch(() => {});
+
+    // Find the setAttributes call that contains error status
+    const errorCall = mockSpan.setAttributes.mock.calls.find(
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)["gen_ai.toad_eye.status"] ===
+        "error",
+    );
+    expect(errorCall).toBeDefined();
+    const attrs = errorCall![0] as Record<string, unknown>;
+    expect(attrs["error.type"]).toBe("Rate limit for user [REDACTED] exceeded");
+    expect(attrs["error.type"]).not.toContain("john@secret.com");
+  });
+
+  it("suppresses error message when recordContent is false", async () => {
+    mockConfig = { recordContent: false };
+
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "test" },
+      async () => {
+        throw new Error("Secret error with PII");
+      },
+    ).catch(() => {});
+
+    const errorCall = mockSpan.setAttributes.mock.calls.find(
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)["gen_ai.toad_eye.status"] ===
+        "error",
+    );
+    expect(errorCall).toBeDefined();
+    const attrs = errorCall![0] as Record<string, unknown>;
+    // error.type should NOT be present when recordContent is false
+    expect(attrs["error.type"]).toBeUndefined();
+  });
+
+  it("hashes error message when hashContent is true", async () => {
+    mockConfig = { hashContent: true };
+
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "test" },
+      async () => {
+        throw new Error("Sensitive error details");
+      },
+    ).catch(() => {});
+
+    const errorCall = mockSpan.setAttributes.mock.calls.find(
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)["gen_ai.toad_eye.status"] ===
+        "error",
+    );
+    expect(errorCall).toBeDefined();
+    const attrs = errorCall![0] as Record<string, unknown>;
+    expect(attrs["error.type"]).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 });
 
