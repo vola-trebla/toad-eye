@@ -36,6 +36,10 @@ vi.mock("../instrumentations/openai.js", () => ({}));
 vi.mock("../instrumentations/anthropic.js", () => ({}));
 vi.mock("../instrumentations/gemini.js", () => ({}));
 
+const { OTLPTraceExporter } =
+  await import("@opentelemetry/exporter-trace-otlp-http");
+const { OTLPMetricExporter } =
+  await import("@opentelemetry/exporter-metrics-otlp-http");
 const { initObservability, shutdown } = await import("../core/tracer.js");
 
 describe("initObservability — config validation", () => {
@@ -57,12 +61,82 @@ describe("initObservability — config validation", () => {
     ).toThrow("endpoint must be a valid URL");
   });
 
+  it("throws on apiKey without toad_ prefix", () => {
+    expect(() =>
+      initObservability({ serviceName: "test", apiKey: "sk_wrong_prefix" }),
+    ).toThrow('apiKey must start with "toad_"');
+  });
+
   it("accepts valid config", async () => {
     // Clean up any previous SDK state
     await shutdown();
     expect(() =>
       initObservability({ serviceName: "test-service" }),
     ).not.toThrow();
+    await shutdown();
+  });
+});
+
+describe("initObservability — cloud mode", () => {
+  it("passes auth header to exporters when apiKey is set", async () => {
+    await shutdown();
+
+    initObservability({
+      serviceName: "cloud-test",
+      apiKey: "toad_abc123",
+    });
+
+    // OTLPTraceExporter should have been called with cloud endpoint + auth header
+    expect(OTLPTraceExporter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://cloud.toad-eye.dev/v1/traces",
+        headers: { Authorization: "Bearer toad_abc123" },
+      }),
+    );
+
+    expect(OTLPMetricExporter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://cloud.toad-eye.dev/v1/metrics",
+        headers: { Authorization: "Bearer toad_abc123" },
+      }),
+    );
+
+    await shutdown();
+  });
+
+  it("uses custom cloudEndpoint when provided", async () => {
+    await shutdown();
+
+    initObservability({
+      serviceName: "cloud-custom",
+      apiKey: "toad_xyz789",
+      cloudEndpoint: "https://my-server.example.com",
+    });
+
+    expect(OTLPTraceExporter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://my-server.example.com/v1/traces",
+        headers: { Authorization: "Bearer toad_xyz789" },
+      }),
+    );
+
+    await shutdown();
+  });
+
+  it("uses local endpoint without headers when no apiKey", async () => {
+    await shutdown();
+
+    initObservability({
+      serviceName: "local-test",
+    });
+
+    expect(OTLPTraceExporter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "http://localhost:4318/v1/traces",
+        headers: {},
+      }),
+    );
+
     await shutdown();
   });
 });
