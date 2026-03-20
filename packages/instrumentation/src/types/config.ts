@@ -1,4 +1,9 @@
 import type { LLMProvider } from "./providers.js";
+import type {
+  BudgetConfig,
+  BudgetExceededMode,
+  DowngradeCallback,
+} from "../budget/types.js";
 
 /**
  * Configuration for initObservability().
@@ -27,6 +32,14 @@ export interface ToadEyeConfig {
 
   // Auto-instrumentation
   readonly instrument?: readonly LLMProvider[] | undefined;
+
+  // Budget guards
+  /** Budget limits — daily, per-user, per-model spend caps in USD. */
+  readonly budgets?: BudgetConfig | undefined;
+  /** What to do when budget is exceeded: 'warn' (log), 'block' (throw), 'downgrade' (callback). */
+  readonly onBudgetExceeded?: BudgetExceededMode | undefined;
+  /** Callback for 'downgrade' mode — receives original provider/model, returns replacement. */
+  readonly downgradeCallback?: DowngradeCallback | undefined;
 
   // Session tracking
   /** Static session ID — all spans will carry this value as `session.id`. */

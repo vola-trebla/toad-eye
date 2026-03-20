@@ -1,4 +1,16 @@
-export { initObservability, shutdown, getConfig } from "./core/tracer.js";
+export {
+  initObservability,
+  shutdown,
+  getConfig,
+  getBudgetTracker,
+} from "./core/tracer.js";
+export { BudgetTracker, ToadBudgetExceededError } from "./budget/index.js";
+export type {
+  BudgetConfig,
+  BudgetExceededMode,
+  BudgetExceededInfo,
+  DowngradeCallback,
+} from "./budget/index.js";
 export {
   AlertManager,
   startAlertsFromFile,

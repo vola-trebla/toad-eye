@@ -8,8 +8,12 @@ import {
   recordTokens,
   recordRequest,
   recordError,
+  recordBudgetExceeded,
+  recordBudgetBlocked,
+  recordBudgetDowngraded,
 } from "./metrics.js";
-import { getConfig } from "./tracer.js";
+import { getConfig, getBudgetTracker } from "./tracer.js";
+import { GEN_AI_ATTRS as ATTRS } from "../types/index.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
 export interface LLMCallInput {
@@ -127,36 +131,93 @@ export async function traceLLMCall(
   input: LLMCallInput,
   fn: () => Promise<LLMCallOutput>,
 ): Promise<LLMCallOutput> {
+  const budget = getBudgetTracker();
+  let effectiveInput = input;
+
+  // Budget check BEFORE the LLM call
+  if (budget) {
+    const userId = input.attributes?.[ATTRS.USER_ID];
+    const override = budget.checkBefore(input.provider, input.model, userId);
+    if (override) {
+      // Downgrade mode — use modified provider/model
+      effectiveInput = {
+        ...input,
+        provider: override.provider as LLMSpanAttributes["provider"],
+        model: override.model,
+      };
+      recordBudgetDowngraded("daily");
+    }
+  }
+
   return tracer.startActiveSpan(
-    `gen_ai.${input.provider}.${input.model}`,
+    `gen_ai.${effectiveInput.provider}.${effectiveInput.model}`,
     async (span) => {
       const start = performance.now();
-      setBaseAttributes(span, input);
+      setBaseAttributes(span, effectiveInput);
 
       try {
         const output = await fn();
         const duration = performance.now() - start;
-        const attrs = resolveAttributes(input);
+        const attrs = resolveAttributes(effectiveInput);
 
-        setSuccessAttributes(span, input, output);
-        recordBaseMetrics(duration, input.provider, input.model, attrs);
-        recordRequestCost(output.cost, input.provider, input.model, attrs);
-        recordTokens(
-          output.inputTokens + output.outputTokens,
-          input.provider,
-          input.model,
+        setSuccessAttributes(span, effectiveInput, output);
+        recordBaseMetrics(
+          duration,
+          effectiveInput.provider,
+          effectiveInput.model,
           attrs,
         );
+        recordRequestCost(
+          output.cost,
+          effectiveInput.provider,
+          effectiveInput.model,
+          attrs,
+        );
+        recordTokens(
+          output.inputTokens + output.outputTokens,
+          effectiveInput.provider,
+          effectiveInput.model,
+          attrs,
+        );
+
+        // Budget recording AFTER the call
+        if (budget) {
+          const userId = effectiveInput.attributes?.[ATTRS.USER_ID];
+          const exceeded = budget.recordCost(
+            output.cost,
+            effectiveInput.model,
+            userId,
+          );
+          if (exceeded) {
+            recordBudgetExceeded(exceeded.budget);
+            console.warn(
+              `toad-eye: ${exceeded.budget} budget exceeded — limit $${exceeded.limit}, current $${exceeded.current.toFixed(2)}`,
+            );
+          }
+        }
 
         return output;
       } catch (error) {
         const duration = performance.now() - start;
         const message = error instanceof Error ? error.message : String(error);
-        const attrs = resolveAttributes(input);
+        const attrs = resolveAttributes(effectiveInput);
 
         setErrorAttributes(span, message);
-        recordBaseMetrics(duration, input.provider, input.model, attrs);
-        recordError(input.provider, input.model, attrs);
+        recordBaseMetrics(
+          duration,
+          effectiveInput.provider,
+          effectiveInput.model,
+          attrs,
+        );
+        recordError(effectiveInput.provider, effectiveInput.model, attrs);
+
+        // If this was a budget block, record the metric
+        if (
+          error instanceof Error &&
+          error.name === "ToadBudgetExceededError"
+        ) {
+          recordBudgetBlocked("daily");
+        }
 
         throw error;
       } finally {

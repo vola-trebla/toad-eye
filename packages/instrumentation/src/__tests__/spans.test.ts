@@ -29,12 +29,16 @@ vi.mock("../core/metrics.js", () => ({
   recordTokens: vi.fn(),
   recordRequest: vi.fn(),
   recordError: vi.fn(),
+  recordBudgetExceeded: vi.fn(),
+  recordBudgetBlocked: vi.fn(),
+  recordBudgetDowngraded: vi.fn(),
 }));
 
 // Mock tracer config
 let mockConfig: Record<string, unknown> = {};
 vi.mock("../core/tracer.js", () => ({
   getConfig: () => mockConfig,
+  getBudgetTracker: () => null,
 }));
 
 const { traceLLMCall } = await import("../core/spans.js");
