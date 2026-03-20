@@ -103,3 +103,75 @@ describe("privacy — processContent", () => {
     expect(output.completion).toBe("response");
   });
 });
+
+describe("FinOps attributes", () => {
+  beforeEach(() => {
+    mockConfig = {};
+  });
+
+  it("passes per-request attributes through to metrics", async () => {
+    const { recordRequest } = await import("../core/metrics.js");
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "test",
+        attributes: {
+          "toad_eye.team": "checkout",
+          "toad_eye.feature": "order-summary",
+        },
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 10,
+        outputTokens: 5,
+        cost: 0.01,
+      }),
+    );
+
+    expect(recordRequest).toHaveBeenCalledWith(
+      "openai",
+      "gpt-4o",
+      expect.objectContaining({
+        "toad_eye.team": "checkout",
+        "toad_eye.feature": "order-summary",
+      }),
+    );
+  });
+
+  it("merges global and per-request attributes (per-request wins)", async () => {
+    mockConfig = {
+      attributes: {
+        "toad_eye.team": "global-team",
+        "toad_eye.environment": "prod",
+      },
+    };
+
+    const { recordRequest } = await import("../core/metrics.js");
+
+    await traceLLMCall(
+      {
+        provider: "anthropic",
+        model: "claude-sonnet",
+        prompt: "test",
+        attributes: { "toad_eye.team": "override-team" },
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 5,
+        outputTokens: 3,
+        cost: 0.005,
+      }),
+    );
+
+    expect(recordRequest).toHaveBeenCalledWith(
+      "anthropic",
+      "claude-sonnet",
+      expect.objectContaining({
+        "toad_eye.team": "override-team",
+        "toad_eye.environment": "prod",
+      }),
+    );
+  });
+});

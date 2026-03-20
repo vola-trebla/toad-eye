@@ -17,6 +17,8 @@ export interface LLMCallInput {
   readonly model: string;
   readonly prompt: string;
   readonly temperature?: number | undefined;
+  /** Per-request FinOps attributes (team, userId, feature, etc). Merged with global attributes. */
+  readonly attributes?: Readonly<Record<string, string>> | undefined;
 }
 
 /** Output from the LLM call — what comes back */
@@ -57,9 +59,20 @@ function resolveSessionId(): string | undefined {
   return config?.sessionExtractor?.() ?? config?.sessionId;
 }
 
+/** Merge global config attributes with per-request attributes (per-request wins). */
+function resolveAttributes(
+  input: LLMCallInput,
+): Record<string, string> | undefined {
+  const global = getConfig()?.attributes;
+  const local = input.attributes;
+  if (!global && !local) return undefined;
+  return { ...global, ...local };
+}
+
 function setBaseAttributes(span: Span, input: LLMCallInput) {
   const prompt = processContent(input.prompt);
   const sessionId = resolveSessionId();
+  const attrs = resolveAttributes(input);
   span.setAttributes({
     [GEN_AI_ATTRS.PROVIDER]: input.provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: input.model,
@@ -67,12 +80,18 @@ function setBaseAttributes(span: Span, input: LLMCallInput) {
     [GEN_AI_ATTRS.OPERATION]: "chat",
     ...(prompt !== undefined && { [GEN_AI_ATTRS.PROMPT]: prompt }),
     ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
+    ...attrs,
   });
 }
 
-function recordBaseMetrics(duration: number, provider: string, model: string) {
-  recordRequest(provider, model);
-  recordRequestDuration(duration, provider, model);
+function recordBaseMetrics(
+  duration: number,
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  recordRequest(provider, model, attrs);
+  recordRequestDuration(duration, provider, model, attrs);
 }
 
 function setSuccessAttributes(
@@ -117,24 +136,27 @@ export async function traceLLMCall(
       try {
         const output = await fn();
         const duration = performance.now() - start;
+        const attrs = resolveAttributes(input);
 
         setSuccessAttributes(span, input, output);
-        recordBaseMetrics(duration, input.provider, input.model);
-        recordRequestCost(output.cost, input.provider, input.model);
+        recordBaseMetrics(duration, input.provider, input.model, attrs);
+        recordRequestCost(output.cost, input.provider, input.model, attrs);
         recordTokens(
           output.inputTokens + output.outputTokens,
           input.provider,
           input.model,
+          attrs,
         );
 
         return output;
       } catch (error) {
         const duration = performance.now() - start;
         const message = error instanceof Error ? error.message : String(error);
+        const attrs = resolveAttributes(input);
 
         setErrorAttributes(span, message);
-        recordBaseMetrics(duration, input.provider, input.model);
-        recordError(input.provider, input.model);
+        recordBaseMetrics(duration, input.provider, input.model, attrs);
+        recordError(input.provider, input.model, attrs);
 
         throw error;
       } finally {

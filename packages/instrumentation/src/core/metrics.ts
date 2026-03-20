@@ -73,47 +73,60 @@ export function initMetrics() {
   initialized = true;
 }
 
+/** Build metric labels: provider + model + optional FinOps attributes. */
+function baseLabels(
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+): Record<string, string> {
+  return {
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+    ...attrs,
+  };
+}
+
 export function recordRequestDuration(
   ms: number,
   provider: string,
   model: string,
+  attrs?: Record<string, string>,
 ) {
-  requestDuration.record(ms, {
-    [GEN_AI_ATTRS.PROVIDER]: provider,
-    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
-  });
+  requestDuration.record(ms, baseLabels(provider, model, attrs));
 }
 
 export function recordRequestCost(
   usd: number,
   provider: string,
   model: string,
+  attrs?: Record<string, string>,
 ) {
-  requestCost.record(usd, {
-    [GEN_AI_ATTRS.PROVIDER]: provider,
-    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
-  });
+  requestCost.record(usd, baseLabels(provider, model, attrs));
 }
 
-export function recordTokens(count: number, provider: string, model: string) {
-  tokenUsage.add(count, {
-    [GEN_AI_ATTRS.PROVIDER]: provider,
-    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
-  });
+export function recordTokens(
+  count: number,
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  tokenUsage.add(count, baseLabels(provider, model, attrs));
 }
 
-export function recordRequest(provider: string, model: string) {
-  requestsTotal.add(1, {
-    [GEN_AI_ATTRS.PROVIDER]: provider,
-    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
-  });
+export function recordRequest(
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  requestsTotal.add(1, baseLabels(provider, model, attrs));
 }
 
-export function recordError(provider: string, model: string) {
-  errorsTotal.add(1, {
-    [GEN_AI_ATTRS.PROVIDER]: provider,
-    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
-  });
+export function recordError(
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  errorsTotal.add(1, baseLabels(provider, model, attrs));
 }
 
 export function recordAgentSteps(stepCount: number) {

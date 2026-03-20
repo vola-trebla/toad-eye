@@ -14,6 +14,9 @@ export interface ToadEyeConfig {
   /** Custom cloud endpoint override. Defaults to https://cloud.toad-eye.dev. */
   readonly cloudEndpoint?: string | undefined;
 
+  // FinOps attribution — global attributes applied to all spans/metrics
+  readonly attributes?: Readonly<Record<string, string>> | undefined;
+
   // Privacy
   /** Set to false to disable recording prompt/completion text in spans. */
   readonly recordContent?: boolean | undefined;
