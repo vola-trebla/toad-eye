@@ -30,6 +30,14 @@ export interface PatchTarget {
     inputTokens: number;
     outputTokens: number;
   };
-  /** Return true if this call should skip patching (e.g. streaming) */
+  /** Return true if this call should skip patching entirely */
   shouldSkip?: (body: unknown) => boolean;
+  /** Return true if this call is a streaming request */
+  isStreaming?: (body: unknown) => boolean;
+  /** Extract final stats from accumulated stream chunks. Required when isStreaming is set. */
+  extractStreamResponse?: (chunks: unknown[]) => {
+    completion: string;
+    inputTokens: number;
+    outputTokens: number;
+  };
 }

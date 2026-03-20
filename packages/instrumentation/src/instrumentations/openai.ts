@@ -16,7 +16,6 @@ const chatCompletions: PatchTarget = {
   getPrototype: (sdk) =>
     (sdk?.Chat?.Completions ?? sdk?.Completions)?.prototype,
   method: "create",
-  shouldSkip: (body) => !!(body as { stream?: boolean })?.stream,
   extractRequest: (body) => {
     const b = body as Record<string, unknown>;
     return {
@@ -36,6 +35,29 @@ const chatCompletions: PatchTarget = {
       inputTokens: r?.usage?.prompt_tokens ?? 0,
       outputTokens: r?.usage?.completion_tokens ?? 0,
     };
+  },
+  isStreaming: (body) => !!(body as { stream?: boolean })?.stream,
+  extractStreamResponse: (chunks) => {
+    // OpenAI stream chunks: { choices: [{ delta: { content } }], usage?: { ... } }
+    let completion = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for (const chunk of chunks) {
+      const c = chunk as {
+        choices?: { delta?: { content?: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
+      };
+      const delta = c?.choices?.[0]?.delta?.content;
+      if (delta) completion += delta;
+      // Usage is typically in the final chunk (when stream_options.include_usage is set)
+      if (c?.usage) {
+        inputTokens = c.usage.prompt_tokens ?? inputTokens;
+        outputTokens = c.usage.completion_tokens ?? outputTokens;
+      }
+    }
+
+    return { completion, inputTokens, outputTokens };
   },
 };
 
