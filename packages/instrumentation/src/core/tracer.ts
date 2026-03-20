@@ -14,6 +14,7 @@ import "../instrumentations/anthropic.js";
 import "../instrumentations/gemini.js";
 
 const DEFAULT_ENDPOINT = "http://localhost:4318";
+const DEFAULT_CLOUD_ENDPOINT = "https://cloud.toad-eye.dev";
 
 let sdk: NodeSDK | null = null;
 let currentConfig: ToadEyeConfig | null = null;
@@ -31,13 +32,31 @@ function validateConfig(config: ToadEyeConfig) {
       `toad-eye: endpoint must be a valid URL, got "${config.endpoint}"`,
     );
   }
+  if (config.apiKey !== undefined && !config.apiKey.startsWith("toad_")) {
+    throw new Error('toad-eye: apiKey must start with "toad_" prefix');
+  }
+}
+
+/** Resolve endpoint and auth headers based on config mode (self-hosted vs cloud). */
+function resolveTransport(config: ToadEyeConfig) {
+  const isCloudMode = config.apiKey !== undefined;
+
+  const endpoint = isCloudMode
+    ? (config.cloudEndpoint ?? DEFAULT_CLOUD_ENDPOINT)
+    : (config.endpoint ?? DEFAULT_ENDPOINT);
+
+  const headers: Record<string, string> = isCloudMode
+    ? { Authorization: `Bearer ${config.apiKey}` }
+    : {};
+
+  return { endpoint, headers, isCloudMode };
 }
 
 export function initObservability(config: ToadEyeConfig) {
   if (sdk) return;
 
   validateConfig(config);
-  const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
+  const { endpoint, headers, isCloudMode } = resolveTransport(config);
 
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: config.serviceName,
@@ -45,15 +64,17 @@ export function initObservability(config: ToadEyeConfig) {
 
   const traceExporter = new OTLPTraceExporter({
     url: `${endpoint}/v1/traces`,
+    headers,
   });
 
   const metricExporter = new OTLPMetricExporter({
     url: `${endpoint}/v1/metrics`,
+    headers,
   });
 
   const metricReader = new PeriodicExportingMetricReader({
     exporter: metricExporter,
-    exportIntervalMillis: 5000,
+    exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
   });
 
   sdk = new NodeSDK({
@@ -65,6 +86,12 @@ export function initObservability(config: ToadEyeConfig) {
   sdk.start();
   currentConfig = config;
   initMetrics();
+
+  if (isCloudMode) {
+    console.log(
+      `toad-eye: cloud mode enabled → sending telemetry to ${endpoint}`,
+    );
+  }
 
   if (config.instrument?.length) {
     enableAll(config.instrument);

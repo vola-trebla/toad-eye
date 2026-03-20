@@ -8,6 +8,12 @@ export interface ToadEyeConfig {
   readonly serviceName: string;
   readonly endpoint?: string | undefined;
 
+  // Cloud mode
+  /** API key for toad-eye cloud. When set, transport switches to HTTPS cloud endpoint automatically. */
+  readonly apiKey?: string | undefined;
+  /** Custom cloud endpoint override. Defaults to https://cloud.toad-eye.dev. */
+  readonly cloudEndpoint?: string | undefined;
+
   // Privacy
   /** Set to false to disable recording prompt/completion text in spans. */
   readonly recordContent?: boolean | undefined;
