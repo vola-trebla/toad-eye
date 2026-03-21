@@ -59,6 +59,7 @@ export function calculateCost(
   inputTokens: number,
   outputTokens: number,
 ): number {
+  if (inputTokens < 0 || outputTokens < 0) return 0;
   const pricing = getModelPricing(model);
   if (!pricing) return 0;
 

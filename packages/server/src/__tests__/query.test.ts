@@ -276,3 +276,42 @@ describe("GET /api/query", () => {
     expect(body.spanCount).toBe(0);
   });
 });
+
+describe("auth required for /api/* routes", () => {
+  let app: ReturnType<typeof createApp>["app"];
+
+  beforeEach(() => {
+    app = createApp(config).app;
+  });
+
+  it("rejects /api/errors without auth", async () => {
+    const res = await app.request("/api/errors?period=1d");
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects /api/models/compare without auth", async () => {
+    const res = await app.request("/api/models/compare?models=gpt-4o");
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects /api/query without auth", async () => {
+    const res = await app.request("/api/query");
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("edge cases", () => {
+  let app: ReturnType<typeof createApp>["app"];
+
+  beforeEach(() => {
+    app = createApp(config).app;
+  });
+
+  it("handles empty models parameter gracefully", async () => {
+    const res = await app.request("/api/models/compare?models=&period=7d", {
+      headers: authHeaders(),
+    });
+    // Empty models param treated as missing — returns 400
+    expect(res.status).toBe(400);
+  });
+});

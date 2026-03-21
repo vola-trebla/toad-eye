@@ -16,7 +16,12 @@ export function createIngestRoutes(store: MemoryStore) {
 
   // POST /v1/traces — accept OTLP trace data
   app.post("/v1/traces", async (c) => {
-    const body = await c.req.json().catch(() => null);
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
 
     const result = validateTracePayload(body);
     if (!result.valid) {
@@ -37,7 +42,12 @@ export function createIngestRoutes(store: MemoryStore) {
 
   // POST /v1/metrics — accept OTLP metrics data
   app.post("/v1/metrics", async (c) => {
-    const body = await c.req.json().catch(() => null);
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
 
     const result = validateMetricsPayload(body);
     if (!result.valid) {

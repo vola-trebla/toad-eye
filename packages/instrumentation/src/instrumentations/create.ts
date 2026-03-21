@@ -157,6 +157,7 @@ function createStreamingHandler(
             [GEN_AI_ATTRS.OUTPUT_TOKENS]: acc.outputTokens,
             [GEN_AI_ATTRS.COST]: cost,
             [GEN_AI_ATTRS.STATUS]: "success",
+            [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
           });
           span.setStatus({ code: SpanStatusCode.OK });
           span.end();
