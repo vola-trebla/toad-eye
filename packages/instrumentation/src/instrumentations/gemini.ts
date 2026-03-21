@@ -23,7 +23,6 @@ const generateContent: PatchTarget = {
   extractRequest(body) {
     return {
       prompt: extractPrompt(body),
-      // model comes from `this.model` — injected by create.ts via the patched function's `this`
       model: "unknown",
     };
   },
@@ -51,10 +50,49 @@ const generateContent: PatchTarget = {
   },
 };
 
+const generateContentStream: PatchTarget = {
+  getPrototype: (sdk) => sdk?.GenerativeModel?.prototype,
+  method: "generateContentStream",
+  extractRequest(body) {
+    return {
+      prompt: extractPrompt(body),
+      model: "unknown",
+    };
+  },
+  extractResponse: () => ({
+    completion: "",
+    inputTokens: 0,
+    outputTokens: 0,
+  }),
+  // generateContentStream always returns a stream
+  isStreaming: () => true,
+  accumulateChunk: (acc, chunk) => {
+    // Gemini stream chunks are GenerateContentResponse objects
+    const c = chunk as {
+      text?: () => string;
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+      };
+    };
+    try {
+      const text = c?.text?.();
+      if (text) acc.completion += text;
+    } catch {
+      // text() may throw if content is blocked
+    }
+    if (c?.usageMetadata) {
+      acc.inputTokens = c.usageMetadata.promptTokenCount ?? acc.inputTokens;
+      acc.outputTokens =
+        c.usageMetadata.candidatesTokenCount ?? acc.outputTokens;
+    }
+  },
+};
+
 register(
   createInstrumentation({
     name: "gemini",
     moduleName: "@google/generative-ai",
-    patches: [generateContent],
+    patches: [generateContent, generateContentStream],
   }),
 );
