@@ -5,8 +5,15 @@ import { Hono } from "hono";
 
 import type { MemoryStore } from "../storage/memory.js";
 import type { OtlpSpan } from "../types.js";
+import {
+  getAttrString,
+  getAttrNumber,
+  getSpanDurationMs,
+  percentile,
+  sumArray,
+} from "../utils/span-helpers.js";
+import { parsePeriod, periodError } from "../utils/periods.js";
 
-/** Baseline stats computed from span data. */
 interface BaselineResponse {
   readonly prompt: string;
   readonly period: string;
@@ -16,39 +23,6 @@ interface BaselineResponse {
   readonly avgCost: number;
   readonly avgTokens: number;
   readonly errorRate: number;
-}
-
-const PERIOD_MAP: Record<string, number> = {
-  "1d": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "14d": 14 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-};
-
-function getSpanDurationMs(span: OtlpSpan): number {
-  const start = BigInt(span.startTimeUnixNano);
-  const end = BigInt(span.endTimeUnixNano);
-  return Number((end - start) / 1_000_000n);
-}
-
-function getAttrNumber(span: OtlpSpan, key: string): number {
-  const attr = span.attributes?.find((a) => a.key === key);
-  if (!attr) return 0;
-  if (attr.value.doubleValue !== undefined) return attr.value.doubleValue;
-  if (attr.value.intValue !== undefined)
-    return parseInt(attr.value.intValue, 10);
-  return 0;
-}
-
-function getAttrString(span: OtlpSpan, key: string): string | undefined {
-  const attr = span.attributes?.find((a) => a.key === key);
-  return attr?.value.stringValue;
-}
-
-function percentile(sorted: readonly number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  const idx = Math.ceil((p / 100) * sorted.length) - 1;
-  return sorted[Math.max(0, idx)] ?? 0;
 }
 
 function computeBaseline(
@@ -80,16 +54,14 @@ function computeBaseline(
     (s) => getAttrString(s, "gen_ai.toad_eye.status") === "error",
   ).length;
 
-  const sum = (arr: readonly number[]) => arr.reduce((a, b) => a + b, 0);
-
   return {
     prompt,
     period,
     spanCount: spans.length,
-    avgLatencyMs: Math.round(sum(latencies) / spans.length),
+    avgLatencyMs: Math.round(sumArray(latencies) / spans.length),
     p95LatencyMs: Math.round(percentile(latencies, 95)),
-    avgCost: Number((sum(costs) / spans.length).toFixed(6)),
-    avgTokens: Math.round(sum(tokens) / spans.length),
+    avgCost: Number((sumArray(costs) / spans.length).toFixed(6)),
+    avgTokens: Math.round(sumArray(tokens) / spans.length),
     errorRate: Number((errors / spans.length).toFixed(4)),
   };
 }
@@ -97,7 +69,6 @@ function computeBaseline(
 export function createBaselineRoutes(store: MemoryStore) {
   const app = new Hono();
 
-  // GET /api/baselines?prompt={name}&period=7d
   app.get("/api/baselines", (c) => {
     const prompt = c.req.query("prompt");
     const period = c.req.query("period") ?? "7d";
@@ -106,14 +77,9 @@ export function createBaselineRoutes(store: MemoryStore) {
       return c.json({ error: "Missing required query parameter: prompt" }, 400);
     }
 
-    const periodMs = PERIOD_MAP[period];
+    const periodMs = parsePeriod(period);
     if (periodMs === undefined) {
-      return c.json(
-        {
-          error: `Invalid period: ${period}. Valid values: ${Object.keys(PERIOD_MAP).join(", ")}`,
-        },
-        400,
-      );
+      return c.json({ error: periodError() }, 400);
     }
 
     const spans = store.querySpans(prompt, periodMs);

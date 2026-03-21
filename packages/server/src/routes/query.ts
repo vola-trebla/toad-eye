@@ -4,56 +4,28 @@
 import { Hono } from "hono";
 
 import type { MemoryStore } from "../storage/memory.js";
-import type { OtlpSpan } from "../types.js";
-
-const PERIOD_MAP: Record<string, number> = {
-  "1h": 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "1d": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-};
-
-function getAttrString(span: OtlpSpan, key: string): string | undefined {
-  const attr = span.attributes?.find((a) => a.key === key);
-  return attr?.value.stringValue;
-}
-
-function getAttrNumber(span: OtlpSpan, key: string): number {
-  const attr = span.attributes?.find((a) => a.key === key);
-  if (!attr) return 0;
-  if (attr.value.doubleValue !== undefined) return attr.value.doubleValue;
-  if (attr.value.intValue !== undefined)
-    return parseInt(attr.value.intValue, 10);
-  return 0;
-}
-
-function getSpanDurationMs(span: OtlpSpan): number {
-  const start = BigInt(span.startTimeUnixNano);
-  const end = BigInt(span.endTimeUnixNano);
-  return Number((end - start) / 1_000_000n);
-}
-
-function parsePeriod(period: string): number | undefined {
-  return PERIOD_MAP[period];
-}
+import {
+  getAttrString,
+  getAttrNumber,
+  getSpanDurationMs,
+  sumArray,
+} from "../utils/span-helpers.js";
+import { parsePeriod, periodError } from "../utils/periods.js";
 
 export function createQueryRoutes(store: MemoryStore) {
   const app = new Hono();
 
   // GET /api/errors?limit=10&period=1d — recent errors with context
   app.get("/api/errors", (c) => {
-    const limit = Math.min(parseInt(c.req.query("limit") ?? "10", 10), 100);
+    const limitRaw = parseInt(c.req.query("limit") ?? "10", 10);
+    const limit = Number.isNaN(limitRaw)
+      ? 10
+      : Math.min(Math.max(limitRaw, 1), 100);
     const period = c.req.query("period") ?? "1d";
     const periodMs = parsePeriod(period);
 
     if (periodMs === undefined) {
-      return c.json(
-        {
-          error: `Invalid period. Valid: ${Object.keys(PERIOD_MAP).join(", ")}`,
-        },
-        400,
-      );
+      return c.json({ error: periodError() }, 400);
     }
 
     const allSpans = store.querySpans("", periodMs);
@@ -89,12 +61,7 @@ export function createQueryRoutes(store: MemoryStore) {
     }
 
     if (periodMs === undefined) {
-      return c.json(
-        {
-          error: `Invalid period. Valid: ${Object.keys(PERIOD_MAP).join(", ")}`,
-        },
-        400,
-      );
+      return c.json({ error: periodError() }, 400);
     }
 
     const modelNames = modelsParam.split(",").map((m) => m.trim());
@@ -127,14 +94,12 @@ export function createQueryRoutes(store: MemoryStore) {
         (s) => getAttrString(s, "gen_ai.toad_eye.status") === "error",
       ).length;
 
-      const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
-
       return {
         model,
         spanCount: spans.length,
-        avgLatencyMs: Math.round(sum(latencies) / spans.length),
-        avgCost: Number((sum(costs) / spans.length).toFixed(6)),
-        avgTokens: Math.round(sum(tokens) / spans.length),
+        avgLatencyMs: Math.round(sumArray(latencies) / spans.length),
+        avgCost: Number((sumArray(costs) / spans.length).toFixed(6)),
+        avgTokens: Math.round(sumArray(tokens) / spans.length),
         errorRate: Number((errors / spans.length).toFixed(4)),
       };
     });
@@ -148,12 +113,7 @@ export function createQueryRoutes(store: MemoryStore) {
     const periodMs = parsePeriod(period);
 
     if (periodMs === undefined) {
-      return c.json(
-        {
-          error: `Invalid period. Valid: ${Object.keys(PERIOD_MAP).join(", ")}`,
-        },
-        400,
-      );
+      return c.json({ error: periodError() }, 400);
     }
 
     const allSpans = store.querySpans("", periodMs);
