@@ -81,15 +81,33 @@ function init() {
   console.log("  npx toad-eye status  Check running services");
 }
 
+function requireDocker() {
+  try {
+    execFileSync("docker", ["--version"], { stdio: "ignore" });
+  } catch {
+    console.error(
+      "❌ Docker not found. Install Docker Desktop: https://docs.docker.com/get-started/get-docker/",
+    );
+    process.exit(1);
+  }
+}
+
 function up() {
+  requireDocker();
   const composeFile = requireInfra();
 
-  console.log("\u{1f438} Starting observability stack...");
+  console.log("🐸 Starting observability stack...");
+  console.log(
+    "   (first run downloads ~500MB of Docker images — this may take a few minutes)\n",
+  );
   execFileSync("docker", ["compose", "-f", composeFile, "up", "-d"], {
     stdio: "inherit",
   });
   console.log();
   status();
+  console.log(
+    "   Run 'npx toad-eye demo' to send test data and verify the stack works.",
+  );
 }
 
 function down() {
@@ -194,10 +212,12 @@ async function demo() {
     endpoint: "http://localhost:4318",
   });
 
-  console.log(
-    "\u{1f438}\u{1f441}\u{fe0f} toad-eye demo — sending mock LLM traffic",
-  );
+  console.log("🐸👁️ toad-eye demo — sending mock LLM traffic");
   console.log("    Press Ctrl+C to stop\n");
+  console.log("✅ Stack verified! Add this to your app:\n");
+  console.log(
+    "   import { initObservability } from 'toad-eye';\n   initObservability({ serviceName: 'my-app', instrument: ['openai'] });\n",
+  );
 
   process.on("SIGINT", async () => {
     console.log("\n\u{1f44b} Shutting down...");
