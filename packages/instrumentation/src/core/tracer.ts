@@ -118,7 +118,7 @@ export function initObservability(config: ToadEyeConfig) {
     resource,
     traceExporter,
     metricReader,
-    spanProcessors,
+    ...(spanProcessors.length > 0 && { spanProcessors }),
     ...(sampler !== undefined && { sampler }),
   });
 
