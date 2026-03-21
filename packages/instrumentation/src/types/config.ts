@@ -31,6 +31,10 @@ export interface ToadEyeConfig {
   readonly salt?: string | undefined;
   /** Regex patterns to redact from prompt/completion text before recording. */
   readonly redactPatterns?: readonly RegExp[] | undefined;
+  /** Enable built-in redaction patterns for common PII: email, SSN, credit card, phone. */
+  readonly redactDefaults?: boolean | undefined;
+  /** Log what was masked to console (for debugging redaction config). No data is sent externally. */
+  readonly auditMasking?: boolean | undefined;
 
   // Auto-instrumentation
   readonly instrument?: readonly LLMProvider[] | undefined;
