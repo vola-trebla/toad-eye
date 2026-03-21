@@ -140,9 +140,7 @@ function createStreamingHandler(
       }
     }
 
-    const span: Span = tracer.startSpan(
-      `gen_ai.${effectiveProvider}.${effectiveModel}`,
-    );
+    const span: Span = tracer.startSpan(`chat ${effectiveModel}`);
     const ctx = trace.setSpan(context.active(), span);
     const sessionId = config?.sessionExtractor?.() ?? config?.sessionId;
 
