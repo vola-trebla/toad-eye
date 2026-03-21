@@ -26,6 +26,9 @@ export const GEN_AI_METRICS = {
   BUDGET_EXCEEDED: "gen_ai.toad_eye.budget.exceeded",
   BUDGET_BLOCKED: "gen_ai.toad_eye.budget.blocked",
   BUDGET_DOWNGRADED: "gen_ai.toad_eye.budget.downgraded",
+  // Response quality proxy metrics
+  RESPONSE_EMPTY: "gen_ai.toad_eye.response.empty",
+  RESPONSE_LATENCY_PER_TOKEN: "gen_ai.toad_eye.response.latency_per_token",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

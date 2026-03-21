@@ -34,6 +34,8 @@ vi.mock("../core/metrics.js", () => ({
   recordBudgetExceeded: vi.fn(),
   recordBudgetBlocked: vi.fn(),
   recordBudgetDowngraded: vi.fn(),
+  recordResponseEmpty: vi.fn(),
+  recordResponseLatencyPerToken: vi.fn(),
 }));
 
 // Mock tracer config

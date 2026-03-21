@@ -11,6 +11,8 @@ import {
   recordBudgetExceeded,
   recordBudgetBlocked,
   recordBudgetDowngraded,
+  recordResponseEmpty,
+  recordResponseLatencyPerToken,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
 import { GEN_AI_ATTRS as ATTRS } from "../types/index.js";
@@ -197,6 +199,23 @@ export async function traceLLMCall(
           effectiveInput.model,
           attrs,
         );
+
+        // Proxy quality metrics — no extra dependencies, response text analysis only
+        if (output.completion.trim() === "") {
+          recordResponseEmpty(
+            effectiveInput.provider,
+            effectiveInput.model,
+            attrs,
+          );
+        }
+        if (output.outputTokens > 0) {
+          recordResponseLatencyPerToken(
+            duration / output.outputTokens,
+            effectiveInput.provider,
+            effectiveInput.model,
+            attrs,
+          );
+        }
 
         // Budget recording AFTER the call
         if (budget) {

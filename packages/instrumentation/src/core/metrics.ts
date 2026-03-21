@@ -20,6 +20,8 @@ let timeToFirstToken: Histogram;
 let budgetExceeded: Counter;
 let budgetBlocked: Counter;
 let budgetDowngraded: Counter;
+let responseEmpty: Counter;
+let responseLatencyPerToken: Histogram;
 
 let initialized = false;
 
@@ -90,6 +92,20 @@ export function initMetrics() {
   budgetDowngraded = meter.createCounter(GEN_AI_METRICS.BUDGET_DOWNGRADED, {
     description: "Number of LLM calls downgraded due to budget limits",
   });
+
+  responseEmpty = meter.createCounter(GEN_AI_METRICS.RESPONSE_EMPTY, {
+    description:
+      "Number of LLM responses with empty or whitespace-only completion",
+  });
+
+  responseLatencyPerToken = meter.createHistogram(
+    GEN_AI_METRICS.RESPONSE_LATENCY_PER_TOKEN,
+    {
+      description:
+        "Generation latency normalized per output token (ms/token). Higher values indicate slower generation speed.",
+      unit: "ms",
+    },
+  );
 
   initialized = true;
 }
@@ -204,4 +220,24 @@ export function recordBudgetBlocked(budgetType: string) {
 
 export function recordBudgetDowngraded(budgetType: string) {
   budgetDowngraded.add(1, { budget_type: budgetType });
+}
+
+export function recordResponseEmpty(
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  responseEmpty.add(1, baseLabels(provider, model, attrs));
+}
+
+export function recordResponseLatencyPerToken(
+  msPerToken: number,
+  provider: string,
+  model: string,
+  attrs?: Record<string, string>,
+) {
+  responseLatencyPerToken.record(
+    msPerToken,
+    baseLabels(provider, model, attrs),
+  );
 }
