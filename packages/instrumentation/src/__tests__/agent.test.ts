@@ -74,7 +74,19 @@ describe("traceAgentStep", () => {
     expect(lastSpanName).toBe("gen_ai.agent.step.act");
   });
 
-  it("creates a span with step type and number", () => {
+  it("creates a span with step type and number (toad_eye namespace)", () => {
+    traceAgentStep({ type: "think", stepNumber: 1 });
+
+    expect(mockSpan.setAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "gen_ai.toad_eye.agent.step.type": "think",
+        "gen_ai.toad_eye.agent.step.number": 1,
+      }),
+    );
+    expect(mockSpan.end).toHaveBeenCalled();
+  });
+
+  it("emits deprecated gen_ai.agent.step.* aliases alongside new toad_eye attrs", () => {
     traceAgentStep({ type: "think", stepNumber: 1 });
 
     expect(mockSpan.setAttributes).toHaveBeenCalledWith(
@@ -83,7 +95,6 @@ describe("traceAgentStep", () => {
         "gen_ai.agent.step.number": 1,
       }),
     );
-    expect(mockSpan.end).toHaveBeenCalled();
   });
 
   it("emits both gen_ai.tool.name and gen_ai.agent.tool.name for act steps", () => {
@@ -134,11 +145,12 @@ describe("traceAgentStep", () => {
     expect(mockRecordAgentToolUsage).not.toHaveBeenCalled();
   });
 
-  it("includes content when recordContent is enabled", () => {
+  it("includes content in toad_eye namespace when recordContent is enabled", () => {
     traceAgentStep({ type: "think", stepNumber: 1, content: "reasoning here" });
 
     expect(mockSpan.setAttributes).toHaveBeenCalledWith(
       expect.objectContaining({
+        "gen_ai.toad_eye.agent.step.content": "reasoning here",
         "gen_ai.agent.step.content": "reasoning here",
       }),
     );
@@ -156,6 +168,7 @@ describe("traceAgentStep", () => {
       string,
       unknown
     >;
+    expect(attrs).not.toHaveProperty("gen_ai.toad_eye.agent.step.content");
     expect(attrs).not.toHaveProperty("gen_ai.agent.step.content");
   });
 });
@@ -281,7 +294,7 @@ describe("handoff steps (#133)", () => {
     mockConfig = {};
   });
 
-  it("records handoff attributes on step span", () => {
+  it("records handoff attributes in toad_eye namespace + deprecated aliases", () => {
     traceAgentStep({
       type: "handoff",
       stepNumber: 3,
@@ -291,6 +304,11 @@ describe("handoff steps (#133)", () => {
 
     expect(mockSpan.setAttributes).toHaveBeenCalledWith(
       expect.objectContaining({
+        // New toad_eye namespace (canonical)
+        "gen_ai.toad_eye.agent.step.type": "handoff",
+        "gen_ai.toad_eye.agent.handoff.to": "specialist",
+        "gen_ai.toad_eye.agent.handoff.reason": "needs domain expertise",
+        // Deprecated aliases (backward compat)
         "gen_ai.agent.step.type": "handoff",
         "gen_ai.agent.handoff.to": "specialist",
         "gen_ai.agent.handoff.reason": "needs domain expertise",
@@ -320,6 +338,10 @@ describe("loop detection (#133)", () => {
     });
 
     expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.toad_eye.agent.loop_count",
+      2,
+    );
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
       "gen_ai.agent.loop_count",
       2,
     );
@@ -333,6 +355,10 @@ describe("loop detection (#133)", () => {
       step({ type: "answer", stepNumber: 4 });
     });
 
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.toad_eye.agent.loop_count",
+      0,
+    );
     expect(mockSpan.setAttribute).toHaveBeenCalledWith(
       "gen_ai.agent.loop_count",
       0,
