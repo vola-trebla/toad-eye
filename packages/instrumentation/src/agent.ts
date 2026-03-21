@@ -1,5 +1,9 @@
 import { trace, SpanStatusCode } from "@opentelemetry/api";
-import type { AgentStepInput, AgentQueryOptions } from "./types/index.js";
+import type {
+  AgentStepInput,
+  AgentQueryOptions,
+  AgentQueryInput,
+} from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
 import { recordAgentSteps, recordAgentToolUsage } from "./core/metrics.js";
 import { getConfig } from "./core/tracer.js";
@@ -26,7 +30,12 @@ function traceAgentStep(input: AgentStepInput) {
     [GEN_AI_ATTRS.AGENT_STEP_TYPE]: input.type,
     [GEN_AI_ATTRS.AGENT_STEP_NUMBER]: input.stepNumber,
     ...(input.toolName !== undefined && {
+      // Emit both old (deprecated) and new spec-compliant attribute
       [GEN_AI_ATTRS.AGENT_TOOL_NAME]: input.toolName,
+      [GEN_AI_ATTRS.TOOL_NAME]: input.toolName,
+    }),
+    ...(input.toolType !== undefined && {
+      [GEN_AI_ATTRS.TOOL_TYPE]: input.toolType,
     }),
     ...(recordContent &&
       input.content !== undefined && {
@@ -52,6 +61,9 @@ function traceAgentStep(input: AgentStepInput) {
 /**
  * Wrap an entire agent query in a parent span with ReAct tracing.
  *
+ * Accepts either a string query (backward-compatible) or an object with
+ * agent metadata per OTel GenAI spec (agentName, agentId).
+ *
  * Supports multi-agent via nesting — child traceAgentQuery calls
  * automatically become child spans in Jaeger.
  *
@@ -60,13 +72,22 @@ function traceAgentStep(input: AgentStepInput) {
  *
  * @example
  * ```ts
+ * // Simple form (backward-compatible)
+ * await traceAgentQuery('Is anything dangerous?', async (step) => { ... });
+ *
+ * // Object form with agent metadata (OTel GenAI spec)
+ * await traceAgentQuery(
+ *   { query: 'Is anything dangerous?', agentName: 'space-monitor', agentId: 'agent-001' },
+ *   async (step) => { ... }
+ * );
+ *
  * // Multi-agent: orchestrator delegates to specialist
- * await traceAgentQuery('orchestrator', async (step) => {
+ * await traceAgentQuery({ query: 'Analyze data', agentName: 'orchestrator' }, async (step) => {
  *   step({ type: 'think', stepNumber: 1, content: 'Need domain expert' });
  *   step({ type: 'handoff', stepNumber: 2, toAgent: 'specialist', handoffReason: 'domain expertise' });
  *
- *   const result = await traceAgentQuery('specialist', async (step) => {
- *     step({ type: 'act', stepNumber: 1, toolName: 'analyze' });
+ *   const result = await traceAgentQuery({ query: 'Analyze', agentName: 'specialist' }, async (step) => {
+ *     step({ type: 'act', stepNumber: 1, toolName: 'analyze', toolType: 'function' });
  *     step({ type: 'answer', stepNumber: 2, content: 'analysis complete' });
  *     return { answer: 'done' };
  *   });
@@ -74,17 +95,33 @@ function traceAgentStep(input: AgentStepInput) {
  * ```
  */
 export async function traceAgentQuery<T>(
-  query: string,
+  queryOrInput: string | AgentQueryInput,
   fn: (step: (input: AgentStepInput) => void) => Promise<T>,
   options?: AgentQueryOptions,
 ): Promise<T> {
-  return tracer.startActiveSpan(`invoke_agent`, async (span) => {
+  const resolved =
+    typeof queryOrInput === "string"
+      ? { query: queryOrInput, agentName: undefined, agentId: undefined }
+      : queryOrInput;
+
+  const spanName = resolved.agentName
+    ? `invoke_agent ${resolved.agentName}`
+    : `invoke_agent`;
+
+  return tracer.startActiveSpan(spanName, async (span) => {
     const config = getConfig();
     const recordContent = config?.recordContent !== false;
     const maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;
 
+    // OTel GenAI agent attributes
+    if (resolved.agentName !== undefined) {
+      span.setAttribute(GEN_AI_ATTRS.AGENT_NAME, resolved.agentName);
+    }
+    if (resolved.agentId !== undefined) {
+      span.setAttribute(GEN_AI_ATTRS.AGENT_ID, resolved.agentId);
+    }
     if (recordContent) {
-      span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, query);
+      span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, resolved.query);
     }
 
     let stepCount = 0;

@@ -86,14 +86,40 @@ describe("traceAgentStep", () => {
     expect(mockSpan.end).toHaveBeenCalled();
   });
 
-  it("includes toolName for act steps", () => {
+  it("emits both gen_ai.tool.name and gen_ai.agent.tool.name for act steps", () => {
     traceAgentStep({ type: "act", stepNumber: 2, toolName: "web-search" });
 
     expect(mockSpan.setAttributes).toHaveBeenCalledWith(
       expect.objectContaining({
+        "gen_ai.tool.name": "web-search",
         "gen_ai.agent.tool.name": "web-search",
       }),
     );
+  });
+
+  it("records gen_ai.tool.type when provided", () => {
+    traceAgentStep({
+      type: "act",
+      stepNumber: 2,
+      toolName: "search",
+      toolType: "function",
+    });
+
+    expect(mockSpan.setAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "gen_ai.tool.type": "function",
+      }),
+    );
+  });
+
+  it("omits gen_ai.tool.type when not provided", () => {
+    traceAgentStep({ type: "act", stepNumber: 2, toolName: "search" });
+
+    const attrs = mockSpan.setAttributes.mock.calls[0]![0] as Record<
+      string,
+      unknown
+    >;
+    expect(attrs).not.toHaveProperty("gen_ai.tool.type");
   });
 
   it("records tool usage metric for act steps", () => {
@@ -142,8 +168,47 @@ describe("traceAgentQuery", () => {
     lastActiveSpanName = "";
   });
 
-  it("uses invoke_agent span name", async () => {
+  it("uses invoke_agent span name for string form", async () => {
     await traceAgentQuery("test query", async () => "result");
+
+    expect(lastActiveSpanName).toBe("invoke_agent");
+  });
+
+  it("uses invoke_agent {agentName} span name when agentName provided", async () => {
+    await traceAgentQuery(
+      { query: "test", agentName: "space-monitor" },
+      async () => "result",
+    );
+
+    expect(lastActiveSpanName).toBe("invoke_agent space-monitor");
+  });
+
+  it("records gen_ai.agent.name attribute when agentName provided", async () => {
+    await traceAgentQuery(
+      { query: "test", agentName: "space-monitor" },
+      async () => "result",
+    );
+
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.agent.name",
+      "space-monitor",
+    );
+  });
+
+  it("records gen_ai.agent.id attribute when agentId provided", async () => {
+    await traceAgentQuery(
+      { query: "test", agentName: "space-monitor", agentId: "agent-001" },
+      async () => "result",
+    );
+
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.agent.id",
+      "agent-001",
+    );
+  });
+
+  it("accepts object form without agentName (defaults to invoke_agent span name)", async () => {
+    await traceAgentQuery({ query: "test" }, async () => "result");
 
     expect(lastActiveSpanName).toBe("invoke_agent");
   });

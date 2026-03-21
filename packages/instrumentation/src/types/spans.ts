@@ -12,6 +12,13 @@ export interface AgentStepInput {
   readonly stepNumber: number;
   readonly content?: string | undefined;
   readonly toolName?: string | undefined;
+  /** Tool type per OTel GenAI spec: function, extension, retrieval, builtin */
+  readonly toolType?:
+    | "function"
+    | "extension"
+    | "retrieval"
+    | "builtin"
+    | undefined;
   /** Target agent name for handoff steps */
   readonly toAgent?: string | undefined;
   /** Reason for handoff */
@@ -22,6 +29,15 @@ export interface AgentStepInput {
 export interface AgentQueryOptions {
   /** Max steps before recording a warning. Default: 25 */
   readonly maxSteps?: number | undefined;
+}
+
+/** Input for traceAgentQuery — object form with agent metadata */
+export interface AgentQueryInput {
+  readonly query: string;
+  /** Agent name — maps to gen_ai.agent.name and span name invoke_agent {agentName} */
+  readonly agentName?: string | undefined;
+  /** Agent identifier — maps to gen_ai.agent.id */
+  readonly agentId?: string | undefined;
 }
 
 /** Guard execution mode */
