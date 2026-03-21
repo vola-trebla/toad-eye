@@ -57,9 +57,12 @@ function requireInfra(message = `Run \`npx toad-eye init\` first.`): string {
 
 function init() {
   const dest = join(process.cwd(), INFRA_DIR);
+  const force = process.argv.includes("--force");
 
-  if (existsSync(dest)) {
-    console.log(`\u2705 ${INFRA_DIR}/ already exists, skipping.`);
+  if (existsSync(dest) && !force) {
+    console.log(
+      `✅ ${INFRA_DIR}/ already exists, skipping. Use --force to overwrite.`,
+    );
     return;
   }
 
@@ -71,10 +74,12 @@ function init() {
     process.exit(1);
   }
 
+  const existed = existsSync(dest);
   mkdirSync(dest, { recursive: true });
   cpSync(templatesDir, dest, { recursive: true });
 
-  console.log(`\u2705 Created ${INFRA_DIR}/ with observability stack config.`);
+  const action = force && existed ? "Updated" : "Created";
+  console.log(`✅ ${action} ${INFRA_DIR}/ with observability stack config.`);
   console.log();
   console.log("Next steps:");
   console.log("  npx toad-eye up      Start the stack");
@@ -207,6 +212,19 @@ async function simulateLLMCall(
 async function demo() {
   requireInfra();
 
+  // Warn early if OTel Collector is unreachable — data would be silently lost otherwise
+  try {
+    await fetch("http://localhost:4318/v1/traces", {
+      method: "POST",
+      body: "[]",
+      signal: AbortSignal.timeout(2000),
+    });
+  } catch {
+    console.warn(
+      "⚠️  OTel Collector not reachable at localhost:4318 — data will not be recorded.\n   Run 'npx toad-eye up' first, then retry.\n",
+    );
+  }
+
   initObservability({
     serviceName: "toad-eye-demo",
     endpoint: "http://localhost:4318",
@@ -290,17 +308,19 @@ async function exportTraceCommand() {
 }
 
 function help() {
+  const cmd = (name: string) => name.padEnd(15);
   console.log(`
-\u{1f438} toad-eye CLI — observability stack for LLM services
+🐸 toad-eye CLI — observability stack for LLM services
 
 Commands:
-  init     Copy observability configs into your project
-  up       Start the stack (OTel Collector + Prometheus + Jaeger + Grafana)
-  down     Stop the stack
-  status   Show running services and URLs
-  demo           Send mock LLM traffic to see data in Grafana
-  export-trace   Export a Jaeger trace to toad-eval YAML
-  help           Show this message
+  ${cmd("init")}Copy observability configs into your project
+  ${cmd("init --force")}Overwrite existing configs with latest templates
+  ${cmd("up")}Start the stack (OTel Collector + Prometheus + Jaeger + Grafana)
+  ${cmd("down")}Stop the stack
+  ${cmd("status")}Show running services and URLs
+  ${cmd("demo")}Send mock LLM traffic to see data in Grafana
+  ${cmd("export-trace")}Export a Jaeger trace to toad-eval YAML
+  ${cmd("help")}Show this message
 `);
 }
 
