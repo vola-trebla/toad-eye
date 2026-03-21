@@ -10,9 +10,9 @@
 ![CI](https://github.com/vola-trebla/toad-eye/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-ISC-blue)
 
-OpenTelemetry-based observability toolkit for LLM systems.
+**LLM observability in 3 commands. Auto-instrument, trace, alert, save money.**
 
-Auto-instrument any LLM SDK (including streaming), get traces, metrics, cost tracking, budget guards, agent observability, guardrail monitoring, and 6 Grafana dashboards out of the box. Self-hosted or cloud mode.
+You don't know what your LLMs cost, how slow they are, or why they fail. toad-eye gives you complete visibility with zero manual instrumentation.
 
 ![toad-eye demo](demo/toad-eye-demo-gifski.gif)
 
@@ -25,26 +25,6 @@ npx toad-eye up         # start Grafana + Prometheus + Jaeger
 npx toad-eye demo       # send mock LLM traffic, see data immediately
 ```
 
-Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
-
-### Cloud mode
-
-No Docker needed. Send telemetry to toad-eye cloud with one line:
-
-```typescript
-initObservability({
-  serviceName: "my-app",
-  apiKey: "toad_xxxxxxxx",
-  instrument: ["openai"],
-});
-```
-
-Self-hosted mode remains the default. Cloud mode activates automatically when `apiKey` is set.
-
-## Auto-instrumentation
-
-Zero-code instrumentation for popular LLM SDKs. No wrappers needed.
-
 ```typescript
 import { initObservability } from "toad-eye";
 
@@ -53,10 +33,36 @@ initObservability({
   instrument: ["openai", "anthropic"],
 });
 
-// That's it. Every SDK call is auto-traced.
-const result = await openai.chat.completions.create({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: "Hello" }],
+// That's it. Every SDK call is auto-traced — including streaming.
+```
+
+Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
+
+## What you get
+
+| Feature                  | Description                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| **Auto-instrumentation** | Patches OpenAI, Anthropic, Gemini SDKs — regular + streaming calls                |
+| **7 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health        |
+| **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                       |
+| **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade            |
+| **Agent tracing**        | ReAct agent steps (think/act/observe/answer) as nested spans                      |
+| **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic |
+| **Semantic drift**       | Detect silent quality degradation via embedding comparison                        |
+| **Privacy controls**     | Disable content recording, SHA-256 hashing, regex redaction                       |
+| **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook  |
+| **FinOps attribution**   | Break down costs by team, user, feature, environment                              |
+| **TTFT metric**          | Time To First Token for streaming — separate from total duration                  |
+| **Trace export**         | Convert production Jaeger traces into regression test cases                       |
+
+## Auto-instrumentation
+
+Zero-code instrumentation for popular LLM SDKs. No wrappers needed.
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  instrument: ["openai", "anthropic"],
 });
 ```
 
@@ -64,9 +70,8 @@ const result = await openai.chat.completions.create({
 
 Both regular and **streaming** calls are fully instrumented — spans, metrics, and cost tracking work transparently for `stream: true`.
 
-### Manual instrumentation
-
-For custom providers or fine-grained control:
+<details>
+<summary>Manual instrumentation (custom providers)</summary>
 
 ```typescript
 import { initObservability, traceLLMCall } from "toad-eye";
@@ -78,6 +83,30 @@ const result = await traceLLMCall(
   () => callYourLLM(),
 );
 ```
+
+</details>
+
+## Budget guards
+
+Prevent cost overruns at runtime. Three modes: warn, block, or auto-downgrade to a cheaper model.
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  budgets: {
+    daily: 50, // $50/day max
+    perUser: 5, // $5/day per user
+    perModel: { "gpt-4o": 30 }, // $30/day on GPT-4o
+  },
+  onBudgetExceeded: "block", // throws ToadBudgetExceededError
+});
+```
+
+| Mode        | Behavior                                            |
+| ----------- | --------------------------------------------------- |
+| `warn`      | Log warning, continue normally                      |
+| `block`     | Throw `ToadBudgetExceededError` before LLM call     |
+| `downgrade` | Call `downgradeCallback` to switch to cheaper model |
 
 ## Agent observability
 
@@ -111,152 +140,16 @@ const result = await traceAgentQuery(
 );
 ```
 
-Metrics: steps per query (histogram), tool usage frequency (counter per tool name).
-
-## Shadow guardrails
-
-Validate LLM responses without blocking them. Record what _would_ have been blocked, then decide when to enforce.
-
-```typescript
-import { recordGuardResult } from "toad-eye";
-
-// toad-guard validates, toad-eye records
-const result = guard.validate(response);
-recordGuardResult({
-  mode: "shadow",
-  passed: false,
-  ruleName: "pii_filter",
-  failureReason: "SSN detected in response",
-});
-```
-
-Metrics: `guard.evaluations` (total checks), `guard.would_block` (would-have-blocked count) per rule name.
-
-## Semantic drift monitoring
-
-Detect silent LLM quality degradation by comparing current responses to a saved baseline via embeddings.
-
-```typescript
-import { createDriftMonitor, saveBaseline } from "toad-eye";
-
-const monitor = createDriftMonitor({
-  embedding: { provider: "openai", apiKey: process.env.OPENAI_API_KEY! },
-  baselinePath: "./baseline.json",
-  sampleRate: 10, // check every 10th response
-});
-
-// In your LLM call handler:
-const drift = await monitor.check(response, "openai", "gpt-4o");
-// drift = 0 → identical to baseline
-// drift > 0.3 → significant deviation
-```
-
-## Trace-to-dataset export
-
-Convert production Jaeger traces into test cases. Production failure becomes a regression test.
-
-```bash
-npx toad-eye export-trace <trace_id> --output ./evals/
-```
-
-Generates YAML in toad-eval format with auto-generated assertions (max length, refusal detection, JSON validation).
-
-## Features
-
-### Built-in cost tracking
-
-Automatic cost calculation for major models (GPT-4o, Claude, Gemini) based on token usage. Custom pricing for enterprise contracts:
-
-```typescript
-import { setCustomPricing } from "toad-eye";
-
-setCustomPricing({
-  "my-fine-tuned-model": { inputPer1M: 5, outputPer1M: 15 },
-});
-```
-
-### Privacy controls
-
-```typescript
-initObservability({
-  serviceName: "my-app",
-  recordContent: false, // disable prompt/completion recording
-  hashContent: true, // SHA-256 hash instead of plain text
-  redactPatterns: [/\b\S+@\S+\.\S+\b/g], // regex redaction
-});
-```
-
-### Session tracking
-
-Group traces by conversation session:
-
-```typescript
-initObservability({
-  serviceName: "my-app",
-  sessionId: "static-session-id",
-  // or dynamic:
-  sessionExtractor: () => getCurrentSessionId(),
-});
-```
-
-### Alerting
-
-Cost spikes, latency anomalies, error rate monitoring via YAML config:
-
-```yaml
-alerts:
-  - name: cost_spike
-    metric: gen_ai.client.request.cost
-    condition: sum_1h > 10
-    channels: [slack]
-
-  - name: latency_anomaly
-    metric: gen_ai.client.operation.duration
-    condition: p95_pct_5m_7d > 50
-    channels: [slack]
-
-  - name: error_rate
-    metric: gen_ai.client.errors
-    condition: ratio_15m > 0.05
-    channels: [slack]
-```
-
-Delivery channels: Telegram, Slack webhook, generic HTTP webhook, email (SMTP).
-
-### Budget guards
-
-Prevent cost overruns at runtime. Three modes: warn, block, or auto-downgrade to a cheaper model.
-
-```typescript
-initObservability({
-  serviceName: "my-app",
-  budgets: {
-    daily: 50, // $50/day max
-    perUser: 5, // $5/day per user
-    perModel: { "gpt-4o": 30 }, // $30/day on GPT-4o
-  },
-  onBudgetExceeded: "block", // throws ToadBudgetExceededError
-});
-```
-
-| Mode        | Behavior                                            |
-| ----------- | --------------------------------------------------- |
-| `warn`      | Log warning, continue normally                      |
-| `block`     | Throw `ToadBudgetExceededError` before LLM call     |
-| `downgrade` | Call `downgradeCallback` to switch to cheaper model |
-
 ## FinOps attribution
 
 Track costs by team, user, feature, or any business dimension:
 
 ```typescript
-// Global attributes — applied to all spans/metrics
 initObservability({
   serviceName: "my-app",
   attributes: { team: "checkout", environment: "production" },
 });
 
-// Per-request attributes — override or extend global
 await traceLLMCall(
   {
     provider: "openai",
@@ -268,20 +161,126 @@ await traceLLMCall(
 );
 ```
 
+<details>
+<summary>More features</summary>
+
+### Shadow guardrails
+
+Record what _would_ have been blocked without blocking. Tune thresholds on live traffic.
+
+```typescript
+import { recordGuardResult } from "toad-eye";
+
+recordGuardResult({
+  mode: "shadow",
+  passed: false,
+  ruleName: "pii_filter",
+  failureReason: "SSN detected in response",
+});
+```
+
+### Semantic drift monitoring
+
+Detect silent LLM quality degradation by comparing responses to a saved baseline via embeddings.
+
+```typescript
+import { createDriftMonitor } from "toad-eye";
+
+const monitor = createDriftMonitor({
+  embedding: { provider: "openai", apiKey: process.env.OPENAI_API_KEY! },
+  baselinePath: "./baseline.json",
+  sampleRate: 10,
+});
+
+monitor.checkInBackground(response, "openai", "gpt-4o");
+```
+
+### Privacy controls
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  recordContent: false, // disable prompt/completion recording
+  hashContent: true, // SHA-256 hash instead of plain text
+  salt: "my-secret", // prevent rainbow table attacks
+  redactPatterns: [/\b\S+@\S+\.\S+\b/g], // regex redaction
+});
+```
+
+### Session tracking
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  sessionId: "static-session-id",
+  sessionExtractor: () => getCurrentSessionId(), // or dynamic
+});
+```
+
+### Built-in cost tracking
+
+```typescript
+import { setCustomPricing } from "toad-eye";
+
+setCustomPricing({
+  "my-fine-tuned-model": { inputPer1M: 5, outputPer1M: 15 },
+});
+```
+
+### Alerting
+
+```yaml
+alerts:
+  - name: cost_spike
+    metric: gen_ai.client.request.cost
+    condition: sum_1h > 10
+    channels: [slack]
+
+  - name: error_rate
+    metric: gen_ai.client.errors
+    condition: ratio_15m > 0.05
+    channels: [telegram]
+```
+
+Channels: Telegram, Slack webhook, HTTP webhook, email (SMTP).
+
+### Trace-to-dataset export
+
+Convert production Jaeger traces into test cases:
+
+```bash
+npx toad-eye export-trace <trace_id> --output ./evals/
+```
+
+### Cloud mode (coming soon)
+
+No Docker needed. Send telemetry to toad-eye cloud with one line:
+
+```typescript
+initObservability({
+  serviceName: "my-app",
+  apiKey: "toad_xxxxxxxx",
+  instrument: ["openai"],
+});
+```
+
+Self-hosted mode remains the default. Cloud mode activates automatically when `apiKey` is set.
+
+</details>
+
 ## Grafana dashboards
 
-6 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+7 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
-| Dashboard              | What it shows                                             |
-| ---------------------- | --------------------------------------------------------- |
-| **Overview**           | Request rate, error rate, latency p50/p95, cost, totals   |
-| **Cost Breakdown**     | Spend by provider/model, daily trend, projected monthly   |
-| **Latency Analysis**   | p50/p95/p99 by model, distribution histogram              |
-| **Error Drill-down**   | Error rate by provider/model, error vs success            |
-| **Model Comparison**   | Latency vs cost vs error rate vs throughput per model     |
-| **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table |
-
-All dashboards have template variables for filtering (`$provider`, `$model`, `$team`, `$feature`).
+| Dashboard              | What it shows                                                    |
+| ---------------------- | ---------------------------------------------------------------- |
+| **Overview**           | Request rate, error rate, latency p50/p95, cost, totals          |
+| **Cost Breakdown**     | Spend by provider/model, daily trend, projected monthly          |
+| **Latency Analysis**   | p50/p95/p99 by model, distribution histogram, TTFT               |
+| **Error Drill-down**   | Error rate by provider/model, error vs success                   |
+| **Model Comparison**   | Latency vs cost vs error rate vs throughput per model            |
+| **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table        |
+| **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
 
 ## CLI
 
@@ -300,25 +299,27 @@ All dashboards have template variables for filtering (`$provider`, `$model`, `$t
 
 ## What it tracks
 
+<details>
+<summary>Metrics & span attributes</summary>
+
 ### Metrics (OTel GenAI semconv)
 
-| Metric                              | Type      | Description                         |
-| ----------------------------------- | --------- | ----------------------------------- |
-| `gen_ai.client.operation.duration`  | Histogram | Request latency (ms)                |
-| `gen_ai.client.request.cost`        | Histogram | Cost per request (USD)              |
-| `gen_ai.client.token.usage`         | Counter   | Total tokens consumed               |
-| `gen_ai.client.requests`            | Counter   | Total requests                      |
-| `gen_ai.client.errors`              | Counter   | Total failed requests               |
-| `gen_ai.agent.steps_per_query`      | Histogram | Agent steps per query               |
-| `gen_ai.agent.tool_usage`           | Counter   | Agent tool invocations by tool name |
-| `gen_ai.toad_eye.guard.evaluations` | Counter   | Guard evaluations per rule          |
-| `gen_ai.toad_eye.guard.would_block` | Counter   | Would-have-blocked per rule         |
-| `gen_ai.toad_eye.semantic_drift`    | Histogram | Semantic drift from baseline (0..1) |
-| `gen_ai.toad_eye.budget.exceeded`   | Counter   | Budget limit exceeded events        |
-| `gen_ai.toad_eye.budget.blocked`    | Counter   | LLM calls blocked by budget         |
-| `gen_ai.toad_eye.budget.downgraded` | Counter   | LLM calls downgraded by budget      |
-
-All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
+| Metric                              | Type      | Description                 |
+| ----------------------------------- | --------- | --------------------------- |
+| `gen_ai.client.operation.duration`  | Histogram | Request latency (ms)        |
+| `gen_ai.client.time_to_first_token` | Histogram | TTFT for streaming (ms)     |
+| `gen_ai.client.request.cost`        | Histogram | Cost per request (USD)      |
+| `gen_ai.client.token.usage`         | Counter   | Total tokens consumed       |
+| `gen_ai.client.requests`            | Counter   | Total requests              |
+| `gen_ai.client.errors`              | Counter   | Total failed requests       |
+| `gen_ai.agent.steps_per_query`      | Histogram | Agent steps per query       |
+| `gen_ai.agent.tool_usage`           | Counter   | Agent tool invocations      |
+| `gen_ai.toad_eye.guard.evaluations` | Counter   | Guard evaluations per rule  |
+| `gen_ai.toad_eye.guard.would_block` | Counter   | Would-have-blocked per rule |
+| `gen_ai.toad_eye.semantic_drift`    | Histogram | Drift from baseline (0..1)  |
+| `gen_ai.toad_eye.budget.exceeded`   | Counter   | Budget exceeded events      |
+| `gen_ai.toad_eye.budget.blocked`    | Counter   | LLM calls blocked by budget |
+| `gen_ai.toad_eye.budget.downgraded` | Counter   | LLM calls downgraded        |
 
 ### Span attributes
 
@@ -335,6 +336,8 @@ All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 | `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce           |
 | `session.id`                 | Session identifier (if configured)   |
 
+</details>
+
 ## Services
 
 | Service        | URL                                                     |
@@ -349,4 +352,4 @@ All metrics labeled with `gen_ai.provider.name` and `gen_ai.request.model`.
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (154 tests)
+- Vitest (165 tests)
