@@ -146,20 +146,30 @@ initObservability({
 
 ## Agent observability
 
-Structured tracing for ReAct agents with multi-agent support, handoffs, and loop detection.
+Structured tracing for ReAct agents with multi-agent support, handoffs, and loop detection. Span names follow [OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/).
 
 ```typescript
 import { traceAgentQuery } from "toad-eye";
 
 const result = await traceAgentQuery(
-  "What's the weather like?",
+  {
+    query: "What's the weather like?",
+    agentName: "weather-bot", // → gen_ai.agent.name (OTel semconv)
+  },
   async (step) => {
     step({ type: "think", stepNumber: 1, content: "Need weather data" });
     const data = await getWeather();
-    step({ type: "answer", stepNumber: 2, content: data.summary });
+    step({
+      type: "act",
+      stepNumber: 2,
+      toolName: "get_weather",
+      toolType: "function",
+    });
+    step({ type: "answer", stepNumber: 3, content: data.summary });
     return { answer: data.summary };
   },
 );
+// Produces spans: invoke_agent weather-bot → execute_tool get_weather
 ```
 
 <details>
@@ -401,22 +411,26 @@ import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel
 | `gen_ai.toad_eye.response.empty`             | Counter   | Empty/whitespace responses  |
 | `gen_ai.toad_eye.response.latency_per_token` | Histogram | Generation speed (ms/token) |
 
-### Span attributes
+### Span attributes (OTel GenAI semconv)
 
-| Attribute                    | Description                                  |
-| ---------------------------- | -------------------------------------------- |
-| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`              |
-| `gen_ai.request.model`       | Model identifier                             |
-| `gen_ai.usage.input_tokens`  | Tokens in the prompt                         |
-| `gen_ai.usage.output_tokens` | Tokens in the completion                     |
-| `gen_ai.request.temperature` | Temperature parameter                        |
-| `gen_ai.toad_eye.cost`       | Cost in USD                                  |
-| `gen_ai.agent.step.type`     | Agent step: think/act/observe/answer/handoff |
-| `gen_ai.agent.tool.name`     | Tool name for agent act steps                |
-| `gen_ai.agent.handoff.to`    | Target agent for handoff steps               |
-| `gen_ai.agent.loop_count`    | Agent loop iterations (observe→think)        |
-| `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce                   |
-| `session.id`                 | Session identifier (if configured)           |
+| Attribute                          | Description                                     |
+| ---------------------------------- | ----------------------------------------------- |
+| `gen_ai.operation.name`            | `chat`, `invoke_agent`, `execute_tool`          |
+| `gen_ai.provider.name`             | `anthropic`, `gemini`, `openai`                 |
+| `gen_ai.request.model`             | Model identifier                                |
+| `gen_ai.usage.input_tokens`        | Tokens in the prompt                            |
+| `gen_ai.usage.output_tokens`       | Tokens in the completion                        |
+| `gen_ai.request.temperature`       | Temperature parameter                           |
+| `gen_ai.agent.name`                | Agent name (for agent spans)                    |
+| `gen_ai.agent.id`                  | Agent identifier                                |
+| `gen_ai.tool.name`                 | Tool name for execute_tool spans                |
+| `gen_ai.tool.type`                 | `function`, `extension`, `retrieval`, `builtin` |
+| `gen_ai.toad_eye.cost`             | Cost in USD                                     |
+| `gen_ai.toad_eye.agent.step.type`  | ReAct step: think/act/observe/answer/handoff    |
+| `gen_ai.toad_eye.agent.handoff.to` | Target agent for handoff steps                  |
+| `gen_ai.toad_eye.agent.loop_count` | Agent loop iterations (observe→think)           |
+| `gen_ai.toad_eye.guard.mode`       | Guard mode: shadow/enforce                      |
+| `session.id`                       | Session identifier (if configured)              |
 
 </details>
 
@@ -429,9 +443,17 @@ import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel
 | Prometheus     | [localhost:9090](http://localhost:9090)                 |
 | OTel Collector | [localhost:4318](http://localhost:4318)                 |
 
+## OTel GenAI semconv
+
+toad-eye follows [OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for span names, attributes, and metrics. Traces are natively compatible with Jaeger, Arize Phoenix, SigNoz, Datadog, Langfuse, and other OTel backends.
+
+See [COMPATIBILITY.md](packages/instrumentation/COMPATIBILITY.md) for a full backend support matrix.
+
+Set `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` to disable deprecated attribute aliases and emit only the latest conventions.
+
 ## Tech stack
 
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (565+ tests)
+- Vitest (252+ tests)
