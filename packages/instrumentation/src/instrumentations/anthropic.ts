@@ -51,31 +51,22 @@ const messagesCreate: PatchTarget = {
     };
   },
   isStreaming: (body) => !!(body as { stream?: boolean })?.stream,
-  extractStreamResponse: (chunks) => {
-    // Anthropic stream events: message_start, content_block_delta, message_delta, message_stop
-    let completion = "";
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    for (const chunk of chunks) {
-      const event = chunk as {
-        type?: string;
-        message?: { usage?: { input_tokens?: number } };
-        delta?: { text?: string; usage?: { output_tokens?: number } };
-        usage?: { output_tokens?: number };
-      };
-      if (event.type === "content_block_delta" && event.delta?.text) {
-        completion += event.delta.text;
-      }
-      if (event.type === "message_start" && event.message?.usage) {
-        inputTokens = event.message.usage.input_tokens ?? 0;
-      }
-      if (event.type === "message_delta" && event.usage) {
-        outputTokens = event.usage.output_tokens ?? 0;
-      }
+  accumulateChunk: (acc, chunk) => {
+    const event = chunk as {
+      type?: string;
+      message?: { usage?: { input_tokens?: number } };
+      delta?: { text?: string };
+      usage?: { output_tokens?: number };
+    };
+    if (event.type === "content_block_delta" && event.delta?.text) {
+      acc.completion += event.delta.text;
     }
-
-    return { completion, inputTokens, outputTokens };
+    if (event.type === "message_start" && event.message?.usage) {
+      acc.inputTokens = event.message.usage.input_tokens ?? 0;
+    }
+    if (event.type === "message_delta" && event.usage) {
+      acc.outputTokens = event.usage.output_tokens ?? 0;
+    }
   },
 };
 
