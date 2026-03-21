@@ -8,6 +8,8 @@ import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics } from "./metrics.js";
 import { enableAll, disableAll } from "../instrumentations/registry.js";
 import { BudgetTracker } from "../budget/index.js";
+import { ToadEyeAISpanProcessor } from "../vercel.js";
+import type { LLMProvider } from "../types/index.js";
 
 // Side-effect imports: register provider instrumentations
 import "../instrumentations/openai.js";
@@ -83,10 +85,16 @@ export function initObservability(config: ToadEyeConfig) {
     exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
   });
 
+  // Add Vercel AI SDK SpanProcessor if 'ai' is in instrument list
+  const spanProcessors = config.instrument?.includes("ai")
+    ? [new ToadEyeAISpanProcessor()]
+    : [];
+
   sdk = new NodeSDK({
     resource,
     traceExporter,
     metricReader,
+    spanProcessors,
   });
 
   sdk.start();
@@ -111,7 +119,13 @@ export function initObservability(config: ToadEyeConfig) {
   }
 
   if (config.instrument?.length) {
-    enableAll(config.instrument);
+    // Filter out 'ai' — it uses SpanProcessor, not monkey-patching
+    const patchProviders = config.instrument.filter(
+      (i): i is LLMProvider => i !== "ai",
+    );
+    if (patchProviders.length > 0) {
+      enableAll(patchProviders);
+    }
   }
 }
 

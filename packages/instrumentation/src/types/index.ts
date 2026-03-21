@@ -11,7 +11,7 @@
 
 export const INSTRUMENTATION_NAME = "toad-eye";
 
-export type { LLMProvider } from "./providers.js";
+export type { LLMProvider, InstrumentTarget } from "./providers.js";
 export type { ToadEyeConfig } from "./config.js";
 export { GEN_AI_ATTRS, LLM_ATTRS } from "./attributes.js";
 export { GEN_AI_METRICS, LLM_METRICS } from "./metrics.js";

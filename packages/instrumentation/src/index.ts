@@ -59,6 +59,7 @@ export type {
   AgentStepInput,
   GuardMode,
   GuardResult,
+  InstrumentTarget,
 } from "./types/index.js";
 export {
   GEN_AI_METRICS,
@@ -66,3 +67,4 @@ export {
   LLM_METRICS,
   LLM_ATTRS,
 } from "./types/index.js";
+export { ToadEyeAISpanProcessor, withToadEye } from "./vercel.js";
