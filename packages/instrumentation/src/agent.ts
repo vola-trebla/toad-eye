@@ -13,7 +13,11 @@ const DEFAULT_MAX_STEPS = 25;
  * Supports: think, act, observe, answer, handoff.
  */
 function traceAgentStep(input: AgentStepInput) {
-  const span = tracer.startSpan(`agent.step.${input.type}`);
+  const spanName =
+    input.type === "act" && input.toolName !== undefined
+      ? `execute_tool ${input.toolName}`
+      : `gen_ai.agent.step.${input.type}`;
+  const span = tracer.startSpan(spanName);
 
   const config = getConfig();
   const recordContent = config?.recordContent !== false;
@@ -74,7 +78,7 @@ export async function traceAgentQuery<T>(
   fn: (step: (input: AgentStepInput) => void) => Promise<T>,
   options?: AgentQueryOptions,
 ): Promise<T> {
-  return tracer.startActiveSpan(`agent.query`, async (span) => {
+  return tracer.startActiveSpan(`invoke_agent`, async (span) => {
     const config = getConfig();
     const recordContent = config?.recordContent !== false;
     const maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;

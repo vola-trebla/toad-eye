@@ -235,7 +235,7 @@ export async function traceLLMCall(
   }
 
   return tracer.startActiveSpan(
-    `gen_ai.${effectiveInput.provider}.${effectiveInput.model}`,
+    `chat ${effectiveInput.model}`,
     async (span) => {
       const start = performance.now();
       setBaseAttributes(span, effectiveInput);
