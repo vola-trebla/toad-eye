@@ -1,6 +1,6 @@
 {
   "name": "toad-eye",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Auto-instrumentation, cost tracking, budget guards, and observability for LLM services",
   "type": "module",
   "main": "dist/index.js",

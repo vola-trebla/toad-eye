@@ -18,12 +18,16 @@ You don't know what your LLMs cost, how slow they are, or why they fail. toad-ey
 
 ## Quick start
 
+**Prerequisites:** [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine + Compose plugin)
+
 ```bash
 npm install toad-eye
 npx toad-eye init       # scaffold observability stack
 npx toad-eye up         # start Grafana + Prometheus + Jaeger
 npx toad-eye demo       # send mock LLM traffic, see data immediately
 ```
+
+> Dashboards will be empty until data arrives. Run `npx toad-eye demo` to send mock traffic and verify the stack works.
 
 ```typescript
 import { initObservability } from "toad-eye";
@@ -36,6 +40,8 @@ initObservability({
 // That's it. Every SDK call is auto-traced — including streaming.
 ```
 
+> ⚠️ By default, toad-eye records prompt and completion text in spans. Set `recordContent: false` for PII-sensitive workloads (healthcare, finance, legal).
+
 Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
 
 ## What you get
@@ -46,16 +52,24 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 | **8 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent Workflow |
 | **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                                |
 | **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                     |
-| **Multi-agent tracing**  | ReAct steps, handoffs, loop detection, maxSteps guard                                      |
-| **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic          |
-| **Quality proxy**        | Empty response rate, latency per token — zero-dependency quality metrics                   |
-| **Semantic drift**       | Detect silent quality degradation via embedding comparison                                 |
 | **Privacy controls**     | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                   |
-| **Tail sampling**        | Keep 100% errors + slow traces, sample healthy traffic via OTel Collector                  |
-| **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook           |
-| **FinOps attribution**   | Break down costs by team, user, feature, environment                                       |
-| **TTFT metric**          | Time To First Token for streaming — separate from total duration                           |
-| **Trace export**         | Convert production Jaeger traces into regression test cases                                |
+
+<details>
+<summary>Advanced features</summary>
+
+| Feature                 | Description                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| **Multi-agent tracing** | ReAct steps, handoffs, loop detection, maxSteps guard                             |
+| **Shadow guardrails**   | Record what _would_ be blocked without blocking — tune thresholds on live traffic |
+| **Quality proxy**       | Empty response rate, latency per token — zero-dependency quality metrics          |
+| **Semantic drift**      | Detect silent quality degradation via embedding comparison                        |
+| **Tail sampling**       | Keep 100% errors + slow traces, sample healthy traffic via OTel Collector         |
+| **Alerting**            | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook  |
+| **FinOps attribution**  | Break down costs by team, user, feature, environment                              |
+| **TTFT metric**         | Time To First Token for streaming — separate from total duration                  |
+| **Trace export**        | Convert production Jaeger traces into regression test cases                       |
+
+</details>
 
 ## Auto-instrumentation 🤖
 
@@ -77,16 +91,34 @@ Vercel AI SDK uses a SpanProcessor (not monkey-patching) — add `instrument: ['
 <details>
 <summary>Manual instrumentation (custom providers)</summary>
 
+Use `traceLLMCall` when you need to instrument a provider not in the auto-instrument list, or want explicit control over span data:
+
 ```typescript
+import OpenAI from "openai";
 import { initObservability, traceLLMCall } from "toad-eye";
 
 initObservability({ serviceName: "my-app" });
 
+const openai = new OpenAI();
+
 const result = await traceLLMCall(
-  { provider: "anthropic", model: "claude-sonnet-4-20250514", prompt: "hello" },
-  () => callYourLLM(),
+  { provider: "openai", model: "gpt-4o", prompt: "Hello" },
+  async () => {
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hello" }],
+    });
+    return {
+      completion: res.choices[0]?.message.content ?? "",
+      inputTokens: res.usage?.prompt_tokens ?? 0,
+      outputTokens: res.usage?.completion_tokens ?? 0,
+      // cost is auto-calculated from model + tokens if omitted
+    };
+  },
 );
 ```
+
+> Or skip this entirely — use `instrument: ['openai']` for zero-code instrumentation.
 
 </details>
 
@@ -114,11 +146,36 @@ initObservability({
 
 ## Agent observability
 
-Structured tracing for ReAct agents with multi-agent support, handoffs, and loop detection.
+Structured tracing for ReAct agents with multi-agent support, handoffs, and loop detection. Span names follow [OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/).
 
 ```typescript
 import { traceAgentQuery } from "toad-eye";
 
+const result = await traceAgentQuery(
+  {
+    query: "What's the weather like?",
+    agentName: "weather-bot", // → gen_ai.agent.name (OTel semconv)
+  },
+  async (step) => {
+    step({ type: "think", stepNumber: 1, content: "Need weather data" });
+    const data = await getWeather();
+    step({
+      type: "act",
+      stepNumber: 2,
+      toolName: "get_weather",
+      toolType: "function",
+    });
+    step({ type: "answer", stepNumber: 3, content: data.summary });
+    return { answer: data.summary };
+  },
+);
+// Produces spans: invoke_agent weather-bot → execute_tool get_weather
+```
+
+<details>
+<summary>Full ReAct pattern (think → act → observe → answer)</summary>
+
+```typescript
 const result = await traceAgentQuery(
   "Is anything dangerous near Earth?",
   async (step) => {
@@ -143,6 +200,8 @@ const result = await traceAgentQuery(
   },
 );
 ```
+
+</details>
 
 ## FinOps attribution
 
@@ -200,6 +259,14 @@ monitor.checkInBackground(response, "openai", "gpt-4o");
 ```
 
 ### Privacy controls
+
+| Goal                        | Config                           |
+| --------------------------- | -------------------------------- |
+| Don't store text at all     | `recordContent: false`           |
+| Remove common PII           | `redactDefaults: true`           |
+| Remove custom patterns      | `redactPatterns: [/regex/g]`     |
+| Store hashes only (no text) | `hashContent: true, salt: "..."` |
+| Audit what was masked       | `auditMasking: true`             |
 
 ```typescript
 initObservability({
@@ -289,11 +356,25 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
 | **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
 
+## Subpath imports
+
+Advanced modules are available as separate entry points to keep your bundle lean:
+
+```typescript
+import { initObservability, traceLLMCall } from "toad-eye"; // core
+import { AlertManager } from "toad-eye/alerts"; // alerting
+import { createDriftMonitor } from "toad-eye/drift"; // semantic drift
+import { exportTrace } from "toad-eye/export"; // trace → YAML
+import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel AI SDK
+```
+
+> Everything is also re-exported from the main `"toad-eye"` entry point for convenience.
+
 ## CLI
 
 | Command                          | Description                                     |
 | -------------------------------- | ----------------------------------------------- |
-| `npx toad-eye init`              | Scaffold Docker Compose + observability configs |
+| `npx toad-eye init [--force]`    | Scaffold Docker Compose + observability configs |
 | `npx toad-eye up`                | Start the stack                                 |
 | `npx toad-eye down`              | Stop the stack                                  |
 | `npx toad-eye status`            | Show running services and URLs                  |
@@ -330,22 +411,26 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | `gen_ai.toad_eye.response.empty`             | Counter   | Empty/whitespace responses  |
 | `gen_ai.toad_eye.response.latency_per_token` | Histogram | Generation speed (ms/token) |
 
-### Span attributes
+### Span attributes (OTel GenAI semconv)
 
-| Attribute                    | Description                                  |
-| ---------------------------- | -------------------------------------------- |
-| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`              |
-| `gen_ai.request.model`       | Model identifier                             |
-| `gen_ai.usage.input_tokens`  | Tokens in the prompt                         |
-| `gen_ai.usage.output_tokens` | Tokens in the completion                     |
-| `gen_ai.request.temperature` | Temperature parameter                        |
-| `gen_ai.toad_eye.cost`       | Cost in USD                                  |
-| `gen_ai.agent.step.type`     | Agent step: think/act/observe/answer/handoff |
-| `gen_ai.agent.tool.name`     | Tool name for agent act steps                |
-| `gen_ai.agent.handoff.to`    | Target agent for handoff steps               |
-| `gen_ai.agent.loop_count`    | Agent loop iterations (observe→think)        |
-| `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce                   |
-| `session.id`                 | Session identifier (if configured)           |
+| Attribute                          | Description                                     |
+| ---------------------------------- | ----------------------------------------------- |
+| `gen_ai.operation.name`            | `chat`, `invoke_agent`, `execute_tool`          |
+| `gen_ai.provider.name`             | `anthropic`, `gemini`, `openai`                 |
+| `gen_ai.request.model`             | Model identifier                                |
+| `gen_ai.usage.input_tokens`        | Tokens in the prompt                            |
+| `gen_ai.usage.output_tokens`       | Tokens in the completion                        |
+| `gen_ai.request.temperature`       | Temperature parameter                           |
+| `gen_ai.agent.name`                | Agent name (for agent spans)                    |
+| `gen_ai.agent.id`                  | Agent identifier                                |
+| `gen_ai.tool.name`                 | Tool name for execute_tool spans                |
+| `gen_ai.tool.type`                 | `function`, `extension`, `retrieval`, `builtin` |
+| `gen_ai.toad_eye.cost`             | Cost in USD                                     |
+| `gen_ai.toad_eye.agent.step.type`  | ReAct step: think/act/observe/answer/handoff    |
+| `gen_ai.toad_eye.agent.handoff.to` | Target agent for handoff steps                  |
+| `gen_ai.toad_eye.agent.loop_count` | Agent loop iterations (observe→think)           |
+| `gen_ai.toad_eye.guard.mode`       | Guard mode: shadow/enforce                      |
+| `session.id`                       | Session identifier (if configured)              |
 
 </details>
 
@@ -358,9 +443,17 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | Prometheus     | [localhost:9090](http://localhost:9090)                 |
 | OTel Collector | [localhost:4318](http://localhost:4318)                 |
 
+## OTel GenAI semconv
+
+toad-eye follows [OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for span names, attributes, and metrics. Traces are natively compatible with Jaeger, Arize Phoenix, SigNoz, Datadog, Langfuse, and other OTel backends.
+
+See [COMPATIBILITY.md](https://github.com/vola-trebla/toad-eye/blob/main/packages/instrumentation/COMPATIBILITY.md) for a full backend support matrix.
+
+Set `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` to disable deprecated attribute aliases and emit only the latest conventions.
+
 ## Tech stack
 
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (143+ tests)
+- Vitest (252+ tests)
