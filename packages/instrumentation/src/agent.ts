@@ -6,7 +6,7 @@ import type {
 } from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
 import { recordAgentSteps, recordAgentToolUsage } from "./core/metrics.js";
-import { getConfig } from "./core/tracer.js";
+import { getConfig, shouldEmitDeprecatedAttrs } from "./core/tracer.js";
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
@@ -25,19 +25,24 @@ function traceAgentStep(input: AgentStepInput) {
 
   const config = getConfig();
   const recordContent = config?.recordContent !== false;
+  const emitDeprecated = shouldEmitDeprecatedAttrs();
 
   span.setAttributes({
-    // Emit new toad_eye namespace (canonical)
+    // Canonical toad_eye namespace
     [GEN_AI_ATTRS.TOAD_AGENT_STEP_TYPE]: input.type,
     [GEN_AI_ATTRS.TOAD_AGENT_STEP_NUMBER]: input.stepNumber,
-    // Emit deprecated aliases for backward compat (removed in v3.0)
-    [GEN_AI_ATTRS.AGENT_STEP_TYPE]: input.type,
-    [GEN_AI_ATTRS.AGENT_STEP_NUMBER]: input.stepNumber,
+    // Deprecated aliases (skipped when OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental)
+    ...(emitDeprecated && {
+      [GEN_AI_ATTRS.AGENT_STEP_TYPE]: input.type,
+      [GEN_AI_ATTRS.AGENT_STEP_NUMBER]: input.stepNumber,
+    }),
     ...(input.toolName !== undefined && {
-      // OTel spec attribute (gen_ai.tool.name)
+      // OTel spec attribute
       [GEN_AI_ATTRS.TOOL_NAME]: input.toolName,
-      // Deprecated alias (gen_ai.agent.tool.name) — removed in v3.0
-      [GEN_AI_ATTRS.AGENT_TOOL_NAME]: input.toolName,
+      // Deprecated alias
+      ...(emitDeprecated && {
+        [GEN_AI_ATTRS.AGENT_TOOL_NAME]: input.toolName,
+      }),
     }),
     ...(input.toolType !== undefined && {
       [GEN_AI_ATTRS.TOOL_TYPE]: input.toolType,
@@ -45,19 +50,22 @@ function traceAgentStep(input: AgentStepInput) {
     ...(recordContent &&
       input.content !== undefined && {
         [GEN_AI_ATTRS.TOAD_AGENT_STEP_CONTENT]: input.content,
-        // Deprecated alias — removed in v3.0
-        [GEN_AI_ATTRS.AGENT_STEP_CONTENT]: input.content,
+        ...(emitDeprecated && {
+          [GEN_AI_ATTRS.AGENT_STEP_CONTENT]: input.content,
+        }),
       }),
-    // Handoff attributes — new toad_eye namespace
+    // Handoff attributes
     ...(input.toAgent !== undefined && {
       [GEN_AI_ATTRS.TOAD_AGENT_HANDOFF_TO]: input.toAgent,
-      // Deprecated alias — removed in v3.0
-      [GEN_AI_ATTRS.AGENT_HANDOFF_TO]: input.toAgent,
+      ...(emitDeprecated && {
+        [GEN_AI_ATTRS.AGENT_HANDOFF_TO]: input.toAgent,
+      }),
     }),
     ...(input.handoffReason !== undefined && {
       [GEN_AI_ATTRS.TOAD_AGENT_HANDOFF_REASON]: input.handoffReason,
-      // Deprecated alias — removed in v3.0
-      [GEN_AI_ATTRS.AGENT_HANDOFF_REASON]: input.handoffReason,
+      ...(emitDeprecated && {
+        [GEN_AI_ATTRS.AGENT_HANDOFF_REASON]: input.handoffReason,
+      }),
     }),
   });
 
@@ -122,6 +130,7 @@ export async function traceAgentQuery<T>(
   return tracer.startActiveSpan(spanName, async (span) => {
     const config = getConfig();
     const recordContent = config?.recordContent !== false;
+    const emitDeprecated = shouldEmitDeprecatedAttrs();
     const maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;
 
     // OTel GenAI agent attributes
@@ -133,8 +142,9 @@ export async function traceAgentQuery<T>(
     }
     if (recordContent) {
       span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_STEP_CONTENT, resolved.query);
-      // Deprecated alias — removed in v3.0
-      span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, resolved.query);
+      if (emitDeprecated) {
+        span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, resolved.query);
+      }
     }
 
     let stepCount = 0;
@@ -168,13 +178,17 @@ export async function traceAgentQuery<T>(
       });
 
       span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_LOOP_COUNT, loopCount);
-      span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
+      if (emitDeprecated) {
+        span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
+      }
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_LOOP_COUNT, loopCount);
-      span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
+      if (emitDeprecated) {
+        span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
+      }
       span.setStatus({ code: SpanStatusCode.ERROR, message });
       throw error;
     } finally {

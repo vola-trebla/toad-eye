@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 // Mock OTel SDK to avoid real initialization
 vi.mock("@opentelemetry/sdk-node", () => ({
@@ -49,7 +49,8 @@ const { OTLPTraceExporter } =
   await import("@opentelemetry/exporter-trace-otlp-http");
 const { OTLPMetricExporter } =
   await import("@opentelemetry/exporter-metrics-otlp-http");
-const { initObservability, shutdown } = await import("../core/tracer.js");
+const { initObservability, shutdown, shouldEmitDeprecatedAttrs } =
+  await import("../core/tracer.js");
 
 describe("initObservability — config validation", () => {
   it("throws on empty serviceName", () => {
@@ -175,5 +176,38 @@ describe("singleton lifecycle", () => {
 
     expect(resetMetrics).toHaveBeenCalled();
     expect(resetCustomPricing).toHaveBeenCalled();
+  });
+});
+
+describe("shouldEmitDeprecatedAttrs", () => {
+  const originalEnv = process.env["OTEL_SEMCONV_STABILITY_OPT_IN"];
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env["OTEL_SEMCONV_STABILITY_OPT_IN"];
+    } else {
+      process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] = originalEnv;
+    }
+  });
+
+  it("returns true by default (no env var)", () => {
+    delete process.env["OTEL_SEMCONV_STABILITY_OPT_IN"];
+    expect(shouldEmitDeprecatedAttrs()).toBe(true);
+  });
+
+  it("returns false when set to gen_ai_latest_experimental", () => {
+    process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] = "gen_ai_latest_experimental";
+    expect(shouldEmitDeprecatedAttrs()).toBe(false);
+  });
+
+  it("returns false when gen_ai_latest_experimental is in comma-separated list", () => {
+    process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] =
+      "http,gen_ai_latest_experimental,database";
+    expect(shouldEmitDeprecatedAttrs()).toBe(false);
+  });
+
+  it("returns true for unrelated opt-in values", () => {
+    process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] = "http,database";
+    expect(shouldEmitDeprecatedAttrs()).toBe(true);
   });
 });

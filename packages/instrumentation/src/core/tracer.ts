@@ -27,6 +27,16 @@ export function getConfig() {
   return currentConfig;
 }
 
+/**
+ * Check if deprecated semconv aliases should be emitted.
+ * When OTEL_SEMCONV_STABILITY_OPT_IN includes "gen_ai_latest_experimental",
+ * only new (canonical) attributes are emitted — deprecated aliases are skipped.
+ */
+export function shouldEmitDeprecatedAttrs(): boolean {
+  const optIn = process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] ?? "";
+  return !optIn.split(",").includes("gen_ai_latest_experimental");
+}
+
 export function getBudgetTracker() {
   return budgetTracker;
 }

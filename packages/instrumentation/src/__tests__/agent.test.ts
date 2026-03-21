@@ -42,8 +42,10 @@ vi.mock("../core/metrics.js", () => ({
 }));
 
 let mockConfig: Record<string, unknown> = {};
+let mockEmitDeprecated = true;
 vi.mock("../core/tracer.js", () => ({
   getConfig: () => mockConfig,
+  shouldEmitDeprecatedAttrs: () => mockEmitDeprecated,
 }));
 
 const { traceAgentStep, traceAgentQuery } = await import("../agent.js");
@@ -52,6 +54,7 @@ describe("traceAgentStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig = {};
+    mockEmitDeprecated = true;
     lastSpanName = "";
     lastActiveSpanName = "";
   });
@@ -171,12 +174,29 @@ describe("traceAgentStep", () => {
     expect(attrs).not.toHaveProperty("gen_ai.toad_eye.agent.step.content");
     expect(attrs).not.toHaveProperty("gen_ai.agent.step.content");
   });
+
+  it("skips deprecated aliases when OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental", () => {
+    mockEmitDeprecated = false;
+    traceAgentStep({ type: "act", stepNumber: 2, toolName: "search" });
+
+    const attrs = mockSpan.setAttributes.mock.calls[0]![0] as Record<
+      string,
+      unknown
+    >;
+    // Canonical attrs present
+    expect(attrs).toHaveProperty("gen_ai.toad_eye.agent.step.type", "act");
+    expect(attrs).toHaveProperty("gen_ai.tool.name", "search");
+    // Deprecated aliases absent
+    expect(attrs).not.toHaveProperty("gen_ai.agent.step.type");
+    expect(attrs).not.toHaveProperty("gen_ai.agent.tool.name");
+  });
 });
 
 describe("traceAgentQuery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig = {};
+    mockEmitDeprecated = true;
     lastSpanName = "";
     lastActiveSpanName = "";
   });
