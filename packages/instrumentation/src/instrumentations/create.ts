@@ -69,6 +69,8 @@ async function* wrapAsyncIterable<T>(
     outputTokens: 0,
   };
   let firstChunk = true;
+  let completed = false;
+  let errored = false;
   try {
     for await (const chunk of stream) {
       if (firstChunk) {
@@ -78,10 +80,17 @@ async function* wrapAsyncIterable<T>(
       accumulate(acc, chunk);
       yield chunk;
     }
+    completed = true;
     onComplete(acc);
   } catch (err) {
+    errored = true;
     onError(err);
     throw err;
+  } finally {
+    // If stream was abandoned (consumer broke out), still record what we have
+    if (!completed && !errored) {
+      onComplete(acc);
+    }
   }
 }
 

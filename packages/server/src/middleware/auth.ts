@@ -13,7 +13,7 @@ export function createAuthMiddleware(
 
   return bearerAuth({
     verifyToken: (token, _c) => {
-      if (!token.startsWith("toad_")) {
+      if (!token.toLowerCase().startsWith("toad_")) {
         return false;
       }
       return keySet.has(token);
