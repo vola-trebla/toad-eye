@@ -1,5 +1,16 @@
 import type { AlertChannelConfig, FiredAlert } from "./types.js";
 
+// Cache nodemailer transporters by connection identity to avoid creating a new
+// SMTP connection for every alert (frequent alerts would exhaust connection pools).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const smtpTransporterCache = new Map<string, any>();
+
+function smtpCacheKey(
+  config: Extract<AlertChannelConfig, { type: "email" }>,
+): string {
+  return `${config.host}:${config.port}:${config.user}`;
+}
+
 function formatMessage(alert: FiredAlert): string {
   const topModelsText =
     alert.topModels.length > 0
@@ -70,19 +81,25 @@ async function sendEmail(
   config: Extract<AlertChannelConfig, { type: "email" }>,
   alert: FiredAlert,
 ) {
-  let createTransport: (typeof import("nodemailer"))["createTransport"];
-  try {
-    ({ createTransport } = await import("nodemailer"));
-  } catch {
-    throw new Error(
-      "toad-eye: email alerts require nodemailer — install it: npm install nodemailer",
-    );
+  const key = smtpCacheKey(config);
+  let transporter = smtpTransporterCache.get(key);
+
+  if (!transporter) {
+    let createTransport: (typeof import("nodemailer"))["createTransport"];
+    try {
+      ({ createTransport } = await import("nodemailer"));
+    } catch {
+      throw new Error(
+        "toad-eye: email alerts require nodemailer — install it: npm install nodemailer",
+      );
+    }
+    transporter = createTransport({
+      host: config.host,
+      port: config.port,
+      auth: { user: config.user, pass: config.password },
+    });
+    smtpTransporterCache.set(key, transporter);
   }
-  const transporter = createTransport({
-    host: config.host,
-    port: config.port,
-    auth: { user: config.user, pass: config.password },
-  });
   const to =
     typeof config.to === "string"
       ? config.to

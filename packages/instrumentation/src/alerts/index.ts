@@ -33,11 +33,40 @@ function interpolateConfig(obj: unknown): unknown {
   return obj;
 }
 
+function validateConfig(config: unknown): asserts config is AlertsConfig {
+  if (typeof config !== "object" || config === null) {
+    throw new Error("toad-eye: alerts config must be an object");
+  }
+  const c = config as Record<string, unknown>;
+  if (!Array.isArray(c["alerts"])) {
+    throw new Error('toad-eye: alerts config missing required "alerts" array');
+  }
+  for (const rule of c["alerts"] as unknown[]) {
+    if (typeof rule !== "object" || rule === null) {
+      throw new Error("toad-eye: each alert rule must be an object");
+    }
+    const r = rule as Record<string, unknown>;
+    for (const field of ["name", "metric", "condition"] as const) {
+      if (typeof r[field] !== "string" || !r[field]) {
+        throw new Error(
+          `toad-eye: alert rule missing required string field "${field}"`,
+        );
+      }
+    }
+    if (!Array.isArray(r["channels"]) || r["channels"].length === 0) {
+      throw new Error(
+        `toad-eye: alert rule "${String(r["name"])}" must have at least one channel`,
+      );
+    }
+  }
+}
+
 export function startAlertsFromFile(configPath: string): AlertManager {
   const raw = readFileSync(configPath, "utf-8");
-  const parsed = yaml.parse(raw) as AlertsConfig;
-  const config = interpolateConfig(parsed) as AlertsConfig;
-  const manager = new AlertManager(config);
+  const parsed: unknown = yaml.parse(raw);
+  const interpolated = interpolateConfig(parsed);
+  validateConfig(interpolated);
+  const manager = new AlertManager(interpolated);
   manager.start();
   return manager;
 }
