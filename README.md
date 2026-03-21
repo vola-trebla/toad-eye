@@ -40,20 +40,20 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 
 ## What you get
 
-| Feature                  | Description                                                                       |
-| ------------------------ | --------------------------------------------------------------------------------- |
-| **Auto-instrumentation** | Patches OpenAI, Anthropic, Gemini SDKs — regular + streaming calls                |
-| **7 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health        |
-| **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                       |
-| **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade            |
-| **Agent tracing**        | ReAct agent steps (think/act/observe/answer) as nested spans                      |
-| **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic |
-| **Semantic drift**       | Detect silent quality degradation via embedding comparison                        |
-| **Privacy controls**     | Disable content recording, SHA-256 hashing, regex redaction                       |
-| **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook  |
-| **FinOps attribution**   | Break down costs by team, user, feature, environment                              |
-| **TTFT metric**          | Time To First Token for streaming — separate from total duration                  |
-| **Trace export**         | Convert production Jaeger traces into regression test cases                       |
+| Feature                  | Description                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| **Auto-instrumentation** | Patches OpenAI, Anthropic, Gemini SDKs — regular + streaming calls                         |
+| **8 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent Workflow |
+| **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                                |
+| **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                     |
+| **Agent tracing**        | ReAct agent steps (think/act/observe/answer) as nested spans                               |
+| **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic          |
+| **Semantic drift**       | Detect silent quality degradation via embedding comparison                                 |
+| **Privacy controls**     | Disable content recording, SHA-256 hashing, regex redaction                                |
+| **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook           |
+| **FinOps attribution**   | Break down costs by team, user, feature, environment                                       |
+| **TTFT metric**          | Time To First Token for streaming — separate from total duration                           |
+| **Trace export**         | Convert production Jaeger traces into regression test cases                                |
 
 ## Auto-instrumentation 🤖
 
@@ -270,7 +270,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 
 ## Grafana dashboards
 
-7 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+8 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
 | Dashboard              | What it shows                                                    |
 | ---------------------- | ---------------------------------------------------------------- |
@@ -281,6 +281,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | **Model Comparison**   | Latency vs cost vs error rate vs throughput per model            |
 | **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table        |
 | **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
+| **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
 
 ## CLI
 
