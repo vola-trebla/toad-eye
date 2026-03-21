@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync, type ChildProcess, spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,10 +21,19 @@ const DEMO_TOKEN_INPUT_RANGE = [50, 500] as const;
 const DEMO_TOKEN_OUTPUT_RANGE = [20, 300] as const;
 
 const SERVICES = [
-  { name: "Grafana", url: "http://localhost:3100", login: "admin / admin" },
-  { name: "Jaeger UI", url: "http://localhost:16686" },
-  { name: "Prometheus", url: "http://localhost:9090" },
-  { name: "OTel Collector", url: "http://localhost:4318" },
+  {
+    name: "Grafana",
+    service: "grafana",
+    url: "http://localhost:3100",
+    login: "admin / admin",
+  },
+  { name: "Jaeger UI", service: "jaeger", url: "http://localhost:16686" },
+  { name: "Prometheus", service: "prometheus", url: "http://localhost:9090" },
+  {
+    name: "OTel Collector",
+    service: "collector",
+    url: "http://localhost:4318",
+  },
 ] as const;
 
 function getTemplatesDir(): string {
@@ -76,7 +85,9 @@ function up() {
   const composeFile = requireInfra();
 
   console.log("\u{1f438} Starting observability stack...");
-  execSync(`docker compose -f ${composeFile} up -d`, { stdio: "inherit" });
+  execFileSync("docker", ["compose", "-f", composeFile, "up", "-d"], {
+    stdio: "inherit",
+  });
   console.log();
   status();
 }
@@ -85,19 +96,28 @@ function down() {
   const composeFile = requireInfra("Nothing to stop.");
 
   console.log("\u{1f44b} Stopping observability stack...");
-  execSync(`docker compose -f ${composeFile} down`, { stdio: "inherit" });
+  execFileSync("docker", ["compose", "-f", composeFile, "down"], {
+    stdio: "inherit",
+  });
   console.log("\u2705 Stack stopped.");
+}
+
+/** Find the docker container matching a service by exact service name. Exported for testing. */
+export function findContainerByService(
+  containers: ReadonlyArray<{ Service: string; State: string }>,
+  serviceKey: string,
+): { Service: string; State: string } | undefined {
+  return containers.find((c) => c.Service === serviceKey);
 }
 
 function status() {
   const composeFile = requireInfra();
 
   try {
-    const output = execSync(
-      `docker compose -f ${composeFile} ps --format json`,
-      {
-        encoding: "utf-8",
-      },
+    const output = execFileSync(
+      "docker",
+      ["compose", "-f", composeFile, "ps", "--format", "json"],
+      { encoding: "utf-8" },
     );
 
     const lines = output.trim().split("\n").filter(Boolean);
@@ -109,9 +129,7 @@ function status() {
     console.log();
 
     for (const svc of SERVICES) {
-      const container = containers.find((c) =>
-        svc.name.toLowerCase().includes(c.Service.toLowerCase()),
-      );
+      const container = findContainerByService(containers, svc.service);
       const state = container?.State === "running" ? "\u{1f7e2}" : "\u{1f534}";
       const loginInfo = "login" in svc ? ` (${svc.login})` : "";
       console.log(`  ${state} ${svc.name.padEnd(16)} ${svc.url}${loginInfo}`);
@@ -266,35 +284,45 @@ Commands:
 `);
 }
 
-const command = process.argv[2];
+function runCli() {
+  const command = process.argv[2];
 
-switch (command) {
-  case "init":
-    init();
-    break;
-  case "up":
-    up();
-    break;
-  case "down":
-    down();
-    break;
-  case "status":
-    status();
-    break;
-  case "demo":
-    demo();
-    break;
-  case "export-trace":
-    exportTraceCommand();
-    break;
-  case "help":
-  case "--help":
-  case "-h":
-  case undefined:
-    help();
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
-    help();
-    process.exit(1);
+  switch (command) {
+    case "init":
+      init();
+      break;
+    case "up":
+      up();
+      break;
+    case "down":
+      down();
+      break;
+    case "status":
+      status();
+      break;
+    case "demo":
+      demo();
+      break;
+    case "export-trace":
+      exportTraceCommand();
+      break;
+    case "help":
+    case "--help":
+    case "-h":
+    case undefined:
+      help();
+      break;
+    default:
+      console.error(`Unknown command: ${command}`);
+      help();
+      process.exit(1);
+  }
+}
+
+// Only auto-execute when run as CLI entry point, not when imported (e.g., in tests)
+if (
+  process.argv[1] !== undefined &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
+  runCli();
 }
