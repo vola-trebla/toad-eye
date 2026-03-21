@@ -15,6 +15,8 @@ import {
   recordResponseLatencyPerToken,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
+import { calculateCost } from "./pricing.js";
+import { ToadBudgetExceededError } from "../budget/index.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
 export interface LLMCallInput {
@@ -206,10 +208,19 @@ export async function traceLLMCall(
   const budget = getBudgetTracker();
   let effectiveInput = input;
 
+  // Estimated cost for reservation — reduces race window for concurrent requests.
+  // Uses conservative token estimates; actual cost is reconciled in recordCost.
+  const estimatedCost = budget ? calculateCost(input.model, 500, 200) : 0;
+
   // Budget check BEFORE the LLM call
   if (budget) {
     const userId = input.attributes?.[GEN_AI_ATTRS.USER_ID];
-    const override = budget.checkBefore(input.provider, input.model, userId);
+    const override = budget.checkBefore(
+      input.provider,
+      input.model,
+      userId,
+      estimatedCost,
+    );
     if (override) {
       // Downgrade mode — use modified provider/model
       effectiveInput = {
@@ -217,7 +228,7 @@ export async function traceLLMCall(
         provider: override.provider as LLMSpanAttributes["provider"],
         model: override.model,
       };
-      recordBudgetDowngraded("daily");
+      recordBudgetDowngraded(override.budget);
     }
   }
 
@@ -269,13 +280,14 @@ export async function traceLLMCall(
           );
         }
 
-        // Budget recording AFTER the call
+        // Budget recording AFTER the call — releases the cost reservation
         if (budget) {
           const userId = effectiveInput.attributes?.[GEN_AI_ATTRS.USER_ID];
           const exceeded = budget.recordCost(
             output.cost,
             effectiveInput.model,
             userId,
+            estimatedCost,
           );
           if (exceeded) {
             recordBudgetExceeded(exceeded.budget);
@@ -300,12 +312,14 @@ export async function traceLLMCall(
         );
         recordError(effectiveInput.provider, effectiveInput.model, attrs);
 
-        // If this was a budget block, record the metric
-        if (
-          error instanceof Error &&
-          error.name === "ToadBudgetExceededError"
-        ) {
-          recordBudgetBlocked("daily");
+        // Release cost reservation on any error (no cost was incurred)
+        if (budget) {
+          budget.releaseReservation(estimatedCost);
+        }
+
+        // If this was a budget block, record the metric with the correct budget type
+        if (error instanceof ToadBudgetExceededError) {
+          recordBudgetBlocked(error.budget);
         }
 
         throw error;

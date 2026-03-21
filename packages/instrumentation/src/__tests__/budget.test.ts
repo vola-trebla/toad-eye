@@ -44,7 +44,11 @@ describe("BudgetTracker", () => {
         provider: "openai",
         model: "gpt-4o",
       });
-      expect(result).toEqual({ provider: "openai", model: "gpt-4o-mini" });
+      expect(result).toEqual({
+        provider: "openai",
+        model: "gpt-4o-mini",
+        budget: "daily",
+      });
     });
   });
 
@@ -166,6 +170,69 @@ describe("BudgetTracker", () => {
       });
       expect(error.message).toContain("user user-123");
       expect(error.userId).toBe("user-123");
+    });
+  });
+
+  describe("cost reservation (race condition guard)", () => {
+    it("counts in-flight reservations against daily budget", () => {
+      const tracker = new BudgetTracker({ daily: 1 }, "block");
+      // Reserve $0.80 — simulate an in-flight request
+      tracker.checkBefore("openai", "gpt-4o", undefined, 0.8);
+      // Second request estimates $0.30 — total reserved+actual would be $1.10, over limit
+      expect(() =>
+        tracker.checkBefore("openai", "gpt-4o", undefined, 0.3),
+      ).toThrow(ToadBudgetExceededError);
+    });
+
+    it("releases reservation when recordCost is called", () => {
+      const tracker = new BudgetTracker({ daily: 1 }, "block");
+      tracker.checkBefore("openai", "gpt-4o", undefined, 0.8);
+      // Record actual cost — releases the $0.80 reservation
+      tracker.recordCost(0.5, "gpt-4o", undefined, 0.8);
+      // Now only $0.50 is used; a new request with $0.30 estimate should pass
+      expect(
+        tracker.checkBefore("openai", "gpt-4o", undefined, 0.3),
+      ).toBeNull();
+    });
+
+    it("releases reservation via releaseReservation on error", () => {
+      const tracker = new BudgetTracker({ daily: 1 }, "block");
+      tracker.checkBefore("openai", "gpt-4o", undefined, 0.8);
+      // Simulate LLM call failure — release without recording cost
+      tracker.releaseReservation(0.8);
+      // Budget should be free again
+      expect(
+        tracker.checkBefore("openai", "gpt-4o", undefined, 0.3),
+      ).toBeNull();
+    });
+
+    it("reservation does not affect perUser or perModel checks", () => {
+      const tracker = new BudgetTracker({ perModel: { "gpt-4o": 5 } }, "block");
+      // Large reservation — but perModel is checked separately, not via reservedCost
+      tracker.checkBefore("openai", "gpt-4o", undefined, 100);
+      // perModel check: $0 recorded, still within $5 limit
+      expect(tracker.checkBefore("openai", "gpt-4o", undefined, 0)).toBeNull();
+    });
+
+    it("downgrade result includes budget type that triggered it", () => {
+      const downgrade = vi
+        .fn()
+        .mockReturnValue({ provider: "openai", model: "gpt-4o-mini" });
+      const tracker = new BudgetTracker({ daily: 1 }, "downgrade", downgrade);
+      tracker.recordCost(1.5, "gpt-4o");
+      const result = tracker.checkBefore("openai", "gpt-4o");
+      expect(result?.budget).toBe("daily");
+    });
+
+    it("blocked call does not add reservation", () => {
+      const tracker = new BudgetTracker({ daily: 1 }, "block");
+      tracker.recordCost(1.5, "gpt-4o");
+      // This will throw — no reservation should be added
+      expect(() =>
+        tracker.checkBefore("openai", "gpt-4o", undefined, 0.5),
+      ).toThrow(ToadBudgetExceededError);
+      // After block, state.reservedCost should still be 0
+      expect(tracker.getState().reservedCost).toBe(0);
     });
   });
 

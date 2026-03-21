@@ -21,6 +21,8 @@ export type DowngradeCallback = (original: {
 export interface BudgetState {
   date: string;
   totalCost: number;
+  /** Sum of estimated costs for in-flight requests (released when recordCost is called). */
+  reservedCost: number;
   perUser: Map<string, number>;
   perModel: Map<string, number>;
 }
