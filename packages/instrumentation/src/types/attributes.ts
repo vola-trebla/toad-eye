@@ -23,14 +23,28 @@ export const GEN_AI_ATTRS = {
   TOOL_NAME: "gen_ai.tool.name",
   TOOL_TYPE: "gen_ai.tool.type",
 
-  // Agent step attributes (toad-eye ReAct extensions, not in OTel spec)
+  // toad-eye ReAct extensions (gen_ai.toad_eye.agent.* — correct namespace)
+  TOAD_AGENT_STEP_TYPE: "gen_ai.toad_eye.agent.step.type",
+  TOAD_AGENT_STEP_NUMBER: "gen_ai.toad_eye.agent.step.number",
+  TOAD_AGENT_STEP_CONTENT: "gen_ai.toad_eye.agent.step.content",
+  TOAD_AGENT_HANDOFF_TO: "gen_ai.toad_eye.agent.handoff.to",
+  TOAD_AGENT_HANDOFF_REASON: "gen_ai.toad_eye.agent.handoff.reason",
+  TOAD_AGENT_LOOP_COUNT: "gen_ai.toad_eye.agent.loop_count",
+
+  // Agent step attributes — @deprecated aliases (will be removed in v3.0)
+  /** @deprecated Use TOAD_AGENT_STEP_TYPE instead. Will be removed in v3.0. */
   AGENT_STEP_TYPE: "gen_ai.agent.step.type",
+  /** @deprecated Use TOAD_AGENT_STEP_NUMBER instead. Will be removed in v3.0. */
   AGENT_STEP_NUMBER: "gen_ai.agent.step.number",
   /** @deprecated Use TOOL_NAME instead. Will be removed in v3.0. */
   AGENT_TOOL_NAME: "gen_ai.agent.tool.name",
+  /** @deprecated Use TOAD_AGENT_STEP_CONTENT instead. Will be removed in v3.0. */
   AGENT_STEP_CONTENT: "gen_ai.agent.step.content",
+  /** @deprecated Use TOAD_AGENT_HANDOFF_TO instead. Will be removed in v3.0. */
   AGENT_HANDOFF_TO: "gen_ai.agent.handoff.to",
+  /** @deprecated Use TOAD_AGENT_HANDOFF_REASON instead. Will be removed in v3.0. */
   AGENT_HANDOFF_REASON: "gen_ai.agent.handoff.reason",
+  /** @deprecated Use TOAD_AGENT_LOOP_COUNT instead. Will be removed in v3.0. */
   AGENT_LOOP_COUNT: "gen_ai.agent.loop_count",
 
   // Guard (shadow mode) attributes

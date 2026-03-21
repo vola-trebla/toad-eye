@@ -27,25 +27,36 @@ function traceAgentStep(input: AgentStepInput) {
   const recordContent = config?.recordContent !== false;
 
   span.setAttributes({
+    // Emit new toad_eye namespace (canonical)
+    [GEN_AI_ATTRS.TOAD_AGENT_STEP_TYPE]: input.type,
+    [GEN_AI_ATTRS.TOAD_AGENT_STEP_NUMBER]: input.stepNumber,
+    // Emit deprecated aliases for backward compat (removed in v3.0)
     [GEN_AI_ATTRS.AGENT_STEP_TYPE]: input.type,
     [GEN_AI_ATTRS.AGENT_STEP_NUMBER]: input.stepNumber,
     ...(input.toolName !== undefined && {
-      // Emit both old (deprecated) and new spec-compliant attribute
-      [GEN_AI_ATTRS.AGENT_TOOL_NAME]: input.toolName,
+      // OTel spec attribute (gen_ai.tool.name)
       [GEN_AI_ATTRS.TOOL_NAME]: input.toolName,
+      // Deprecated alias (gen_ai.agent.tool.name) — removed in v3.0
+      [GEN_AI_ATTRS.AGENT_TOOL_NAME]: input.toolName,
     }),
     ...(input.toolType !== undefined && {
       [GEN_AI_ATTRS.TOOL_TYPE]: input.toolType,
     }),
     ...(recordContent &&
       input.content !== undefined && {
+        [GEN_AI_ATTRS.TOAD_AGENT_STEP_CONTENT]: input.content,
+        // Deprecated alias — removed in v3.0
         [GEN_AI_ATTRS.AGENT_STEP_CONTENT]: input.content,
       }),
-    // Handoff attributes
+    // Handoff attributes — new toad_eye namespace
     ...(input.toAgent !== undefined && {
+      [GEN_AI_ATTRS.TOAD_AGENT_HANDOFF_TO]: input.toAgent,
+      // Deprecated alias — removed in v3.0
       [GEN_AI_ATTRS.AGENT_HANDOFF_TO]: input.toAgent,
     }),
     ...(input.handoffReason !== undefined && {
+      [GEN_AI_ATTRS.TOAD_AGENT_HANDOFF_REASON]: input.handoffReason,
+      // Deprecated alias — removed in v3.0
       [GEN_AI_ATTRS.AGENT_HANDOFF_REASON]: input.handoffReason,
     }),
   });
@@ -121,6 +132,8 @@ export async function traceAgentQuery<T>(
       span.setAttribute(GEN_AI_ATTRS.AGENT_ID, resolved.agentId);
     }
     if (recordContent) {
+      span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_STEP_CONTENT, resolved.query);
+      // Deprecated alias — removed in v3.0
       span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, resolved.query);
     }
 
@@ -154,11 +167,13 @@ export async function traceAgentQuery<T>(
         traceAgentStep(input);
       });
 
+      span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_LOOP_COUNT, loopCount);
       span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      span.setAttribute(GEN_AI_ATTRS.TOAD_AGENT_LOOP_COUNT, loopCount);
       span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
       span.setStatus({ code: SpanStatusCode.ERROR, message });
       throw error;
