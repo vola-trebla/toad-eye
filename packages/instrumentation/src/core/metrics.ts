@@ -177,7 +177,7 @@ export function recordAgentSteps(stepCount: number) {
 
 export function recordAgentToolUsage(toolName: string) {
   agentToolUsage.add(1, {
-    [GEN_AI_ATTRS.AGENT_TOOL_NAME]: toolName,
+    [GEN_AI_ATTRS.TOOL_NAME]: toolName,
   });
 }
 
