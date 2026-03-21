@@ -346,11 +346,25 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
 | **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
 
+## Subpath imports
+
+Advanced modules are available as separate entry points to keep your bundle lean:
+
+```typescript
+import { initObservability, traceLLMCall } from "toad-eye"; // core
+import { AlertManager } from "toad-eye/alerts"; // alerting
+import { createDriftMonitor } from "toad-eye/drift"; // semantic drift
+import { exportTrace } from "toad-eye/export"; // trace → YAML
+import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel AI SDK
+```
+
+> Everything is also re-exported from the main `"toad-eye"` entry point for convenience.
+
 ## CLI
 
 | Command                          | Description                                     |
 | -------------------------------- | ----------------------------------------------- |
-| `npx toad-eye init`              | Scaffold Docker Compose + observability configs |
+| `npx toad-eye init [--force]`    | Scaffold Docker Compose + observability configs |
 | `npx toad-eye up`                | Start the stack                                 |
 | `npx toad-eye down`              | Stop the stack                                  |
 | `npx toad-eye status`            | Show running services and URLs                  |
@@ -420,4 +434,4 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (143+ tests)
+- Vitest (565+ tests)
