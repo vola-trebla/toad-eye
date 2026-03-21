@@ -83,16 +83,34 @@ Vercel AI SDK uses a SpanProcessor (not monkey-patching) — add `instrument: ['
 <details>
 <summary>Manual instrumentation (custom providers)</summary>
 
+Use `traceLLMCall` when you need to instrument a provider not in the auto-instrument list, or want explicit control over span data:
+
 ```typescript
+import OpenAI from "openai";
 import { initObservability, traceLLMCall } from "toad-eye";
 
 initObservability({ serviceName: "my-app" });
 
+const openai = new OpenAI();
+
 const result = await traceLLMCall(
-  { provider: "anthropic", model: "claude-sonnet-4-20250514", prompt: "hello" },
-  () => callYourLLM(),
+  { provider: "openai", model: "gpt-4o", prompt: "Hello" },
+  async () => {
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hello" }],
+    });
+    return {
+      completion: res.choices[0]?.message.content ?? "",
+      inputTokens: res.usage?.prompt_tokens ?? 0,
+      outputTokens: res.usage?.completion_tokens ?? 0,
+      // cost is auto-calculated from model + tokens if omitted
+    };
+  },
 );
 ```
+
+> Or skip this entirely — use `instrument: ['openai']` for zero-code instrumentation.
 
 </details>
 
@@ -126,6 +144,21 @@ Structured tracing for ReAct agents with multi-agent support, handoffs, and loop
 import { traceAgentQuery } from "toad-eye";
 
 const result = await traceAgentQuery(
+  "What's the weather like?",
+  async (step) => {
+    step({ type: "think", stepNumber: 1, content: "Need weather data" });
+    const data = await getWeather();
+    step({ type: "answer", stepNumber: 2, content: data.summary });
+    return { answer: data.summary };
+  },
+);
+```
+
+<details>
+<summary>Full ReAct pattern (think → act → observe → answer)</summary>
+
+```typescript
+const result = await traceAgentQuery(
   "Is anything dangerous near Earth?",
   async (step) => {
     step({
@@ -149,6 +182,8 @@ const result = await traceAgentQuery(
   },
 );
 ```
+
+</details>
 
 ## FinOps attribution
 
