@@ -7,6 +7,7 @@ const DEFAULT_PROMETHEUS_URL = "http://localhost:9090";
 const DEFAULT_GRAFANA_URL = "http://localhost:3100";
 const DEFAULT_EVAL_INTERVAL_SECONDS = 60;
 const DEFAULT_COOLDOWN_MINUTES = 30;
+const MIN_EVAL_INTERVAL_SECONDS = 10;
 
 export class AlertManager {
   private readonly config: AlertsConfig;
@@ -18,12 +19,19 @@ export class AlertManager {
   }
 
   start() {
-    const intervalMs =
-      (this.config.evalIntervalSeconds ?? DEFAULT_EVAL_INTERVAL_SECONDS) * 1000;
+    const configured =
+      this.config.evalIntervalSeconds ?? DEFAULT_EVAL_INTERVAL_SECONDS;
+    const clampedSeconds = Math.max(configured, MIN_EVAL_INTERVAL_SECONDS);
+    if (configured < MIN_EVAL_INTERVAL_SECONDS) {
+      console.warn(
+        `[toad-eye alerts] evalIntervalSeconds ${configured} is below minimum ${MIN_EVAL_INTERVAL_SECONDS}s — using ${clampedSeconds}s`,
+      );
+    }
+    const intervalMs = clampedSeconds * 1000;
     this.intervalId = setInterval(() => void this.evaluate(), intervalMs);
     void this.evaluate();
     console.log(
-      `[toad-eye alerts] Started — ${this.config.alerts.length} rule(s), eval every ${intervalMs / 1000}s`,
+      `[toad-eye alerts] Started — ${this.config.alerts.length} rule(s), eval every ${clampedSeconds}s`,
     );
   }
 
@@ -50,36 +58,57 @@ export class AlertManager {
     const prometheusUrl = this.config.prometheusUrl ?? DEFAULT_PROMETHEUS_URL;
     const grafanaUrl = this.config.grafanaUrl ?? DEFAULT_GRAFANA_URL;
 
-    for (const rule of this.config.alerts) {
-      if (this.isInCooldown(rule)) continue;
+    // Evaluate all rules in parallel — each rule is independent
+    await Promise.allSettled(
+      this.config.alerts.map((rule) =>
+        this.evaluateRule(prometheusUrl, grafanaUrl, rule),
+      ),
+    );
+  }
 
-      const result = await evaluateCondition(prometheusUrl, rule);
-      if (!result?.triggered) continue;
+  private async evaluateRule(
+    prometheusUrl: string,
+    grafanaUrl: string,
+    rule: AlertRule,
+  ) {
+    if (this.isInCooldown(rule)) return;
 
-      this.cooldowns.set(rule.name, Date.now());
-
-      const firedAlert: FiredAlert = {
-        rule,
-        value: result.value,
-        threshold: result.threshold,
-        topModels: result.topModels,
-        firedAt: new Date(),
-      };
-
-      console.log(
-        `[toad-eye alerts] 🚨 "${rule.name}" fired — value=${result.value.toFixed(4)}, threshold=${result.threshold}`,
+    let result: Awaited<ReturnType<typeof evaluateCondition>>;
+    try {
+      result = await evaluateCondition(prometheusUrl, rule);
+    } catch (err) {
+      console.error(
+        `[toad-eye alerts] Failed to evaluate rule "${rule.name}":`,
+        err,
       );
-
-      await Promise.allSettled([
-        this.fireChannels(firedAlert),
-        this.postAnnotation(
-          grafanaUrl,
-          firedAlert.rule.name,
-          firedAlert.value,
-          firedAlert.threshold,
-        ),
-      ]);
+      return;
     }
+
+    if (!result?.triggered) return;
+
+    this.cooldowns.set(rule.name, Date.now());
+
+    const firedAlert: FiredAlert = {
+      rule,
+      value: result.value,
+      threshold: result.threshold,
+      topModels: result.topModels,
+      firedAt: new Date(),
+    };
+
+    console.log(
+      `[toad-eye alerts] 🚨 "${rule.name}" fired — value=${result.value.toFixed(4)}, threshold=${result.threshold}`,
+    );
+
+    await Promise.allSettled([
+      this.fireChannels(firedAlert),
+      this.postAnnotation(
+        grafanaUrl,
+        firedAlert.rule.name,
+        firedAlert.value,
+        firedAlert.threshold,
+      ),
+    ]);
   }
 
   private async fireChannels(alert: FiredAlert) {
