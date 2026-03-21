@@ -1,4 +1,4 @@
-import type { LLMProvider } from "./providers.js";
+import type { InstrumentTarget } from "./providers.js";
 import type {
   BudgetConfig,
   BudgetExceededMode,
@@ -37,7 +37,7 @@ export interface ToadEyeConfig {
   readonly auditMasking?: boolean | undefined;
 
   // Auto-instrumentation
-  readonly instrument?: readonly LLMProvider[] | undefined;
+  readonly instrument?: readonly InstrumentTarget[] | undefined;
 
   // Budget guards
   /** Budget limits — daily, per-user, per-model spend caps in USD. */
