@@ -7,15 +7,20 @@ const mockSpan = {
   end: vi.fn(),
 };
 
+let lastActiveSpanName = "";
+
 // Mock tracer before importing spans
 vi.mock("@opentelemetry/api", () => {
   return {
     trace: {
       getTracer: () => ({
         startActiveSpan: (
-          _name: string,
+          name: string,
           fn: (span: typeof mockSpan) => unknown,
-        ) => fn(mockSpan),
+        ) => {
+          lastActiveSpanName = name;
+          return fn(mockSpan);
+        },
       }),
     },
     SpanStatusCode: { OK: 0, ERROR: 2 },
@@ -52,6 +57,20 @@ describe("traceLLMCall", () => {
     mockConfig = {};
     mockSpan.setAttributes.mockClear();
     mockSpan.setStatus.mockClear();
+    lastActiveSpanName = "";
+  });
+
+  it("uses OTel GenAI span name: chat {model}", async () => {
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "hello" },
+      async () => ({
+        completion: "world",
+        inputTokens: 10,
+        outputTokens: 5,
+      }),
+    );
+
+    expect(lastActiveSpanName).toBe("chat gpt-4o");
   });
 
   it("warns via console.warn when called without initObservability", async () => {

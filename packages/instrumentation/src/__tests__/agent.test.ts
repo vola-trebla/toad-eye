@@ -8,14 +8,23 @@ const mockSpan = {
   end: vi.fn(),
 };
 
+let lastSpanName = "";
+let lastActiveSpanName = "";
+
 vi.mock("@opentelemetry/api", () => ({
   trace: {
     getTracer: () => ({
-      startSpan: (_name: string) => mockSpan,
+      startSpan: (name: string) => {
+        lastSpanName = name;
+        return mockSpan;
+      },
       startActiveSpan: (
-        _name: string,
+        name: string,
         fn: (span: typeof mockSpan) => unknown,
-      ) => fn(mockSpan),
+      ) => {
+        lastActiveSpanName = name;
+        return fn(mockSpan);
+      },
     }),
   },
   SpanStatusCode: { OK: 0, ERROR: 2 },
@@ -43,6 +52,26 @@ describe("traceAgentStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig = {};
+    lastSpanName = "";
+    lastActiveSpanName = "";
+  });
+
+  it("uses execute_tool span name for act steps with toolName", () => {
+    traceAgentStep({ type: "act", stepNumber: 1, toolName: "web-search" });
+
+    expect(lastSpanName).toBe("execute_tool web-search");
+  });
+
+  it("uses gen_ai.agent.step.{type} span name for non-act steps", () => {
+    traceAgentStep({ type: "think", stepNumber: 1 });
+
+    expect(lastSpanName).toBe("gen_ai.agent.step.think");
+  });
+
+  it("uses gen_ai.agent.step.act span name for act steps without toolName", () => {
+    traceAgentStep({ type: "act", stepNumber: 1 });
+
+    expect(lastSpanName).toBe("gen_ai.agent.step.act");
   });
 
   it("creates a span with step type and number", () => {
@@ -109,6 +138,14 @@ describe("traceAgentQuery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig = {};
+    lastSpanName = "";
+    lastActiveSpanName = "";
+  });
+
+  it("uses invoke_agent span name", async () => {
+    await traceAgentQuery("test query", async () => "result");
+
+    expect(lastActiveSpanName).toBe("invoke_agent");
   });
 
   it("returns the result from the callback", async () => {
