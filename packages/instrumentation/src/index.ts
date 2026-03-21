@@ -57,6 +57,7 @@ export type {
   MetricName,
   AgentStepType,
   AgentStepInput,
+  AgentQueryOptions,
   GuardMode,
   GuardResult,
   InstrumentTarget,

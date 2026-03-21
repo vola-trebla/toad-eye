@@ -3,8 +3,8 @@ import type { LLMProvider } from "./providers.js";
 /** Span status values used in trace attributes. */
 export type SpanStatus = "success" | "error";
 
-/** ReAct agent step types: think → act → observe → answer */
-export type AgentStepType = "think" | "act" | "observe" | "answer";
+/** ReAct agent step types: think → act → observe → answer → handoff */
+export type AgentStepType = "think" | "act" | "observe" | "answer" | "handoff";
 
 /** Input for traceAgentStep — describes a single agent step */
 export interface AgentStepInput {
@@ -12,6 +12,16 @@ export interface AgentStepInput {
   readonly stepNumber: number;
   readonly content?: string | undefined;
   readonly toolName?: string | undefined;
+  /** Target agent name for handoff steps */
+  readonly toAgent?: string | undefined;
+  /** Reason for handoff */
+  readonly handoffReason?: string | undefined;
+}
+
+/** Options for traceAgentQuery */
+export interface AgentQueryOptions {
+  /** Max steps before recording a warning. Default: 25 */
+  readonly maxSteps?: number | undefined;
 }
 
 /** Guard execution mode */

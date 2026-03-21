@@ -1,19 +1,16 @@
 import { trace, SpanStatusCode } from "@opentelemetry/api";
-import type { AgentStepInput } from "./types/index.js";
+import type { AgentStepInput, AgentQueryOptions } from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
 import { recordAgentSteps, recordAgentToolUsage } from "./core/metrics.js";
 import { getConfig } from "./core/tracer.js";
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
+const DEFAULT_MAX_STEPS = 25;
+
 /**
- * Record a single agent step as a child span (ReAct pattern: think → act → observe → answer).
- *
- * Creates a short-lived span under the current active context. Call this inside
- * {@link traceAgentQuery} (preferred) or any other active span (e.g. traceLLMCall).
- *
- * - Respects `recordContent` config — content is omitted when recording is disabled.
- * - For `act` steps with a `toolName`, automatically increments the `agent.tool_usage` metric.
+ * Record a single agent step as a child span (ReAct pattern).
+ * Supports: think, act, observe, answer, handoff.
  */
 function traceAgentStep(input: AgentStepInput) {
   const span = tracer.startSpan(`agent.step.${input.type}`);
@@ -31,6 +28,13 @@ function traceAgentStep(input: AgentStepInput) {
       input.content !== undefined && {
         [GEN_AI_ATTRS.AGENT_STEP_CONTENT]: input.content,
       }),
+    // Handoff attributes
+    ...(input.toAgent !== undefined && {
+      [GEN_AI_ATTRS.AGENT_HANDOFF_TO]: input.toAgent,
+    }),
+    ...(input.handoffReason !== undefined && {
+      [GEN_AI_ATTRS.AGENT_HANDOFF_REASON]: input.handoffReason,
+    }),
   });
 
   if (input.type === "act" && input.toolName !== undefined) {
@@ -42,57 +46,79 @@ function traceAgentStep(input: AgentStepInput) {
 }
 
 /**
- * Wrap an entire agent query in a parent span, producing structured ReAct traces.
+ * Wrap an entire agent query in a parent span with ReAct tracing.
  *
- * The callback receives a `step` function to record individual steps.
- * When the callback completes, the wrapper automatically records the
- * `agent.steps_per_query` histogram metric with the total step count.
+ * Supports multi-agent via nesting — child traceAgentQuery calls
+ * automatically become child spans in Jaeger.
  *
- * Span hierarchy in Jaeger:
- * ```
- * [parent] agent.query "Is anything dangerous near Earth?"
- *   ├── agent.step.think   "I need to check asteroids"
- *   ├── agent.step.act     tool=near-earth-asteroids
- *   ├── agent.step.observe "7 asteroids found"
- *   └── agent.step.answer  "7 asteroids passing safely..."
- * ```
+ * Loop detection: counts observe→think transitions. Records loop count
+ * as span attribute. Emits warning when maxSteps exceeded.
  *
  * @example
  * ```ts
- * const result = await traceAgentQuery("Is anything dangerous near Earth?", async (step) => {
- *   step({ type: "think", stepNumber: 1, content: "I need to check asteroids" });
- *   const data = await callTool("near-earth-asteroids");
- *   step({ type: "act", stepNumber: 2, toolName: "near-earth-asteroids" });
- *   step({ type: "observe", stepNumber: 3, content: `${data.length} asteroids found` });
- *   step({ type: "answer", stepNumber: 4, content: "7 asteroids passing safely..." });
- *   return { answer: "7 asteroids passing safely..." };
+ * // Multi-agent: orchestrator delegates to specialist
+ * await traceAgentQuery('orchestrator', async (step) => {
+ *   step({ type: 'think', stepNumber: 1, content: 'Need domain expert' });
+ *   step({ type: 'handoff', stepNumber: 2, toAgent: 'specialist', handoffReason: 'domain expertise' });
+ *
+ *   const result = await traceAgentQuery('specialist', async (step) => {
+ *     step({ type: 'act', stepNumber: 1, toolName: 'analyze' });
+ *     step({ type: 'answer', stepNumber: 2, content: 'analysis complete' });
+ *     return { answer: 'done' };
+ *   });
  * });
  * ```
  */
 export async function traceAgentQuery<T>(
   query: string,
   fn: (step: (input: AgentStepInput) => void) => Promise<T>,
+  options?: AgentQueryOptions,
 ): Promise<T> {
   return tracer.startActiveSpan(`agent.query`, async (span) => {
     const config = getConfig();
     const recordContent = config?.recordContent !== false;
+    const maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;
 
     if (recordContent) {
       span.setAttribute(GEN_AI_ATTRS.AGENT_STEP_CONTENT, query);
     }
 
     let stepCount = 0;
+    let loopCount = 0;
+    let lastStepType: string | undefined;
+    let maxStepsWarned = false;
 
     try {
       const result = await fn((input) => {
         stepCount++;
+
+        // Loop detection: observe → think = one loop iteration
+        if (input.type === "think" && lastStepType === "observe") {
+          loopCount++;
+        }
+        lastStepType = input.type;
+
+        // Max steps guard
+        if (stepCount > maxSteps && !maxStepsWarned) {
+          maxStepsWarned = true;
+          console.warn(
+            `toad-eye: agent exceeded maxSteps (${maxSteps}). Current: ${stepCount}`,
+          );
+          span.addEvent("agent.max_steps_exceeded", {
+            "agent.max_steps": maxSteps,
+            "agent.current_steps": stepCount,
+          });
+        }
+
         traceAgentStep(input);
       });
 
+      span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      span.setAttribute(GEN_AI_ATTRS.AGENT_LOOP_COUNT, loopCount);
       span.setStatus({ code: SpanStatusCode.ERROR, message });
       throw error;
     } finally {
