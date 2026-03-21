@@ -17,9 +17,16 @@ export const GEN_AI_ATTRS = {
   FINISH_REASONS: "gen_ai.response.finish_reasons",
   ERROR: "error.type",
 
-  // Agent step attributes
+  // OTel GenAI agent attributes
+  AGENT_NAME: "gen_ai.agent.name",
+  AGENT_ID: "gen_ai.agent.id",
+  TOOL_NAME: "gen_ai.tool.name",
+  TOOL_TYPE: "gen_ai.tool.type",
+
+  // Agent step attributes (toad-eye ReAct extensions, not in OTel spec)
   AGENT_STEP_TYPE: "gen_ai.agent.step.type",
   AGENT_STEP_NUMBER: "gen_ai.agent.step.number",
+  /** @deprecated Use TOOL_NAME instead. Will be removed in v3.0. */
   AGENT_TOOL_NAME: "gen_ai.agent.tool.name",
   AGENT_STEP_CONTENT: "gen_ai.agent.step.content",
   AGENT_HANDOFF_TO: "gen_ai.agent.handoff.to",

@@ -22,6 +22,7 @@ export type {
   AgentStepType,
   AgentStepInput,
   AgentQueryOptions,
+  AgentQueryInput,
   GuardMode,
   GuardResult,
 } from "./spans.js";
