@@ -1,4 +1,3 @@
-import { register } from "./registry.js";
 import { createInstrumentation } from "./create.js";
 import type { PatchTarget } from "./types.js";
 
@@ -89,10 +88,8 @@ const embeddings: PatchTarget = {
   },
 };
 
-register(
-  createInstrumentation({
-    name: "openai",
-    moduleName: "openai",
-    patches: [chatCompletions, embeddings],
-  }),
-);
+export const openaiInstrumentation = createInstrumentation({
+  name: "openai",
+  moduleName: "openai",
+  patches: [chatCompletions, embeddings],
+});

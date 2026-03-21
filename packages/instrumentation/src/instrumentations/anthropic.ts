@@ -1,4 +1,3 @@
-import { register } from "./registry.js";
 import { createInstrumentation } from "./create.js";
 import type { PatchTarget } from "./types.js";
 
@@ -70,10 +69,8 @@ const messagesCreate: PatchTarget = {
   },
 };
 
-register(
-  createInstrumentation({
-    name: "anthropic",
-    moduleName: "@anthropic-ai/sdk",
-    patches: [messagesCreate],
-  }),
-);
+export const anthropicInstrumentation = createInstrumentation({
+  name: "anthropic",
+  moduleName: "@anthropic-ai/sdk",
+  patches: [messagesCreate],
+});

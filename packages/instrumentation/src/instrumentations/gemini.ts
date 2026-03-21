@@ -1,4 +1,3 @@
-import { register } from "./registry.js";
 import { createInstrumentation } from "./create.js";
 import type { PatchTarget } from "./types.js";
 
@@ -89,10 +88,8 @@ const generateContentStream: PatchTarget = {
   },
 };
 
-register(
-  createInstrumentation({
-    name: "gemini",
-    moduleName: "@google/generative-ai",
-    patches: [generateContent, generateContentStream],
-  }),
-);
+export const geminiInstrumentation = createInstrumentation({
+  name: "gemini",
+  moduleName: "@google/generative-ai",
+  patches: [generateContent, generateContentStream],
+});

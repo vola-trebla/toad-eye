@@ -5,6 +5,7 @@ import {
   enableAll,
   register,
   disableAll,
+  skipAutoRegister,
 } from "../instrumentations/registry.js";
 import type { Instrumentation } from "../instrumentations/types.js";
 
@@ -24,6 +25,7 @@ describe("enableAll — user-visible warnings", () => {
 
   beforeEach(() => {
     disableAll();
+    skipAutoRegister();
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -32,9 +34,9 @@ describe("enableAll — user-visible warnings", () => {
     disableAll();
   });
 
-  it("warns with console.warn when provider is unknown (not registered)", () => {
+  it("warns with console.warn when provider is unknown (not registered)", async () => {
     // @ts-expect-error — intentionally passing unknown provider
-    enableAll(["opanai"]);
+    await enableAll(["opanai"]);
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("unknown provider"),
@@ -42,18 +44,18 @@ describe("enableAll — user-visible warnings", () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("opanai"));
   });
 
-  it("includes valid provider list in the unknown provider warning", () => {
+  it("includes valid provider list in the unknown provider warning", async () => {
     // @ts-expect-error — intentionally passing unknown provider
-    enableAll(["groq"]);
+    await enableAll(["groq"]);
 
     const call = warnSpy.mock.calls[0]?.[0] as string;
     expect(call).toMatch(/valid providers:/);
   });
 
-  it("warns with console.warn when SDK is not installed", () => {
+  it("warns with console.warn when SDK is not installed", async () => {
     const inst = makeInst("openai", false); // enable() returns false = SDK not found
     register(inst);
-    enableAll(["openai"]);
+    await enableAll(["openai"]);
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('"openai" SDK not found'),
@@ -63,29 +65,29 @@ describe("enableAll — user-visible warnings", () => {
     );
   });
 
-  it("includes correct package name hint for gemini", () => {
+  it("includes correct package name hint for gemini", async () => {
     const inst = makeInst("gemini", false);
     register(inst);
-    enableAll(["gemini"]);
+    await enableAll(["gemini"]);
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("@google/generative-ai"),
     );
   });
 
-  it("does not warn when provider is successfully patched", () => {
+  it("does not warn when provider is successfully patched", async () => {
     const inst = makeInst("anthropic", true);
     register(inst);
-    enableAll(["anthropic"]);
+    await enableAll(["anthropic"]);
 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("does not re-warn when provider is already active", () => {
+  it("does not re-warn when provider is already active", async () => {
     const inst = makeInst("openai", true);
     register(inst);
-    enableAll(["openai"]);
-    enableAll(["openai"]); // second call — already active
+    await enableAll(["openai"]);
+    await enableAll(["openai"]); // second call — already active
 
     expect(inst.enable).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalled();
