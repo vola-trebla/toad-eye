@@ -120,6 +120,8 @@ const result = await traceLLMCall(
 
 > Or skip this entirely — use `instrument: ['openai']` for zero-code instrumentation.
 
+> **Note:** In short-lived scripts, call `await shutdown()` before exit to flush buffered spans. Long-running servers (Express, Hono, Next.js) don't need this — spans flush automatically.
+
 </details>
 
 ## Budget guards
