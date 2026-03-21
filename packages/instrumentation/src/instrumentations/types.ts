@@ -8,6 +8,13 @@ export interface Instrumentation {
   disable(): void;
 }
 
+/** Accumulated stream data — only primitives, no raw SDK objects. */
+export interface StreamAccumulator {
+  completion: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /** Describes a single method to monkey-patch on an SDK prototype. */
 export interface PatchTarget {
   /** How to find the prototype from the loaded SDK module */
@@ -34,10 +41,6 @@ export interface PatchTarget {
   shouldSkip?: (body: unknown) => boolean;
   /** Return true if this call is a streaming request */
   isStreaming?: (body: unknown) => boolean;
-  /** Extract final stats from accumulated stream chunks. Required when isStreaming is set. */
-  extractStreamResponse?: (chunks: unknown[]) => {
-    completion: string;
-    inputTokens: number;
-    outputTokens: number;
-  };
+  /** Process one stream chunk — extract only the data we need into the accumulator. */
+  accumulateChunk?: (acc: StreamAccumulator, chunk: unknown) => void;
 }

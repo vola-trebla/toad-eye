@@ -1,9 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
-// Test the stream wrapping logic, extractors, and message parsing
+import type { StreamAccumulator } from "../instrumentations/types.js";
+
+// Test the accumulator-based stream extraction and message parsing
+
+function freshAcc(): StreamAccumulator {
+  return { completion: "", inputTokens: 0, outputTokens: 0 };
+}
 
 describe("OpenAI multi-modal extraction (#98)", () => {
-  // Inline the same logic as openai.ts extractMessages
   function extractMessages(messages: unknown): string {
     if (!Array.isArray(messages)) return "";
     return messages
@@ -27,8 +32,7 @@ describe("OpenAI multi-modal extraction (#98)", () => {
   }
 
   it("extracts plain string content", () => {
-    const result = extractMessages([{ content: "Hello world" }]);
-    expect(result).toBe("Hello world");
+    expect(extractMessages([{ content: "Hello world" }])).toBe("Hello world");
   });
 
   it("extracts text from ContentPart array", () => {
@@ -45,9 +49,7 @@ describe("OpenAI multi-modal extraction (#98)", () => {
 
   it("handles image-only messages", () => {
     const result = extractMessages([
-      {
-        content: [{ type: "image_url", image_url: { url: "https://..." } }],
-      },
+      { content: [{ type: "image_url", image_url: { url: "https://..." } }] },
     ]);
     expect(result).toBe("[image]");
   });
@@ -79,101 +81,134 @@ describe("OpenAI multi-modal extraction (#98)", () => {
   });
 });
 
-describe("OpenAI stream extraction", () => {
-  it("accumulates content from delta chunks", async () => {
-    // Simulate OpenAI extractStreamResponse
-    const { extractStreamResponse } = await getOpenAIExtractor();
+describe("OpenAI stream accumulator", () => {
+  function accumulateChunk(acc: StreamAccumulator, chunk: unknown) {
+    const c = chunk as {
+      choices?: { delta?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    const delta = c?.choices?.[0]?.delta?.content;
+    if (delta) acc.completion += delta;
+    if (c?.usage) {
+      acc.inputTokens = c.usage.prompt_tokens ?? acc.inputTokens;
+      acc.outputTokens = c.usage.completion_tokens ?? acc.outputTokens;
+    }
+  }
 
-    const chunks = [
-      { choices: [{ delta: { content: "Hello" } }] },
-      { choices: [{ delta: { content: " world" } }] },
-      {
-        choices: [{ delta: {} }],
-        usage: { prompt_tokens: 10, completion_tokens: 5 },
-      },
-    ];
+  it("accumulates content from delta chunks", () => {
+    const acc = freshAcc();
+    accumulateChunk(acc, { choices: [{ delta: { content: "Hello" } }] });
+    accumulateChunk(acc, { choices: [{ delta: { content: " world" } }] });
+    accumulateChunk(acc, {
+      choices: [{ delta: {} }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    });
 
-    const result = extractStreamResponse!(chunks);
-    expect(result.completion).toBe("Hello world");
-    expect(result.inputTokens).toBe(10);
-    expect(result.outputTokens).toBe(5);
+    expect(acc.completion).toBe("Hello world");
+    expect(acc.inputTokens).toBe(10);
+    expect(acc.outputTokens).toBe(5);
   });
 
-  it("handles chunks without usage data", async () => {
-    const { extractStreamResponse } = await getOpenAIExtractor();
+  it("handles chunks without usage data", () => {
+    const acc = freshAcc();
+    accumulateChunk(acc, { choices: [{ delta: { content: "Hi" } }] });
+    accumulateChunk(acc, { choices: [{ delta: {} }] });
 
-    const chunks = [
-      { choices: [{ delta: { content: "Hi" } }] },
-      { choices: [{ delta: {} }] },
-    ];
-
-    const result = extractStreamResponse!(chunks);
-    expect(result.completion).toBe("Hi");
-    expect(result.inputTokens).toBe(0);
-    expect(result.outputTokens).toBe(0);
+    expect(acc.completion).toBe("Hi");
+    expect(acc.inputTokens).toBe(0);
+    expect(acc.outputTokens).toBe(0);
   });
 
-  it("handles empty stream", async () => {
-    const { extractStreamResponse } = await getOpenAIExtractor();
-    const result = extractStreamResponse!([]);
-    expect(result.completion).toBe("");
-    expect(result.inputTokens).toBe(0);
+  it("does not store raw chunk objects", () => {
+    const acc = freshAcc();
+    const bigChunk = {
+      choices: [{ delta: { content: "x" } }],
+      metadata: { large: "object" },
+    };
+    accumulateChunk(acc, bigChunk);
+
+    // acc only has primitives, no reference to bigChunk
+    expect(Object.keys(acc)).toEqual([
+      "completion",
+      "inputTokens",
+      "outputTokens",
+    ]);
   });
 });
 
-describe("Anthropic stream extraction", () => {
-  it("accumulates content from content_block_delta events", async () => {
-    const { extractStreamResponse } = await getAnthropicExtractor();
+describe("Anthropic stream accumulator", () => {
+  function accumulateChunk(acc: StreamAccumulator, chunk: unknown) {
+    const event = chunk as {
+      type?: string;
+      message?: { usage?: { input_tokens?: number } };
+      delta?: { text?: string };
+      usage?: { output_tokens?: number };
+    };
+    if (event.type === "content_block_delta" && event.delta?.text) {
+      acc.completion += event.delta.text;
+    }
+    if (event.type === "message_start" && event.message?.usage) {
+      acc.inputTokens = event.message.usage.input_tokens ?? 0;
+    }
+    if (event.type === "message_delta" && event.usage) {
+      acc.outputTokens = event.usage.output_tokens ?? 0;
+    }
+  }
 
-    const chunks = [
-      { type: "message_start", message: { usage: { input_tokens: 15 } } },
-      { type: "content_block_delta", delta: { text: "Hello" } },
-      { type: "content_block_delta", delta: { text: " from Claude" } },
-      { type: "message_delta", usage: { output_tokens: 8 } },
-      { type: "message_stop" },
-    ];
+  it("accumulates content from content_block_delta events", () => {
+    const acc = freshAcc();
+    accumulateChunk(acc, {
+      type: "message_start",
+      message: { usage: { input_tokens: 15 } },
+    });
+    accumulateChunk(acc, {
+      type: "content_block_delta",
+      delta: { text: "Hello" },
+    });
+    accumulateChunk(acc, {
+      type: "content_block_delta",
+      delta: { text: " from Claude" },
+    });
+    accumulateChunk(acc, {
+      type: "message_delta",
+      usage: { output_tokens: 8 },
+    });
+    accumulateChunk(acc, { type: "message_stop" });
 
-    const result = extractStreamResponse!(chunks);
-    expect(result.completion).toBe("Hello from Claude");
-    expect(result.inputTokens).toBe(15);
-    expect(result.outputTokens).toBe(8);
-  });
-
-  it("handles empty stream", async () => {
-    const { extractStreamResponse } = await getAnthropicExtractor();
-    const result = extractStreamResponse!([]);
-    expect(result.completion).toBe("");
-    expect(result.inputTokens).toBe(0);
+    expect(acc.completion).toBe("Hello from Claude");
+    expect(acc.inputTokens).toBe(15);
+    expect(acc.outputTokens).toBe(8);
   });
 });
 
 describe("stream wrapping (async iterable)", () => {
-  it("wraps async iterable transparently", async () => {
+  it("wraps async iterable with accumulator", async () => {
     async function* mockStream() {
-      yield { data: "chunk1" };
-      yield { data: "chunk2" };
-      yield { data: "chunk3" };
+      yield { n: 1 };
+      yield { n: 2 };
+      yield { n: 3 };
     }
 
-    const collected: unknown[] = [];
-    let completeCalled = false;
+    let completeAcc: StreamAccumulator | null = null;
 
-    // Inline wrapper matching the logic in create.ts
     async function* wrapStream<T>(
       stream: AsyncIterable<T>,
-      onComplete: (chunks: T[]) => void,
+      onComplete: (acc: StreamAccumulator) => void,
     ) {
-      const chunks: T[] = [];
+      const acc: StreamAccumulator = {
+        completion: "",
+        inputTokens: 0,
+        outputTokens: 0,
+      };
       for await (const chunk of stream) {
-        chunks.push(chunk);
+        acc.completion += String((chunk as { n: number }).n);
         yield chunk;
       }
-      onComplete(chunks);
+      onComplete(acc);
     }
 
-    const wrapped = wrapStream(mockStream(), (chunks) => {
-      completeCalled = true;
-      collected.push(...chunks);
+    const wrapped = wrapStream(mockStream(), (acc) => {
+      completeAcc = acc;
     });
 
     const results: unknown[] = [];
@@ -182,8 +217,8 @@ describe("stream wrapping (async iterable)", () => {
     }
 
     expect(results).toHaveLength(3);
-    expect(completeCalled).toBe(true);
-    expect(collected).toHaveLength(3);
+    expect(completeAcc).not.toBeNull();
+    expect(completeAcc!.completion).toBe("123");
   });
 
   it("propagates errors from stream", async () => {
@@ -210,61 +245,3 @@ describe("stream wrapping (async iterable)", () => {
     expect(results).toHaveLength(1);
   });
 });
-
-// Helpers to get extractors without loading real SDKs
-async function getOpenAIExtractor() {
-  // We can't import the openai.ts file directly because it tries to register.
-  // Instead, test the extraction logic inline (same code as in openai.ts)
-  return {
-    extractStreamResponse: (chunks: unknown[]) => {
-      let completion = "";
-      let inputTokens = 0;
-      let outputTokens = 0;
-
-      for (const chunk of chunks) {
-        const c = chunk as {
-          choices?: { delta?: { content?: string } }[];
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-        };
-        const delta = c?.choices?.[0]?.delta?.content;
-        if (delta) completion += delta;
-        if (c?.usage) {
-          inputTokens = c.usage.prompt_tokens ?? inputTokens;
-          outputTokens = c.usage.completion_tokens ?? outputTokens;
-        }
-      }
-
-      return { completion, inputTokens, outputTokens };
-    },
-  };
-}
-
-async function getAnthropicExtractor() {
-  return {
-    extractStreamResponse: (chunks: unknown[]) => {
-      let completion = "";
-      let inputTokens = 0;
-      let outputTokens = 0;
-
-      for (const chunk of chunks) {
-        const event = chunk as {
-          type?: string;
-          message?: { usage?: { input_tokens?: number } };
-          delta?: { text?: string };
-          usage?: { output_tokens?: number };
-        };
-        if (event.type === "content_block_delta" && event.delta?.text) {
-          completion += event.delta.text;
-        }
-        if (event.type === "message_start" && event.message?.usage) {
-          inputTokens = event.message.usage.input_tokens ?? 0;
-        }
-        if (event.type === "message_delta" && event.usage) {
-          outputTokens = event.usage.output_tokens ?? 0;
-        }
-      }
-
-      return { completion, inputTokens, outputTokens };
-    },
-  };
-}

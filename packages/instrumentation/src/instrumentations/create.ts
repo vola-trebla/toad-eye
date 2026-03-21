@@ -18,7 +18,11 @@ import {
 } from "../core/metrics.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
-import type { Instrumentation, PatchTarget } from "./types.js";
+import type {
+  Instrumentation,
+  PatchTarget,
+  StreamAccumulator,
+} from "./types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -46,24 +50,27 @@ function loadModule(moduleName: string): any {
 }
 
 /**
- * Wrap an async iterable stream to intercept chunks.
- * Yields every chunk transparently to the caller while collecting them.
- * On stream end, calls onComplete with all accumulated chunks.
+ * Wrap an async iterable stream with an accumulator.
+ * Yields every chunk transparently. Accumulates only extracted data (no raw chunks stored).
+ * On stream end, calls onComplete with the accumulated result.
  */
 async function* wrapAsyncIterable<T>(
   stream: AsyncIterable<T>,
-  onChunk: (chunk: T) => void,
-  onComplete: (chunks: T[]) => void,
+  accumulate: (acc: StreamAccumulator, chunk: T) => void,
+  onComplete: (acc: StreamAccumulator) => void,
   onError: (err: unknown) => void,
 ): AsyncGenerator<T> {
-  const chunks: T[] = [];
+  const acc: StreamAccumulator = {
+    completion: "",
+    inputTokens: 0,
+    outputTokens: 0,
+  };
   try {
     for await (const chunk of stream) {
-      chunks.push(chunk);
-      onChunk(chunk);
+      accumulate(acc, chunk);
       yield chunk;
     }
-    onComplete(chunks);
+    onComplete(acc);
   } catch (err) {
     onError(err);
     throw err;
@@ -87,7 +94,6 @@ function createStreamingHandler(
     const start = performance.now();
     const response = await original.call(thisArg, body, ...rest);
 
-    // Use startActiveSpan to preserve parent-child context (e.g. inside traceAgentQuery)
     const span: Span = tracer.startSpan(`gen_ai.${providerName}.${req.model}`);
     const ctx = trace.setSpan(context.active(), span);
 
@@ -102,20 +108,19 @@ function createStreamingHandler(
       ctx,
       wrapAsyncIterable(
         response as AsyncIterable<unknown>,
-        () => {},
-        (chunks) => {
+        (acc, chunk) => patch.accumulateChunk!(acc, chunk),
+        (acc) => {
           const duration = performance.now() - start;
-          const res = patch.extractStreamResponse!(chunks);
           const cost = calculateCost(
             req.model,
-            res.inputTokens,
-            res.outputTokens,
+            acc.inputTokens,
+            acc.outputTokens,
           );
 
           span.setAttributes({
             [GEN_AI_ATTRS.RESPONSE_MODEL]: req.model,
-            [GEN_AI_ATTRS.INPUT_TOKENS]: res.inputTokens,
-            [GEN_AI_ATTRS.OUTPUT_TOKENS]: res.outputTokens,
+            [GEN_AI_ATTRS.INPUT_TOKENS]: acc.inputTokens,
+            [GEN_AI_ATTRS.OUTPUT_TOKENS]: acc.outputTokens,
             [GEN_AI_ATTRS.COST]: cost,
             [GEN_AI_ATTRS.STATUS]: "success",
           });
@@ -126,7 +131,7 @@ function createStreamingHandler(
           recordRequestDuration(duration, providerName, req.model);
           recordRequestCost(cost, providerName, req.model);
           recordTokens(
-            res.inputTokens + res.outputTokens,
+            acc.inputTokens + acc.outputTokens,
             providerName,
             req.model,
           );
@@ -148,8 +153,6 @@ function createStreamingHandler(
       ),
     );
 
-    // Return an object that looks like the original stream but with our wrapper
-    // Preserve the original object shape — SDKs may have extra methods/properties
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const proxy = Object.create(response as any);
     proxy[Symbol.asyncIterator] = () => wrapped[Symbol.asyncIterator]();
@@ -164,7 +167,7 @@ function createPatchedMethod(
   providerName: LLMProvider,
 ) {
   const streamHandler =
-    patch.isStreaming && patch.extractStreamResponse
+    patch.isStreaming && patch.accumulateChunk
       ? createStreamingHandler(original, patch, providerName)
       : null;
 
@@ -177,7 +180,6 @@ function createPatchedMethod(
       return original.call(this, body, ...rest);
     }
 
-    // Handle streaming calls
     if (streamHandler && patch.isStreaming?.(body)) {
       return streamHandler(this, body, rest);
     }
@@ -206,10 +208,6 @@ function createPatchedMethod(
   };
 }
 
-/**
- * Factory for creating SDK instrumentations.
- * Eliminates boilerplate: SDK resolution, prototype patching, error handling, cleanup.
- */
 export function createInstrumentation(config: {
   name: LLMProvider;
   moduleName: string;
