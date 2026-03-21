@@ -2,10 +2,9 @@
  * Shadow Guardrails integration — records toad-guard validation results
  * as span attributes and metrics without blocking LLM responses.
  *
- * toad-guard validates each LLM response and passes the result here.
- * In shadow mode, validation runs but never throws — results are recorded
- * for observability only, letting you tune guardrail thresholds on
- * production traffic before switching to enforce mode.
+ * Results are recorded as attributes on the currently active span
+ * (typically the LLM call span from traceLLMCall). This avoids
+ * trace bloat — no extra child spans per guard rule.
  *
  * Usage from toad-guard:
  * ```ts
@@ -18,35 +17,32 @@
 
 import { trace } from "@opentelemetry/api";
 import type { GuardResult } from "./types/index.js";
-import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
+import { GEN_AI_ATTRS } from "./types/index.js";
 import {
   recordGuardEvaluation,
   recordGuardWouldBlock,
 } from "./core/metrics.js";
 
-const tracer = trace.getTracer(INSTRUMENTATION_NAME);
-
 /**
- * Record a guard validation result as span attributes and metrics.
+ * Record a guard validation result as attributes on the active span.
  *
- * Attaches guard attributes to a child span and increments counters.
- * If the guard failed, also increments the `would_block` counter —
- * useful for measuring how often shadow guardrails would have blocked.
+ * Attaches guard attributes directly to the current span (no child span created).
+ * Increments guard evaluation counter, and would_block counter if failed.
  */
 export function recordGuardResult(result: GuardResult) {
-  const span = tracer.startSpan(`guard.evaluate.${result.ruleName}`);
+  const activeSpan = trace.getActiveSpan();
 
-  span.setAttributes({
-    [GEN_AI_ATTRS.GUARD_MODE]: result.mode,
-    [GEN_AI_ATTRS.GUARD_PASSED]: result.passed,
-    [GEN_AI_ATTRS.GUARD_RULE_NAME]: result.ruleName,
-    ...(!result.passed &&
-      result.failureReason !== undefined && {
-        [GEN_AI_ATTRS.GUARD_FAILURE_REASON]: result.failureReason,
-      }),
-  });
-
-  span.end();
+  if (activeSpan) {
+    activeSpan.setAttributes({
+      [GEN_AI_ATTRS.GUARD_MODE]: result.mode,
+      [GEN_AI_ATTRS.GUARD_PASSED]: result.passed,
+      [GEN_AI_ATTRS.GUARD_RULE_NAME]: result.ruleName,
+      ...(!result.passed &&
+        result.failureReason !== undefined && {
+          [GEN_AI_ATTRS.GUARD_FAILURE_REASON]: result.failureReason,
+        }),
+    });
+  }
 
   recordGuardEvaluation(result.ruleName);
 

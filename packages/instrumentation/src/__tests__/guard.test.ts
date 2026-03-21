@@ -2,14 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockSpan = {
   setAttributes: vi.fn(),
-  end: vi.fn(),
 };
 
 vi.mock("@opentelemetry/api", () => ({
   trace: {
-    getTracer: () => ({
-      startSpan: (_name: string) => mockSpan,
-    }),
+    getActiveSpan: () => mockSpan,
   },
   metrics: { getMeter: () => ({}) },
   diag: { warn: vi.fn(), debug: vi.fn() },
@@ -32,7 +29,7 @@ describe("recordGuardResult", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a span with guard attributes for passing result", () => {
+  it("sets guard attributes on active span for passing result", () => {
     recordGuardResult({
       mode: "shadow",
       passed: true,
@@ -44,7 +41,6 @@ describe("recordGuardResult", () => {
       "gen_ai.toad_eye.guard.passed": true,
       "gen_ai.toad_eye.guard.rule_name": "schema_check",
     });
-    expect(mockSpan.end).toHaveBeenCalled();
   });
 
   it("includes failure_reason when guard fails", () => {
