@@ -52,16 +52,24 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 | **8 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent Workflow |
 | **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                                |
 | **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                     |
-| **Multi-agent tracing**  | ReAct steps, handoffs, loop detection, maxSteps guard                                      |
-| **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic          |
-| **Quality proxy**        | Empty response rate, latency per token — zero-dependency quality metrics                   |
-| **Semantic drift**       | Detect silent quality degradation via embedding comparison                                 |
 | **Privacy controls**     | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                   |
-| **Tail sampling**        | Keep 100% errors + slow traces, sample healthy traffic via OTel Collector                  |
-| **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook           |
-| **FinOps attribution**   | Break down costs by team, user, feature, environment                                       |
-| **TTFT metric**          | Time To First Token for streaming — separate from total duration                           |
-| **Trace export**         | Convert production Jaeger traces into regression test cases                                |
+
+<details>
+<summary>Advanced features</summary>
+
+| Feature                 | Description                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| **Multi-agent tracing** | ReAct steps, handoffs, loop detection, maxSteps guard                             |
+| **Shadow guardrails**   | Record what _would_ be blocked without blocking — tune thresholds on live traffic |
+| **Quality proxy**       | Empty response rate, latency per token — zero-dependency quality metrics          |
+| **Semantic drift**      | Detect silent quality degradation via embedding comparison                        |
+| **Tail sampling**       | Keep 100% errors + slow traces, sample healthy traffic via OTel Collector         |
+| **Alerting**            | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook  |
+| **FinOps attribution**  | Break down costs by team, user, feature, environment                              |
+| **TTFT metric**         | Time To First Token for streaming — separate from total duration                  |
+| **Trace export**        | Convert production Jaeger traces into regression test cases                       |
+
+</details>
 
 ## Auto-instrumentation 🤖
 
@@ -241,6 +249,14 @@ monitor.checkInBackground(response, "openai", "gpt-4o");
 ```
 
 ### Privacy controls
+
+| Goal                        | Config                           |
+| --------------------------- | -------------------------------- |
+| Don't store text at all     | `recordContent: false`           |
+| Remove common PII           | `redactDefaults: true`           |
+| Remove custom patterns      | `redactPatterns: [/regex/g]`     |
+| Store hashes only (no text) | `hashContent: true, salt: "..."` |
+| Audit what was masked       | `auditMasking: true`             |
 
 ```typescript
 initObservability({
