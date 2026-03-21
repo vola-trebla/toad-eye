@@ -28,6 +28,7 @@ export class BudgetTracker {
     this.state = {
       date: todayUTC(),
       totalCost: 0,
+      reservedCost: 0,
       perUser: new Map(),
       perModel: new Map(),
     };
@@ -40,6 +41,7 @@ export class BudgetTracker {
       this.state = {
         date: today,
         totalCost: 0,
+        reservedCost: 0,
         perUser: new Map(),
         perModel: new Map(),
       };
@@ -48,40 +50,63 @@ export class BudgetTracker {
 
   /**
    * Check budget BEFORE making an LLM call.
-   * Returns modified provider/model if downgrade mode triggers,
-   * throws ToadBudgetExceededError if block mode triggers,
-   * returns null if no action needed.
+   * - block mode: throws ToadBudgetExceededError if budget is exceeded.
+   * - downgrade mode: returns modified provider/model + budget type that triggered it.
+   * - warn mode: returns null (warning emitted after call via recordCost).
+   *
+   * When estimatedCost is provided, it is added to reservedCost so concurrent
+   * in-flight requests are counted against the budget before their actual cost is known.
+   * Call recordCost with the same estimatedCost to release the reservation.
    */
   checkBefore(
     provider: string,
     model: string,
     userId?: string,
-  ): { provider: string; model: string } | null {
+    estimatedCost = 0,
+  ): {
+    provider: string;
+    model: string;
+    budget: BudgetExceededInfo["budget"];
+  } | null {
     this.resetIfNewDay();
 
-    const exceeded = this.findExceeded(model, userId);
-    if (!exceeded) return null;
+    const exceeded = this.findExceeded(model, userId, estimatedCost);
 
-    if (this.mode === "block") {
-      throw new ToadBudgetExceededError(exceeded);
+    if (exceeded) {
+      if (this.mode === "block") {
+        throw new ToadBudgetExceededError(exceeded);
+      }
+
+      if (this.mode === "downgrade" && this.downgrade) {
+        this.state.reservedCost += estimatedCost;
+        return {
+          ...this.downgrade({ provider, model }),
+          budget: exceeded.budget,
+        };
+      }
     }
 
-    if (this.mode === "downgrade" && this.downgrade) {
-      return this.downgrade({ provider, model });
-    }
-
-    // 'warn' mode — continue, warning emitted after call
+    // warn mode or no budget exceeded: reserve estimated cost and proceed
+    this.state.reservedCost += estimatedCost;
     return null;
   }
 
-  /** Record cost AFTER a successful LLM call. Returns exceeded info if budget was just crossed. */
+  /**
+   * Record cost AFTER a successful LLM call. Returns exceeded info if budget was just crossed.
+   * Pass the same estimatedCost used in checkBefore() to release the reservation atomically.
+   */
   recordCost(
     cost: number,
     model: string,
     userId?: string,
+    reservedAmount = 0,
   ): BudgetExceededInfo | null {
     this.resetIfNewDay();
 
+    this.state.reservedCost = Math.max(
+      0,
+      this.state.reservedCost - reservedAmount,
+    );
     this.state.totalCost += cost;
     this.state.perModel.set(
       model,
@@ -101,10 +126,12 @@ export class BudgetTracker {
   private findExceeded(
     model: string,
     userId?: string,
+    additionalCost = 0,
   ): BudgetExceededInfo | null {
     if (
       this.config.daily !== undefined &&
-      this.state.totalCost >= this.config.daily
+      this.state.totalCost + this.state.reservedCost + additionalCost >=
+        this.config.daily
     ) {
       return {
         budget: "daily",
@@ -141,6 +168,14 @@ export class BudgetTracker {
     return null;
   }
 
+  /** Release a cost reservation when an LLM call fails (no cost was incurred). */
+  releaseReservation(reservedAmount: number) {
+    this.state.reservedCost = Math.max(
+      0,
+      this.state.reservedCost - reservedAmount,
+    );
+  }
+
   /** Get current budget usage as percentage (0-100+). */
   getUsagePercent(): number {
     if (this.config.daily === undefined || this.config.daily === 0) return 0;
@@ -165,6 +200,7 @@ export class BudgetTracker {
     this.state = {
       date: saved.date,
       totalCost: saved.totalCost,
+      reservedCost: 0,
       perUser: new Map(Object.entries(saved.perUser)),
       perModel: new Map(Object.entries(saved.perModel)),
     };
