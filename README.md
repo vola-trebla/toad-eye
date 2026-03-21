@@ -1,4 +1,4 @@
-# toad-eye 🐸-👁️‍🗨️🤖
+# toad-eye 🐸👁️‍🗨️🤖
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-000000?logo=opentelemetry&logoColor=white)
 ![Hono](https://img.shields.io/badge/Hono-E36002?logo=hono&logoColor=white)
