@@ -6,6 +6,7 @@ import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import {
   TraceIdRatioBasedSampler,
   ParentBasedSampler,
+  BatchSpanProcessor,
 } from "@opentelemetry/sdk-trace-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "../types/index.js";
@@ -100,9 +101,11 @@ export function initObservability(config: ToadEyeConfig) {
     exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
   });
 
-  // Add Vercel AI SDK SpanProcessor if 'ai' is in instrument list
+  // When custom SpanProcessors are needed (e.g., Vercel AI SDK),
+  // we must also include a BatchSpanProcessor for trace export —
+  // NodeSDK won't create one automatically when spanProcessors is provided.
   const spanProcessors = config.instrument?.includes("ai")
-    ? [new ToadEyeAISpanProcessor()]
+    ? [new BatchSpanProcessor(traceExporter), new ToadEyeAISpanProcessor()]
     : [];
 
   // SDK-side head sampling (default: 1.0 = send everything to Collector)
