@@ -83,7 +83,7 @@ function applyRedaction(text: string, pattern: RegExp): [string, number] {
   return [result, count];
 }
 
-function processContent(text: string): string | undefined {
+export function processContent(text: string): string | undefined {
   const config = getConfig();
   if (config?.recordContent === false) return undefined;
 

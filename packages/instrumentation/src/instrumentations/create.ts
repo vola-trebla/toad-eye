@@ -6,7 +6,7 @@ import {
   SpanStatusCode,
   type Span,
 } from "@opentelemetry/api";
-import { traceLLMCall } from "../core/spans.js";
+import { traceLLMCall, processContent } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
 import { calculateCost } from "../core/pricing.js";
 import {
@@ -16,7 +16,13 @@ import {
   recordRequest,
   recordError,
   recordTimeToFirstToken,
+  recordResponseEmpty,
+  recordResponseLatencyPerToken,
+  recordBudgetExceeded,
+  recordBudgetDowngraded,
 } from "../core/metrics.js";
+import { getConfig, getBudgetTracker } from "../core/tracer.js";
+import { ToadBudgetExceededError } from "../budget/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
 import type {
@@ -107,19 +113,69 @@ function createStreamingHandler(
     body: unknown,
     rest: unknown[],
   ) {
-    const req = patch.extractRequest(body);
+    // Pass thisArg so extractRequest can access instance properties (e.g., Gemini model name)
+    const req = patch.extractRequest(body, thisArg);
     const start = performance.now();
-    const response = await original.call(thisArg, body, ...rest);
 
-    const span: Span = tracer.startSpan(`gen_ai.${providerName}.${req.model}`);
+    // Budget check BEFORE the LLM call — mirrors traceLLMCall behavior
+    const budget = getBudgetTracker();
+    const config = getConfig();
+    const userId = config?.attributes?.[GEN_AI_ATTRS.USER_ID];
+    const estimatedCost = budget ? calculateCost(req.model, 500, 200) : 0;
+
+    let effectiveProvider: LLMProvider = providerName;
+    let effectiveModel = req.model;
+
+    if (budget) {
+      const override = budget.checkBefore(
+        providerName,
+        req.model,
+        userId,
+        estimatedCost,
+      );
+      if (override) {
+        effectiveProvider = override.provider as LLMProvider;
+        effectiveModel = override.model;
+        recordBudgetDowngraded(override.budget);
+      }
+    }
+
+    const span: Span = tracer.startSpan(
+      `gen_ai.${effectiveProvider}.${effectiveModel}`,
+    );
     const ctx = trace.setSpan(context.active(), span);
+    const sessionId = config?.sessionExtractor?.() ?? config?.sessionId;
 
     span.setAttributes({
-      [GEN_AI_ATTRS.PROVIDER]: providerName,
-      [GEN_AI_ATTRS.REQUEST_MODEL]: req.model,
+      [GEN_AI_ATTRS.PROVIDER]: effectiveProvider,
+      [GEN_AI_ATTRS.REQUEST_MODEL]: effectiveModel,
       [GEN_AI_ATTRS.TEMPERATURE]: req.temperature ?? 1.0,
       [GEN_AI_ATTRS.OPERATION]: "chat",
+      ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
     });
+
+    let response: unknown;
+    try {
+      response = await original.call(thisArg, body, ...rest);
+    } catch (err) {
+      const duration = performance.now() - start;
+      const message = err instanceof Error ? err.message : String(err);
+
+      // Release budget reservation — no cost was incurred
+      if (budget) budget.releaseReservation(estimatedCost);
+
+      span.setAttributes({
+        [GEN_AI_ATTRS.STATUS]: "error",
+        [GEN_AI_ATTRS.ERROR]: message,
+      });
+      span.setStatus({ code: SpanStatusCode.ERROR, message });
+      span.end();
+
+      recordRequest(effectiveProvider, effectiveModel);
+      recordRequestDuration(duration, effectiveProvider, effectiveModel);
+      recordError(effectiveProvider, effectiveModel);
+      throw err;
+    }
 
     // Some SDKs (Gemini) return { stream: AsyncIterable } instead of a direct AsyncIterable
     const resp = response as Record<string, unknown>;
@@ -140,19 +196,27 @@ function createStreamingHandler(
         streamIterable,
         (acc, chunk) => patch.accumulateChunk!(acc, chunk),
         () => {
-          const ttft = performance.now() - start;
-          recordTimeToFirstToken(ttft, providerName, req.model);
+          recordTimeToFirstToken(
+            performance.now() - start,
+            effectiveProvider,
+            effectiveModel,
+          );
         },
         (acc) => {
           const duration = performance.now() - start;
           const cost = calculateCost(
-            req.model,
+            effectiveModel,
             acc.inputTokens,
             acc.outputTokens,
           );
 
+          const processedCompletion = processContent(acc.completion);
+
           span.setAttributes({
-            [GEN_AI_ATTRS.RESPONSE_MODEL]: req.model,
+            ...(processedCompletion !== undefined && {
+              [GEN_AI_ATTRS.COMPLETION]: processedCompletion,
+            }),
+            [GEN_AI_ATTRS.RESPONSE_MODEL]: effectiveModel,
             [GEN_AI_ATTRS.INPUT_TOKENS]: acc.inputTokens,
             [GEN_AI_ATTRS.OUTPUT_TOKENS]: acc.outputTokens,
             [GEN_AI_ATTRS.COST]: cost,
@@ -162,18 +226,50 @@ function createStreamingHandler(
           span.setStatus({ code: SpanStatusCode.OK });
           span.end();
 
-          recordRequest(providerName, req.model);
-          recordRequestDuration(duration, providerName, req.model);
-          recordRequestCost(cost, providerName, req.model);
+          recordRequest(effectiveProvider, effectiveModel);
+          recordRequestDuration(duration, effectiveProvider, effectiveModel);
+          recordRequestCost(cost, effectiveProvider, effectiveModel);
           recordTokens(
             acc.inputTokens + acc.outputTokens,
-            providerName,
-            req.model,
+            effectiveProvider,
+            effectiveModel,
           );
+
+          // Quality metrics
+          if (acc.completion.trim() === "") {
+            recordResponseEmpty(effectiveProvider, effectiveModel);
+          }
+          if (acc.outputTokens > 0) {
+            recordResponseLatencyPerToken(
+              duration / acc.outputTokens,
+              effectiveProvider,
+              effectiveModel,
+            );
+          }
+
+          // Budget recording — releases the reservation made in checkBefore
+          if (budget) {
+            const exceeded = budget.recordCost(
+              cost,
+              effectiveModel,
+              userId,
+              estimatedCost,
+            );
+            if (exceeded) {
+              recordBudgetExceeded(exceeded.budget);
+              console.warn(
+                `toad-eye: ${exceeded.budget} budget exceeded — limit $${exceeded.limit}, current $${exceeded.current.toFixed(2)}`,
+              );
+            }
+          }
         },
         (err) => {
           const duration = performance.now() - start;
           const message = err instanceof Error ? err.message : String(err);
+
+          // Release budget reservation on stream error
+          if (budget) budget.releaseReservation(estimatedCost);
+
           span.setAttributes({
             [GEN_AI_ATTRS.STATUS]: "error",
             [GEN_AI_ATTRS.ERROR]: message,
@@ -181,9 +277,9 @@ function createStreamingHandler(
           span.setStatus({ code: SpanStatusCode.ERROR, message });
           span.end();
 
-          recordRequest(providerName, req.model);
-          recordRequestDuration(duration, providerName, req.model);
-          recordError(providerName, req.model);
+          recordRequest(effectiveProvider, effectiveModel);
+          recordRequestDuration(duration, effectiveProvider, effectiveModel);
+          recordError(effectiveProvider, effectiveModel);
         },
       ),
     );
@@ -225,7 +321,7 @@ function createPatchedMethod(
       return streamHandler(this, body, rest);
     }
 
-    const req = patch.extractRequest(body);
+    const req = patch.extractRequest(body, this);
 
     return traceLLMCall(
       {

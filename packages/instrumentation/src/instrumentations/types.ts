@@ -22,8 +22,13 @@ export interface PatchTarget {
   getPrototype: (sdk: any) => any | undefined;
   /** Method name on the prototype to patch */
   method: string;
-  /** Extract LLMCallInput fields from the request arguments */
-  extractRequest: (body: unknown) => {
+  /** Extract LLMCallInput fields from the request arguments.
+   *  thisArg is the SDK object instance — use it when the model name is not in the request body
+   *  (e.g., Gemini's GenerativeModel stores it as this.model). */
+  extractRequest: (
+    body: unknown,
+    thisArg?: unknown,
+  ) => {
     prompt: string;
     model: string;
     temperature?: number;
