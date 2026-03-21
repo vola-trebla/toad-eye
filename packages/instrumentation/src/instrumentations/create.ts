@@ -15,6 +15,7 @@ import {
   recordTokens,
   recordRequest,
   recordError,
+  recordTimeToFirstToken,
 } from "../core/metrics.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
@@ -53,10 +54,12 @@ function loadModule(moduleName: string): any {
  * Wrap an async iterable stream with an accumulator.
  * Yields every chunk transparently. Accumulates only extracted data (no raw chunks stored).
  * On stream end, calls onComplete with the accumulated result.
+ * onFirstChunk is called once when the first chunk arrives (for TTFT tracking).
  */
 async function* wrapAsyncIterable<T>(
   stream: AsyncIterable<T>,
   accumulate: (acc: StreamAccumulator, chunk: T) => void,
+  onFirstChunk: () => void,
   onComplete: (acc: StreamAccumulator) => void,
   onError: (err: unknown) => void,
 ): AsyncGenerator<T> {
@@ -65,8 +68,13 @@ async function* wrapAsyncIterable<T>(
     inputTokens: 0,
     outputTokens: 0,
   };
+  let firstChunk = true;
   try {
     for await (const chunk of stream) {
+      if (firstChunk) {
+        onFirstChunk();
+        firstChunk = false;
+      }
       accumulate(acc, chunk);
       yield chunk;
     }
@@ -109,6 +117,10 @@ function createStreamingHandler(
       wrapAsyncIterable(
         response as AsyncIterable<unknown>,
         (acc, chunk) => patch.accumulateChunk!(acc, chunk),
+        () => {
+          const ttft = performance.now() - start;
+          recordTimeToFirstToken(ttft, providerName, req.model);
+        },
         (acc) => {
           const duration = performance.now() - start;
           const cost = calculateCost(

@@ -20,6 +20,8 @@ export const GEN_AI_METRICS = {
   GUARD_WOULD_BLOCK: "gen_ai.toad_eye.guard.would_block",
   // Drift metrics
   SEMANTIC_DRIFT: "gen_ai.toad_eye.semantic_drift",
+  // Streaming metrics
+  TIME_TO_FIRST_TOKEN: "gen_ai.client.time_to_first_token",
   // Budget metrics
   BUDGET_EXCEEDED: "gen_ai.toad_eye.budget.exceeded",
   BUDGET_BLOCKED: "gen_ai.toad_eye.budget.blocked",
