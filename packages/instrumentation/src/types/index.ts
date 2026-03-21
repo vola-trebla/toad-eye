@@ -21,6 +21,7 @@ export type {
   LLMSpanAttributes,
   AgentStepType,
   AgentStepInput,
+  AgentQueryOptions,
   GuardMode,
   GuardResult,
 } from "./spans.js";

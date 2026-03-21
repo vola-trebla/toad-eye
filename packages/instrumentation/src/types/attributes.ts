@@ -22,6 +22,9 @@ export const GEN_AI_ATTRS = {
   AGENT_STEP_NUMBER: "gen_ai.agent.step.number",
   AGENT_TOOL_NAME: "gen_ai.agent.tool.name",
   AGENT_STEP_CONTENT: "gen_ai.agent.step.content",
+  AGENT_HANDOFF_TO: "gen_ai.agent.handoff.to",
+  AGENT_HANDOFF_REASON: "gen_ai.agent.handoff.reason",
+  AGENT_LOOP_COUNT: "gen_ai.agent.loop_count",
 
   // Guard (shadow mode) attributes
   GUARD_MODE: "gen_ai.toad_eye.guard.mode",

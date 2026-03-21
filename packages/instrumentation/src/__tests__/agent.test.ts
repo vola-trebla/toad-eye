@@ -4,6 +4,7 @@ const mockSpan = {
   setAttribute: vi.fn(),
   setAttributes: vi.fn(),
   setStatus: vi.fn(),
+  addEvent: vi.fn(),
   end: vi.fn(),
 };
 
@@ -169,5 +170,108 @@ describe("traceAgentQuery", () => {
       "gen_ai.agent.step.content",
       expect.anything(),
     );
+  });
+});
+
+describe("handoff steps (#133)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockConfig = {};
+  });
+
+  it("records handoff attributes on step span", () => {
+    traceAgentStep({
+      type: "handoff",
+      stepNumber: 3,
+      toAgent: "specialist",
+      handoffReason: "needs domain expertise",
+    });
+
+    expect(mockSpan.setAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "gen_ai.agent.step.type": "handoff",
+        "gen_ai.agent.handoff.to": "specialist",
+        "gen_ai.agent.handoff.reason": "needs domain expertise",
+      }),
+    );
+  });
+});
+
+describe("loop detection (#133)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockConfig = {};
+  });
+
+  it("counts observe→think transitions as loops", async () => {
+    await traceAgentQuery("test", async (step) => {
+      step({ type: "think", stepNumber: 1 });
+      step({ type: "act", stepNumber: 2, toolName: "search" });
+      step({ type: "observe", stepNumber: 3 });
+      // Loop 1: observe → think
+      step({ type: "think", stepNumber: 4 });
+      step({ type: "act", stepNumber: 5, toolName: "search" });
+      step({ type: "observe", stepNumber: 6 });
+      // Loop 2: observe → think
+      step({ type: "think", stepNumber: 7 });
+      step({ type: "answer", stepNumber: 8 });
+    });
+
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.agent.loop_count",
+      2,
+    );
+  });
+
+  it("records 0 loops for linear flow", async () => {
+    await traceAgentQuery("test", async (step) => {
+      step({ type: "think", stepNumber: 1 });
+      step({ type: "act", stepNumber: 2, toolName: "calc" });
+      step({ type: "observe", stepNumber: 3 });
+      step({ type: "answer", stepNumber: 4 });
+    });
+
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+      "gen_ai.agent.loop_count",
+      0,
+    );
+  });
+
+  it("emits warning when maxSteps exceeded", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await traceAgentQuery(
+      "test",
+      async (step) => {
+        for (let i = 1; i <= 5; i++) {
+          step({ type: "think", stepNumber: i });
+        }
+      },
+      { maxSteps: 3 },
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("exceeded maxSteps"),
+    );
+    expect(mockSpan.addEvent).toHaveBeenCalledWith(
+      "agent.max_steps_exceeded",
+      expect.objectContaining({
+        "agent.max_steps": 3,
+      }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("does not warn when within maxSteps", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await traceAgentQuery("test", async (step) => {
+      step({ type: "think", stepNumber: 1 });
+      step({ type: "answer", stepNumber: 2 });
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(mockSpan.addEvent).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });
