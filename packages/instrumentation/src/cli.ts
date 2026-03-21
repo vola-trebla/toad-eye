@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -359,10 +365,11 @@ function runCli() {
   }
 }
 
-// Only auto-execute when run as CLI entry point, not when imported (e.g., in tests)
+// Only auto-execute when run as CLI entry point, not when imported (e.g., in tests).
+// Use realpathSync to resolve symlinks (npx creates a symlink in node_modules/.bin/).
 if (
   process.argv[1] !== undefined &&
-  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+  fileURLToPath(import.meta.url) === realpathSync(resolve(process.argv[1]))
 ) {
   runCli();
 }
