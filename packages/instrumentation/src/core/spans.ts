@@ -55,16 +55,37 @@ function sha256(text: string): string {
     .digest("hex");
 }
 
+// Built-in PII patterns — enabled via redactDefaults: true
+const DEFAULT_REDACT_PATTERNS: readonly RegExp[] = [
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, // email
+  /\b\d{3}-\d{2}-\d{4}\b/g, // SSN (US)
+  /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, // credit card
+  /\b\+?\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b/g, // phone
+];
+
 function processContent(text: string): string | undefined {
   const config = getConfig();
   if (config?.recordContent === false) return undefined;
 
   let processed = text;
 
+  // Apply default PII patterns if enabled
+  if (config?.redactDefaults) {
+    for (const pattern of DEFAULT_REDACT_PATTERNS) {
+      processed = processed.replace(pattern, "[REDACTED]");
+    }
+  }
+
+  // Apply custom patterns
   if (config?.redactPatterns?.length) {
     for (const pattern of config.redactPatterns) {
       processed = processed.replace(pattern, "[REDACTED]");
     }
+  }
+
+  // Audit mode — log what changed (for debugging config)
+  if (config?.auditMasking && processed !== text) {
+    console.log(`[toad-eye audit] Content masked: "${text}" → "${processed}"`);
   }
 
   if (config?.hashContent) {

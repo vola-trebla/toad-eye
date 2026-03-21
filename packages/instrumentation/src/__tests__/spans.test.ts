@@ -247,6 +247,123 @@ describe("salted hashing (#98)", () => {
   });
 });
 
+describe("privacy — redactDefaults (#129)", () => {
+  beforeEach(() => {
+    mockConfig = {};
+    mockSpan.setAttributes.mockClear();
+  });
+
+  it("redacts email with redactDefaults: true", async () => {
+    mockConfig = { redactDefaults: true };
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "Contact john@example.com for help",
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 10,
+        outputTokens: 2,
+        cost: 0,
+      }),
+    );
+
+    const call = mockSpan.setAttributes.mock.calls.find(
+      (c: unknown[]) =>
+        (c[0] as Record<string, unknown>)["gen_ai.toad_eye.prompt"] !==
+        undefined,
+    );
+    const prompt = (call![0] as Record<string, string>)[
+      "gen_ai.toad_eye.prompt"
+    ];
+    expect(prompt).toBe("Contact [REDACTED] for help");
+    expect(prompt).not.toContain("john@example.com");
+  });
+
+  it("redacts SSN with redactDefaults: true", async () => {
+    mockConfig = { redactDefaults: true };
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "SSN is 123-45-6789",
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 5,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    const call = mockSpan.setAttributes.mock.calls.find(
+      (c: unknown[]) =>
+        (c[0] as Record<string, unknown>)["gen_ai.toad_eye.prompt"] !==
+        undefined,
+    );
+    const prompt = (call![0] as Record<string, string>)[
+      "gen_ai.toad_eye.prompt"
+    ];
+    expect(prompt).toContain("[REDACTED]");
+    expect(prompt).not.toContain("123-45-6789");
+  });
+
+  it("does not redact when redactDefaults is not set", async () => {
+    mockConfig = {};
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "Email: test@example.com",
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 5,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    const call = mockSpan.setAttributes.mock.calls.find(
+      (c: unknown[]) =>
+        (c[0] as Record<string, unknown>)["gen_ai.toad_eye.prompt"] !==
+        undefined,
+    );
+    const prompt = (call![0] as Record<string, string>)[
+      "gen_ai.toad_eye.prompt"
+    ];
+    expect(prompt).toContain("test@example.com");
+  });
+
+  it("audit mode logs masked content", async () => {
+    mockConfig = { redactDefaults: true, auditMasking: true };
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "User email: admin@corp.com",
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 5,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[toad-eye audit]"),
+    );
+    logSpy.mockRestore();
+  });
+});
+
 describe("FinOps attributes", () => {
   beforeEach(() => {
     mockConfig = {};
