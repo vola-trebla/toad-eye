@@ -27,7 +27,10 @@ export function createIngestRoutes(store: MemoryStore) {
     }
 
     const apiKey = extractApiKey(c.req.header("authorization"));
-    store.addTrace(apiKey, asTracePayload(body));
+    const accepted = store.addTrace(apiKey, asTracePayload(body));
+    if (!accepted) {
+      return c.json({ error: "Trace too large — too many spans" }, 413);
+    }
 
     return c.json({ status: "ok" });
   });

@@ -85,7 +85,13 @@ export function createDriftMonitor(config: DriftMonitorConfig): DriftMonitor {
     check: performCheck,
 
     checkInBackground(response, providerName, model) {
-      void performCheck(response, providerName, model).catch((err) => {
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Drift check timeout (5s)")), 5000),
+      );
+      void Promise.race([
+        performCheck(response, providerName, model),
+        timeout,
+      ]).catch((err) => {
         console.warn(
           `[toad-eye] Drift check failed (non-blocking): ${err instanceof Error ? err.message : String(err)}`,
         );

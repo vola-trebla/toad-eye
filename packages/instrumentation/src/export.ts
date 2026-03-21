@@ -96,7 +96,7 @@ function buildAssertions(completion: string | undefined): EvalAssertion[] {
     });
 
     if (!completion.toLowerCase().includes(REFUSAL_MARKER)) {
-      assertions.push({ type: "not_contains", value: "I cannot" });
+      assertions.push({ type: "not_contains", value: REFUSAL_MARKER });
     }
 
     if (isJson(completion)) {
