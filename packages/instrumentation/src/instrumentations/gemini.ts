@@ -20,10 +20,10 @@ function extractPrompt(request: unknown): string {
 const generateContent: PatchTarget = {
   getPrototype: (sdk) => sdk?.GenerativeModel?.prototype,
   method: "generateContent",
-  extractRequest(body) {
+  extractRequest(body, thisArg) {
     return {
       prompt: extractPrompt(body),
-      model: "unknown",
+      model: (thisArg as { model?: string } | undefined)?.model ?? "unknown",
     };
   },
   extractResponse: (response) => {
@@ -53,10 +53,10 @@ const generateContent: PatchTarget = {
 const generateContentStream: PatchTarget = {
   getPrototype: (sdk) => sdk?.GenerativeModel?.prototype,
   method: "generateContentStream",
-  extractRequest(body) {
+  extractRequest(body, thisArg) {
     return {
       prompt: extractPrompt(body),
-      model: "unknown",
+      model: (thisArg as { model?: string } | undefined)?.model ?? "unknown",
     };
   },
   extractResponse: () => ({
