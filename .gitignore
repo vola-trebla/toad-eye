@@ -2,7 +2,7 @@ node_modules/
 dist/
 .env
 *.log
-infra/toad-eye/
+infra/
 docs/
 demo-recording/
 PROBLEMS.md
