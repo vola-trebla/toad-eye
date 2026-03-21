@@ -188,10 +188,16 @@ function createStreamingHandler(
       ),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proxy = Object.create(response as any);
-    proxy[Symbol.asyncIterator] = () => wrapped[Symbol.asyncIterator]();
-    return proxy;
+    // Proxy preserves the original object shape (getters, private fields, methods)
+    // while intercepting only the async iterator for instrumentation
+    return new Proxy(response as object, {
+      get(target, prop, receiver) {
+        if (prop === Symbol.asyncIterator) {
+          return () => wrapped[Symbol.asyncIterator]();
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
   };
 }
 
