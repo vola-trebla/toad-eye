@@ -35,8 +35,7 @@ describe("enableAll — user-visible warnings", () => {
   });
 
   it("warns with console.warn when provider is unknown (not registered)", async () => {
-    // @ts-expect-error — intentionally passing unknown provider
-    await enableAll(["opanai"]);
+    await enableAll(["opanai"]); // valid string, but not registered in the registry
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("unknown provider"),
@@ -45,8 +44,7 @@ describe("enableAll — user-visible warnings", () => {
   });
 
   it("includes valid provider list in the unknown provider warning", async () => {
-    // @ts-expect-error — intentionally passing unknown provider
-    await enableAll(["groq"]);
+    await enableAll(["groq"]); // valid string, but not registered in the registry
 
     const call = warnSpy.mock.calls[0]?.[0] as string;
     expect(call).toMatch(/valid providers:/);

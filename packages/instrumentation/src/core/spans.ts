@@ -33,7 +33,8 @@ export interface LLMCallOutput {
   readonly completion: string;
   readonly inputTokens: number;
   readonly outputTokens: number;
-  readonly cost: number;
+  /** Cost in USD. If omitted, auto-calculated from model pricing table. */
+  readonly cost?: number | undefined;
 }
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
@@ -166,6 +167,7 @@ function setSuccessAttributes(
   span: Span,
   input: LLMCallInput,
   output: LLMCallOutput,
+  resolvedCost: number,
 ) {
   const completion = processContent(output.completion);
   span.setAttributes({
@@ -173,7 +175,7 @@ function setSuccessAttributes(
     [GEN_AI_ATTRS.RESPONSE_MODEL]: input.model,
     [GEN_AI_ATTRS.INPUT_TOKENS]: output.inputTokens,
     [GEN_AI_ATTRS.OUTPUT_TOKENS]: output.outputTokens,
-    [GEN_AI_ATTRS.COST]: output.cost,
+    [GEN_AI_ATTRS.COST]: resolvedCost,
     [GEN_AI_ATTRS.STATUS]: "success",
     [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
   });
@@ -242,8 +244,15 @@ export async function traceLLMCall(
         const output = await fn();
         const duration = performance.now() - start;
         const attrs = resolveAttributes(effectiveInput);
+        const resolvedCost =
+          output.cost ??
+          calculateCost(
+            effectiveInput.model,
+            output.inputTokens,
+            output.outputTokens,
+          );
 
-        setSuccessAttributes(span, effectiveInput, output);
+        setSuccessAttributes(span, effectiveInput, output, resolvedCost);
         recordBaseMetrics(
           duration,
           effectiveInput.provider,
@@ -251,7 +260,7 @@ export async function traceLLMCall(
           attrs,
         );
         recordRequestCost(
-          output.cost,
+          resolvedCost,
           effectiveInput.provider,
           effectiveInput.model,
           attrs,
@@ -284,7 +293,7 @@ export async function traceLLMCall(
         if (budget) {
           const userId = effectiveInput.attributes?.[GEN_AI_ATTRS.USER_ID];
           const exceeded = budget.recordCost(
-            output.cost,
+            resolvedCost,
             effectiveInput.model,
             userId,
             estimatedCost,
