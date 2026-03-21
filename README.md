@@ -42,14 +42,16 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 
 | Feature                  | Description                                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------ |
-| **Auto-instrumentation** | Patches OpenAI, Anthropic, Gemini SDKs — regular + streaming calls                         |
+| **Auto-instrumentation** | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                             |
 | **8 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent Workflow |
 | **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                                |
 | **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                     |
-| **Agent tracing**        | ReAct agent steps (think/act/observe/answer) as nested spans                               |
+| **Multi-agent tracing**  | ReAct steps, handoffs, loop detection, maxSteps guard                                      |
 | **Shadow guardrails**    | Record what _would_ be blocked without blocking — tune thresholds on live traffic          |
+| **Quality proxy**        | Empty response rate, latency per token — zero-dependency quality metrics                   |
 | **Semantic drift**       | Detect silent quality degradation via embedding comparison                                 |
-| **Privacy controls**     | Disable content recording, SHA-256 hashing, regex redaction                                |
+| **Privacy controls**     | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                   |
+| **Tail sampling**        | Keep 100% errors + slow traces, sample healthy traffic via OTel Collector                  |
 | **Alerting**             | Cost spikes, latency anomalies, error rate — via Telegram, Slack, email, webhook           |
 | **FinOps attribution**   | Break down costs by team, user, feature, environment                                       |
 | **TTFT metric**          | Time To First Token for streaming — separate from total duration                           |
@@ -66,9 +68,11 @@ initObservability({
 });
 ```
 
-**Supported SDKs:** OpenAI (`openai`), Anthropic (`@anthropic-ai/sdk`), Google GenAI (`@google/generative-ai`)
+**Supported SDKs:** OpenAI (`openai`), Anthropic (`@anthropic-ai/sdk`), Google GenAI (`@google/generative-ai`), Vercel AI SDK (`ai`)
 
 Both regular and **streaming** calls are fully instrumented — spans, metrics, and cost tracking work transparently for `stream: true`.
+
+Vercel AI SDK uses a SpanProcessor (not monkey-patching) — add `instrument: ['ai']` and `experimental_telemetry: withToadEye()` to your calls.
 
 <details>
 <summary>Manual instrumentation (custom providers)</summary>
@@ -110,7 +114,7 @@ initObservability({
 
 ## Agent observability
 
-Structured tracing for ReAct agents (think / act / observe / answer) as nested OpenTelemetry spans.
+Structured tracing for ReAct agents with multi-agent support, handoffs, and loop detection.
 
 ```typescript
 import { traceAgentQuery } from "toad-eye";
@@ -200,10 +204,12 @@ monitor.checkInBackground(response, "openai", "gpt-4o");
 ```typescript
 initObservability({
   serviceName: "my-app",
+  redactDefaults: true, // built-in PII patterns (email, SSN, CC, phone)
   recordContent: false, // disable prompt/completion recording
   hashContent: true, // SHA-256 hash instead of plain text
   salt: "my-secret", // prevent rainbow table attacks
-  redactPatterns: [/\b\S+@\S+\.\S+\b/g], // regex redaction
+  auditMasking: true, // log what was masked (debug only)
+  redactPatterns: [/custom-pattern/g], // additional regex redaction
 });
 ```
 
@@ -305,37 +311,41 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 
 ### Metrics (OTel GenAI semconv)
 
-| Metric                              | Type      | Description                 |
-| ----------------------------------- | --------- | --------------------------- |
-| `gen_ai.client.operation.duration`  | Histogram | Request latency (ms)        |
-| `gen_ai.client.time_to_first_token` | Histogram | TTFT for streaming (ms)     |
-| `gen_ai.client.request.cost`        | Histogram | Cost per request (USD)      |
-| `gen_ai.client.token.usage`         | Counter   | Total tokens consumed       |
-| `gen_ai.client.requests`            | Counter   | Total requests              |
-| `gen_ai.client.errors`              | Counter   | Total failed requests       |
-| `gen_ai.agent.steps_per_query`      | Histogram | Agent steps per query       |
-| `gen_ai.agent.tool_usage`           | Counter   | Agent tool invocations      |
-| `gen_ai.toad_eye.guard.evaluations` | Counter   | Guard evaluations per rule  |
-| `gen_ai.toad_eye.guard.would_block` | Counter   | Would-have-blocked per rule |
-| `gen_ai.toad_eye.semantic_drift`    | Histogram | Drift from baseline (0..1)  |
-| `gen_ai.toad_eye.budget.exceeded`   | Counter   | Budget exceeded events      |
-| `gen_ai.toad_eye.budget.blocked`    | Counter   | LLM calls blocked by budget |
-| `gen_ai.toad_eye.budget.downgraded` | Counter   | LLM calls downgraded        |
+| Metric                                       | Type      | Description                 |
+| -------------------------------------------- | --------- | --------------------------- |
+| `gen_ai.client.operation.duration`           | Histogram | Request latency (ms)        |
+| `gen_ai.client.time_to_first_token`          | Histogram | TTFT for streaming (ms)     |
+| `gen_ai.client.request.cost`                 | Histogram | Cost per request (USD)      |
+| `gen_ai.client.token.usage`                  | Counter   | Total tokens consumed       |
+| `gen_ai.client.requests`                     | Counter   | Total requests              |
+| `gen_ai.client.errors`                       | Counter   | Total failed requests       |
+| `gen_ai.agent.steps_per_query`               | Histogram | Agent steps per query       |
+| `gen_ai.agent.tool_usage`                    | Counter   | Agent tool invocations      |
+| `gen_ai.toad_eye.guard.evaluations`          | Counter   | Guard evaluations per rule  |
+| `gen_ai.toad_eye.guard.would_block`          | Counter   | Would-have-blocked per rule |
+| `gen_ai.toad_eye.semantic_drift`             | Histogram | Drift from baseline (0..1)  |
+| `gen_ai.toad_eye.budget.exceeded`            | Counter   | Budget exceeded events      |
+| `gen_ai.toad_eye.budget.blocked`             | Counter   | LLM calls blocked by budget |
+| `gen_ai.toad_eye.budget.downgraded`          | Counter   | LLM calls downgraded        |
+| `gen_ai.toad_eye.response.empty`             | Counter   | Empty/whitespace responses  |
+| `gen_ai.toad_eye.response.latency_per_token` | Histogram | Generation speed (ms/token) |
 
 ### Span attributes
 
-| Attribute                    | Description                          |
-| ---------------------------- | ------------------------------------ |
-| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`      |
-| `gen_ai.request.model`       | Model identifier                     |
-| `gen_ai.usage.input_tokens`  | Tokens in the prompt                 |
-| `gen_ai.usage.output_tokens` | Tokens in the completion             |
-| `gen_ai.request.temperature` | Temperature parameter                |
-| `gen_ai.toad_eye.cost`       | Cost in USD                          |
-| `gen_ai.agent.step.type`     | Agent step: think/act/observe/answer |
-| `gen_ai.agent.tool.name`     | Tool name for agent act steps        |
-| `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce           |
-| `session.id`                 | Session identifier (if configured)   |
+| Attribute                    | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `gen_ai.provider.name`       | `anthropic`, `gemini`, `openai`              |
+| `gen_ai.request.model`       | Model identifier                             |
+| `gen_ai.usage.input_tokens`  | Tokens in the prompt                         |
+| `gen_ai.usage.output_tokens` | Tokens in the completion                     |
+| `gen_ai.request.temperature` | Temperature parameter                        |
+| `gen_ai.toad_eye.cost`       | Cost in USD                                  |
+| `gen_ai.agent.step.type`     | Agent step: think/act/observe/answer/handoff |
+| `gen_ai.agent.tool.name`     | Tool name for agent act steps                |
+| `gen_ai.agent.handoff.to`    | Target agent for handoff steps               |
+| `gen_ai.agent.loop_count`    | Agent loop iterations (observe→think)        |
+| `gen_ai.toad_eye.guard.mode` | Guard mode: shadow/enforce                   |
+| `session.id`                 | Session identifier (if configured)           |
 
 </details>
 
@@ -353,4 +363,4 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (165 tests)
+- Vitest (143+ tests)
