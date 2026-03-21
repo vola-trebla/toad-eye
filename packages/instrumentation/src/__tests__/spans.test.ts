@@ -339,7 +339,7 @@ describe("privacy — redactDefaults (#129)", () => {
     expect(prompt).toContain("test@example.com");
   });
 
-  it("audit mode logs masked content", async () => {
+  it("audit mode logs a summary without exposing original PII", async () => {
     mockConfig = { redactDefaults: true, auditMasking: true };
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -360,7 +360,35 @@ describe("privacy — redactDefaults (#129)", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("[toad-eye audit]"),
     );
+    // Must NOT log the original PII
+    const loggedMessage = logSpy.mock.calls[0]?.[0] as string;
+    expect(loggedMessage).not.toContain("admin@corp.com");
+    expect(loggedMessage).toContain("pattern(s) applied");
     logSpy.mockRestore();
+  });
+
+  it("redacted prompt is NOT present in span attributes (negative test)", async () => {
+    mockConfig = { redactDefaults: true };
+
+    await traceLLMCall(
+      {
+        provider: "openai",
+        model: "gpt-4o",
+        prompt: "SSN: 123-45-6789 and card 4111-1111-1111-1111",
+      },
+      async () => ({
+        completion: "ok",
+        inputTokens: 10,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    const allAttrs = mockSpan.setAttributes.mock.calls.flatMap(
+      (call: unknown[]) => Object.values(call[0] as Record<string, unknown>),
+    );
+    expect(allAttrs).not.toContain("123-45-6789");
+    expect(allAttrs).not.toContain("4111-1111-1111-1111");
   });
 });
 
