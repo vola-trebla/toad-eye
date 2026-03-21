@@ -56,36 +56,54 @@ function sha256(text: string): string {
 }
 
 // Built-in PII patterns — enabled via redactDefaults: true
+// Note: no `g` flag here — a fresh RegExp is created per call to avoid lastIndex state issues
 const DEFAULT_REDACT_PATTERNS: readonly RegExp[] = [
-  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, // email
-  /\b\d{3}-\d{2}-\d{4}\b/g, // SSN (US)
-  /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, // credit card
-  /\b\+?\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b/g, // phone
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // email
+  /\b\d{3}-\d{2}-\d{4}\b/, // SSN (US)
+  /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/, // credit card
+  /\b\+?\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b/, // phone
 ];
+
+function applyRedaction(text: string, pattern: RegExp): [string, number] {
+  let count = 0;
+  const regex = new RegExp(pattern.source, "g");
+  const result = text.replace(regex, () => {
+    count++;
+    return "[REDACTED]";
+  });
+  return [result, count];
+}
 
 function processContent(text: string): string | undefined {
   const config = getConfig();
   if (config?.recordContent === false) return undefined;
 
   let processed = text;
+  let totalRedacted = 0;
 
   // Apply default PII patterns if enabled
   if (config?.redactDefaults) {
     for (const pattern of DEFAULT_REDACT_PATTERNS) {
-      processed = processed.replace(pattern, "[REDACTED]");
+      const [result, count] = applyRedaction(processed, pattern);
+      processed = result;
+      totalRedacted += count;
     }
   }
 
   // Apply custom patterns
   if (config?.redactPatterns?.length) {
     for (const pattern of config.redactPatterns) {
-      processed = processed.replace(pattern, "[REDACTED]");
+      const [result, count] = applyRedaction(processed, pattern);
+      processed = result;
+      totalRedacted += count;
     }
   }
 
-  // Audit mode — log what changed (for debugging config)
-  if (config?.auditMasking && processed !== text) {
-    console.log(`[toad-eye audit] Content masked: "${text}" → "${processed}"`);
+  // Audit mode — log a summary only, never the original content (would re-expose PII)
+  if (config?.auditMasking && totalRedacted > 0) {
+    console.log(
+      `[toad-eye audit] Content masked: ${totalRedacted} pattern(s) applied, ${text.length} chars → ${processed.length} chars`,
+    );
   }
 
   if (config?.hashContent) {
