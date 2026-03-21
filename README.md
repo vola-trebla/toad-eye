@@ -55,7 +55,7 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 | **TTFT metric**          | Time To First Token for streaming — separate from total duration                  |
 | **Trace export**         | Convert production Jaeger traces into regression test cases                       |
 
-## Auto-instrumentation
+## Auto-instrumentation 🤖
 
 Zero-code instrumentation for popular LLM SDKs. No wrappers needed.
 
