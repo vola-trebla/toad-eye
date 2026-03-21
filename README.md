@@ -18,12 +18,16 @@ You don't know what your LLMs cost, how slow they are, or why they fail. toad-ey
 
 ## Quick start
 
+**Prerequisites:** [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine + Compose plugin)
+
 ```bash
 npm install toad-eye
 npx toad-eye init       # scaffold observability stack
 npx toad-eye up         # start Grafana + Prometheus + Jaeger
 npx toad-eye demo       # send mock LLM traffic, see data immediately
 ```
+
+> Dashboards will be empty until data arrives. Run `npx toad-eye demo` to send mock traffic and verify the stack works.
 
 ```typescript
 import { initObservability } from "toad-eye";
@@ -35,6 +39,8 @@ initObservability({
 
 // That's it. Every SDK call is auto-traced — including streaming.
 ```
+
+> ⚠️ By default, toad-eye records prompt and completion text in spans. Set `recordContent: false` for PII-sensitive workloads (healthcare, finance, legal).
 
 Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your dashboards.
 

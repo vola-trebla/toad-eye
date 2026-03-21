@@ -16,11 +16,6 @@ import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
 import type { LLMProvider } from "../types/index.js";
 
-// Side-effect imports: register provider instrumentations
-import "../instrumentations/openai.js";
-import "../instrumentations/anthropic.js";
-import "../instrumentations/gemini.js";
-
 const DEFAULT_ENDPOINT = "http://localhost:4318";
 const DEFAULT_CLOUD_ENDPOINT = "https://cloud.toad-eye.dev";
 
@@ -158,7 +153,9 @@ export function initObservability(config: ToadEyeConfig) {
       (i): i is LLMProvider => i !== "ai",
     );
     if (patchProviders.length > 0) {
-      enableAll(patchProviders);
+      // enableAll is async (lazy-loads provider modules on first call).
+      // Fire-and-forget: patching completes before any async SDK call.
+      void enableAll(patchProviders);
     }
   }
 }

@@ -8,7 +8,36 @@ export function register(inst: Instrumentation) {
   instrumentations.set(inst.name, inst);
 }
 
-export function enableAll(providers: readonly LLMProvider[]) {
+/**
+ * Lazy registration — loads provider modules and registers instrumentations
+ * only when enableAll() is first called. This avoids pulling in create.ts,
+ * metrics.ts, and node:module on every `import` of toad-eye.
+ */
+let registered = false;
+
+/** Skip lazy registration (used in tests that register mocks manually). */
+export function skipAutoRegister() {
+  registered = true;
+}
+
+async function ensureRegistered() {
+  if (registered) return;
+  registered = true;
+
+  const [openai, anthropic, gemini] = await Promise.all([
+    import("./openai.js"),
+    import("./anthropic.js"),
+    import("./gemini.js"),
+  ]);
+
+  register(openai.openaiInstrumentation);
+  register(anthropic.anthropicInstrumentation);
+  register(gemini.geminiInstrumentation);
+}
+
+export async function enableAll(providers: readonly LLMProvider[]) {
+  await ensureRegistered();
+
   const validProviders = Array.from(instrumentations.keys()).join(", ");
 
   for (const name of providers) {
