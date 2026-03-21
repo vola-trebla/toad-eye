@@ -54,8 +54,8 @@ describe("traceLLMCall", () => {
     mockSpan.setStatus.mockClear();
   });
 
-  it("warns via diag when called without initObservability", async () => {
-    const { diag } = await import("@opentelemetry/api");
+  it("warns via console.warn when called without initObservability", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     mockConfig = undefined as unknown as Record<string, unknown>;
 
     await traceLLMCall(
@@ -68,10 +68,11 @@ describe("traceLLMCall", () => {
       }),
     );
 
-    expect(diag.warn).toHaveBeenCalledWith(
+    expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("initObservability"),
     );
 
+    warnSpy.mockRestore();
     mockConfig = {};
   });
 
