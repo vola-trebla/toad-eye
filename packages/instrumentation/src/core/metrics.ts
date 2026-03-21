@@ -16,6 +16,7 @@ let agentToolUsage: Counter;
 let guardEvaluations: Counter;
 let guardWouldBlock: Counter;
 let semanticDrift: Histogram;
+let timeToFirstToken: Histogram;
 let budgetExceeded: Counter;
 let budgetBlocked: Counter;
 let budgetDowngraded: Counter;
@@ -71,6 +72,11 @@ export function initMetrics() {
   semanticDrift = meter.createHistogram(GEN_AI_METRICS.SEMANTIC_DRIFT, {
     description:
       "Semantic drift from baseline (0 = identical, 1 = completely different)",
+  });
+
+  timeToFirstToken = meter.createHistogram(GEN_AI_METRICS.TIME_TO_FIRST_TOKEN, {
+    description: "Time from request start to first streaming token (ms)",
+    unit: "ms",
   });
 
   budgetExceeded = meter.createCounter(GEN_AI_METRICS.BUDGET_EXCEEDED, {
@@ -172,6 +178,17 @@ export function recordSemanticDrift(
   model: string,
 ) {
   semanticDrift.record(drift, {
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+  });
+}
+
+export function recordTimeToFirstToken(
+  ms: number,
+  provider: string,
+  model: string,
+) {
+  timeToFirstToken.record(ms, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
