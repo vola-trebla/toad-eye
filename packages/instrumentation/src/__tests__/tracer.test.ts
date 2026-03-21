@@ -152,16 +152,17 @@ describe("initObservability — cloud mode", () => {
 
 describe("singleton lifecycle", () => {
   it("warns when initObservability is called twice", async () => {
-    const { diag } = await import("@opentelemetry/api");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     await shutdown();
 
     initObservability({ serviceName: "first" });
     initObservability({ serviceName: "second" });
 
-    expect(diag.warn).toHaveBeenCalledWith(
+    expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("already called"),
     );
 
+    warnSpy.mockRestore();
     await shutdown();
   });
 

@@ -8,7 +8,6 @@ import {
   ParentBasedSampler,
 } from "@opentelemetry/sdk-trace-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { diag } from "@opentelemetry/api";
 import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics, resetMetrics } from "./metrics.js";
 import { resetCustomPricing } from "./pricing.js";
@@ -68,7 +67,7 @@ function resolveTransport(config: ToadEyeConfig) {
 
 export function initObservability(config: ToadEyeConfig) {
   if (sdk) {
-    diag.warn(
+    console.warn(
       "toad-eye: initObservability() already called. Call shutdown() first to reconfigure.",
     );
     return;
@@ -121,6 +120,20 @@ export function initObservability(config: ToadEyeConfig) {
   sdk.start();
   currentConfig = config;
   initMetrics();
+
+  // Non-blocking connectivity check — warns the user if the OTel Collector is unreachable.
+  // Fire-and-forget: does not block initObservability(). Cloud mode skips this check.
+  if (!isCloudMode) {
+    void fetch(`${endpoint}/v1/traces`, {
+      method: "POST",
+      body: "[]",
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => {
+      console.warn(
+        `toad-eye: cannot reach OTel Collector at ${endpoint} — no telemetry will be exported. Is the stack running? Run: npx toad-eye up`,
+      );
+    });
+  }
 
   if (isCloudMode) {
     const masked = config.apiKey

@@ -1,4 +1,3 @@
-import { diag } from "@opentelemetry/api";
 import type { LLMProvider } from "../types/index.js";
 import type { Instrumentation } from "./types.js";
 
@@ -10,21 +9,26 @@ export function register(inst: Instrumentation) {
 }
 
 export function enableAll(providers: readonly LLMProvider[]) {
+  const validProviders = Array.from(instrumentations.keys()).join(", ");
+
   for (const name of providers) {
     if (active.has(name)) continue;
 
     const inst = instrumentations.get(name);
     if (!inst) {
-      diag.warn(`toad-eye: unknown provider "${name}", skipping`);
+      console.warn(
+        `toad-eye: unknown provider "${name}" — valid providers: ${validProviders}`,
+      );
       continue;
     }
 
     const patched = inst.enable();
     if (patched) {
       active.add(name);
-      diag.debug(`toad-eye: auto-instrumented ${name}`);
     } else {
-      diag.debug(`toad-eye: ${name} SDK not found, skipping`);
+      console.warn(
+        `toad-eye: "${name}" SDK not found — install it to enable auto-instrumentation: npm install ${name === "gemini" ? "@google/generative-ai" : name}`,
+      );
     }
   }
 }

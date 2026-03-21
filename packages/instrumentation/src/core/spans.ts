@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { trace, diag, type Span, SpanStatusCode } from "@opentelemetry/api";
+import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes, LLMProvider } from "../types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import {
@@ -53,7 +53,7 @@ function sha256(text: string): string {
   }
 
   if (config?.hashContent && !config.salt && !saltWarningEmitted) {
-    diag.warn(
+    console.warn(
       "toad-eye: hashContent is enabled without salt — short strings may be reversible. Set salt in config for stronger privacy.",
     );
     saltWarningEmitted = true;
@@ -200,7 +200,7 @@ export async function traceLLMCall(
   fn: () => Promise<LLMCallOutput>,
 ): Promise<LLMCallOutput> {
   if (!getConfig()) {
-    diag.warn(
+    console.warn(
       "toad-eye: traceLLMCall called before initObservability() — no telemetry will be recorded.",
     );
   }
