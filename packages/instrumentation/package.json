@@ -5,6 +5,28 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./alerts": {
+      "import": "./dist/alerts/index.js",
+      "types": "./dist/alerts/index.d.ts"
+    },
+    "./drift": {
+      "import": "./dist/drift/index.js",
+      "types": "./dist/drift/index.d.ts"
+    },
+    "./export": {
+      "import": "./dist/export.js",
+      "types": "./dist/export.d.ts"
+    },
+    "./vercel": {
+      "import": "./dist/vercel.js",
+      "types": "./dist/vercel.d.ts"
+    }
+  },
   "bin": {
     "toad-eye": "dist/cli.js"
   },
