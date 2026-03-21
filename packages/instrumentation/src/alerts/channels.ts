@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import type { AlertChannelConfig, FiredAlert } from "./types.js";
 
 function formatMessage(alert: FiredAlert): string {
@@ -71,7 +70,15 @@ async function sendEmail(
   config: Extract<AlertChannelConfig, { type: "email" }>,
   alert: FiredAlert,
 ) {
-  const transporter = nodemailer.createTransport({
+  let createTransport: (typeof import("nodemailer"))["createTransport"];
+  try {
+    ({ createTransport } = await import("nodemailer"));
+  } catch {
+    throw new Error(
+      "toad-eye: email alerts require nodemailer — install it: npm install nodemailer",
+    );
+  }
+  const transporter = createTransport({
     host: config.host,
     port: config.port,
     auth: { user: config.user, pass: config.password },

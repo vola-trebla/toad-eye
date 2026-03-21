@@ -23,5 +23,15 @@ export function saveBaseline(filepath: string, baseline: DriftBaseline) {
 export function loadBaseline(filepath: string): DriftBaseline | undefined {
   if (!existsSync(filepath)) return undefined;
   const raw = readFileSync(filepath, "utf-8");
-  return JSON.parse(raw) as DriftBaseline;
+  const parsed: unknown = JSON.parse(raw);
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !Array.isArray((parsed as Record<string, unknown>)["embeddings"])
+  ) {
+    throw new Error(
+      `toad-eye: baseline file at "${filepath}" is malformed — missing "embeddings" array`,
+    );
+  }
+  return parsed as DriftBaseline;
 }

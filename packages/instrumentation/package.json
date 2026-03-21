@@ -51,13 +51,15 @@
     "@opentelemetry/resources": "^2.6.0",
     "@opentelemetry/sdk-metrics": "^2.6.0",
     "@opentelemetry/sdk-node": "^0.213.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.0",
+    "@opentelemetry/sdk-trace-node": "^2.6.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
-    "nodemailer": "^8.0.3",
     "yaml": "^2.7.0"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.30.0",
     "@google/generative-ai": ">=0.20.0",
+    "nodemailer": ">=8.0.0",
     "openai": ">=4.0.0"
   },
   "peerDependenciesMeta": {
@@ -69,11 +71,13 @@
     },
     "@google/generative-ai": {
       "optional": true
+    },
+    "nodemailer": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@types/nodemailer": "^7.0.11",
-    "playwright": "^1.58.2",
     "vitest": "^4.1.0"
   }
 }
