@@ -112,10 +112,23 @@ function createStreamingHandler(
       [GEN_AI_ATTRS.OPERATION]: "chat",
     });
 
+    // Some SDKs (Gemini) return { stream: AsyncIterable } instead of a direct AsyncIterable
+    const resp = response as Record<string, unknown>;
+    const hasStreamProp =
+      resp != null &&
+      typeof resp === "object" &&
+      "stream" in resp &&
+      resp["stream"] != null &&
+      typeof resp["stream"] === "object" &&
+      Symbol.asyncIterator in (resp["stream"] as object);
+    const streamIterable = hasStreamProp
+      ? (resp["stream"] as AsyncIterable<unknown>)
+      : (response as AsyncIterable<unknown>);
+
     const wrapped = context.bind(
       ctx,
       wrapAsyncIterable(
-        response as AsyncIterable<unknown>,
+        streamIterable,
         (acc, chunk) => patch.accumulateChunk!(acc, chunk),
         () => {
           const ttft = performance.now() - start;

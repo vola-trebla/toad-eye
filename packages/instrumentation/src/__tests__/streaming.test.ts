@@ -181,6 +181,54 @@ describe("Anthropic stream accumulator", () => {
   });
 });
 
+describe("Gemini stream accumulator (#104)", () => {
+  function accumulateChunk(acc: StreamAccumulator, chunk: unknown) {
+    const c = chunk as {
+      text?: () => string;
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+      };
+    };
+    try {
+      const text = c?.text?.();
+      if (text) acc.completion += text;
+    } catch {
+      // text() may throw
+    }
+    if (c?.usageMetadata) {
+      acc.inputTokens = c.usageMetadata.promptTokenCount ?? acc.inputTokens;
+      acc.outputTokens =
+        c.usageMetadata.candidatesTokenCount ?? acc.outputTokens;
+    }
+  }
+
+  it("accumulates text from Gemini stream chunks", () => {
+    const acc = freshAcc();
+    accumulateChunk(acc, { text: () => "Hello " });
+    accumulateChunk(acc, { text: () => "from Gemini" });
+    accumulateChunk(acc, {
+      text: () => "",
+      usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 12 },
+    });
+
+    expect(acc.completion).toBe("Hello from Gemini");
+    expect(acc.inputTokens).toBe(20);
+    expect(acc.outputTokens).toBe(12);
+  });
+
+  it("handles text() throwing (blocked content)", () => {
+    const acc = freshAcc();
+    accumulateChunk(acc, {
+      text: () => {
+        throw new Error("Content blocked");
+      },
+    });
+
+    expect(acc.completion).toBe("");
+  });
+});
+
 describe("stream wrapping (async iterable)", () => {
   it("wraps async iterable with accumulator", async () => {
     async function* mockStream() {
