@@ -63,10 +63,9 @@ export type {
   InstrumentTarget,
   SamplingConfig,
 } from "./types/index.js";
-export {
-  GEN_AI_METRICS,
-  GEN_AI_ATTRS,
-  LLM_METRICS,
-  LLM_ATTRS,
-} from "./types/index.js";
+export { GEN_AI_METRICS, GEN_AI_ATTRS } from "./types/index.js";
+/** @deprecated Use GEN_AI_METRICS instead */
+export { LLM_METRICS } from "./types/index.js";
+/** @deprecated Use GEN_AI_ATTRS instead */
+export { LLM_ATTRS } from "./types/index.js";
 export { ToadEyeAISpanProcessor, withToadEye } from "./vercel.js";

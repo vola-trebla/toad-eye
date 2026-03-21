@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { trace, diag, type Span, SpanStatusCode } from "@opentelemetry/api";
-import type { LLMSpanAttributes } from "../types/index.js";
+import type { LLMSpanAttributes, LLMProvider } from "../types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import {
   recordRequestDuration,
@@ -15,11 +15,10 @@ import {
   recordResponseLatencyPerToken,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
-import { GEN_AI_ATTRS as ATTRS } from "../types/index.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
 export interface LLMCallInput {
-  readonly provider: LLMSpanAttributes["provider"];
+  readonly provider: LLMProvider;
   readonly model: string;
   readonly prompt: string;
   readonly temperature?: number | undefined;
@@ -209,7 +208,7 @@ export async function traceLLMCall(
 
   // Budget check BEFORE the LLM call
   if (budget) {
-    const userId = input.attributes?.[ATTRS.USER_ID];
+    const userId = input.attributes?.[GEN_AI_ATTRS.USER_ID];
     const override = budget.checkBefore(input.provider, input.model, userId);
     if (override) {
       // Downgrade mode — use modified provider/model
@@ -272,7 +271,7 @@ export async function traceLLMCall(
 
         // Budget recording AFTER the call
         if (budget) {
-          const userId = effectiveInput.attributes?.[ATTRS.USER_ID];
+          const userId = effectiveInput.attributes?.[GEN_AI_ATTRS.USER_ID];
           const exceeded = budget.recordCost(
             output.cost,
             effectiveInput.model,
