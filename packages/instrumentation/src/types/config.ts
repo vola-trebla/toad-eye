@@ -5,6 +5,23 @@ import type {
   DowngradeCallback,
 } from "../budget/types.js";
 
+/** Sampling configuration. Tail sampling runs in OTel Collector, SDK sends all spans. */
+export interface SamplingConfig {
+  /** SDK-side sampling rate (0.0–1.0). Default: 1.0 (send everything to Collector). */
+  readonly sdkRate?: number | undefined;
+  /** Collector-side tail sampling settings (used when generating otel-collector.yml). */
+  readonly collector?:
+    | {
+        /** Keep 100% of error traces. Default: true */
+        readonly keepErrors?: boolean | undefined;
+        /** Keep 100% of traces slower than this (ms). Default: 2000 */
+        readonly highLatencyMs?: number | undefined;
+        /** Sample this % of healthy traffic (0–100). Default: 10 */
+        readonly healthyRate?: number | undefined;
+      }
+    | undefined;
+}
+
 /**
  * Configuration for initObservability().
  * This is what the user passes when connecting toad-eye to their service.
@@ -35,6 +52,10 @@ export interface ToadEyeConfig {
   readonly redactDefaults?: boolean | undefined;
   /** Log what was masked to console (for debugging redaction config). No data is sent externally. */
   readonly auditMasking?: boolean | undefined;
+
+  // Sampling
+  /** Configure trace sampling. Tail sampling happens in OTel Collector, not SDK. */
+  readonly sampling?: SamplingConfig | undefined;
 
   // Auto-instrumentation
   readonly instrument?: readonly InstrumentTarget[] | undefined;

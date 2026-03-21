@@ -8,6 +8,30 @@ processors:
   batch:
     timeout: 1s
 
+  # Tail-based sampling: keeps 100% errors + slow traces, samples healthy traffic.
+  # Only applies to traces pipeline — metrics always get 100%.
+  # To disable: remove tail_sampling from traces pipeline processors.
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100000
+    expected_new_traces_per_sec: 100
+    policies:
+      # Keep all traces with errors
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      # Keep all slow traces (> 2s)
+      - name: slow-traces
+        type: latency
+        latency:
+          threshold_ms: 2000
+      # Sample 10% of remaining healthy traffic
+      - name: probabilistic-fallback
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
 exporters:
   otlphttp/jaeger:
     endpoint: http://jaeger:4318
@@ -21,7 +45,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [tail_sampling, batch]
       exporters: [otlphttp/jaeger]
     metrics:
       receivers: [otlp]

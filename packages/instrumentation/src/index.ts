@@ -61,6 +61,7 @@ export type {
   GuardMode,
   GuardResult,
   InstrumentTarget,
+  SamplingConfig,
 } from "./types/index.js";
 export {
   GEN_AI_METRICS,

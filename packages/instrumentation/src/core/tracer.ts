@@ -3,6 +3,10 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import {
+  TraceIdRatioBasedSampler,
+  ParentBasedSampler,
+} from "@opentelemetry/sdk-trace-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics } from "./metrics.js";
@@ -90,11 +94,21 @@ export function initObservability(config: ToadEyeConfig) {
     ? [new ToadEyeAISpanProcessor()]
     : [];
 
+  // SDK-side head sampling (default: 1.0 = send everything to Collector)
+  const sdkRate = config.sampling?.sdkRate ?? 1.0;
+  const sampler =
+    sdkRate < 1.0
+      ? new ParentBasedSampler({
+          root: new TraceIdRatioBasedSampler(sdkRate),
+        })
+      : undefined;
+
   sdk = new NodeSDK({
     resource,
     traceExporter,
     metricReader,
     spanProcessors,
+    ...(sampler !== undefined && { sampler }),
   });
 
   sdk.start();
