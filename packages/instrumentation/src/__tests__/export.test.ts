@@ -160,7 +160,7 @@ describe("traceToEvalYaml", () => {
 
     expect(assertions).toContainEqual({
       type: "not_contains",
-      value: "I cannot",
+      value: "i cannot",
     });
   });
 

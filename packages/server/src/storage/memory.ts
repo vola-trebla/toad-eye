@@ -20,9 +20,17 @@ export class MemoryStore {
     this.maxItems = maxItems;
   }
 
-  addTrace(apiKey: string, payload: OtlpTracePayload) {
+  addTrace(apiKey: string, payload: OtlpTracePayload): boolean {
+    // Guard against oversized payloads
+    let spanCount = 0;
+    for (const rs of payload.resourceSpans) {
+      for (const ss of rs.scopeSpans) {
+        spanCount += ss.spans.length;
+      }
+    }
+    if (spanCount > this.maxItems) return false;
+
     if (this.traces.length >= this.maxItems) {
-      // Drop oldest 10% when full
       const dropCount = Math.ceil(this.maxItems * 0.1);
       this.traces.splice(0, dropCount);
     }
@@ -32,6 +40,7 @@ export class MemoryStore {
       apiKey,
       payload,
     });
+    return true;
   }
 
   addMetrics(apiKey: string, payload: OtlpMetricsPayload) {
