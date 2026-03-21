@@ -35,7 +35,11 @@ export function createOpenAIEmbeddingProvider(
       }
 
       const body = (await response.json()) as OpenAIEmbeddingResponse;
-      return body.data[0].embedding;
+      const embedding = body.data?.[0]?.embedding;
+      if (!embedding) {
+        throw new Error("OpenAI Embeddings API returned no embeddings");
+      }
+      return embedding;
     },
   };
 }

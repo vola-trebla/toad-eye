@@ -94,8 +94,11 @@ export function initObservability(config: ToadEyeConfig) {
   initMetrics();
 
   if (isCloudMode) {
+    const masked = config.apiKey
+      ? config.apiKey.slice(0, 8) + "..." + config.apiKey.slice(-4)
+      : "";
     console.log(
-      `toad-eye: cloud mode enabled → sending telemetry to ${endpoint}`,
+      `toad-eye: cloud mode enabled (${masked}) → sending telemetry to ${endpoint}`,
     );
   }
 
