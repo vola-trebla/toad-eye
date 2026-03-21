@@ -54,6 +54,27 @@ describe("traceLLMCall", () => {
     mockSpan.setStatus.mockClear();
   });
 
+  it("warns via diag when called without initObservability", async () => {
+    const { diag } = await import("@opentelemetry/api");
+    mockConfig = undefined as unknown as Record<string, unknown>;
+
+    await traceLLMCall(
+      { provider: "openai", model: "gpt-4o", prompt: "hello" },
+      async () => ({
+        completion: "world",
+        inputTokens: 1,
+        outputTokens: 1,
+        cost: 0,
+      }),
+    );
+
+    expect(diag.warn).toHaveBeenCalledWith(
+      expect.stringContaining("initObservability"),
+    );
+
+    mockConfig = {};
+  });
+
   it("returns output from wrapped function", async () => {
     const output = await traceLLMCall(
       { provider: "openai", model: "gpt-4o", prompt: "hello" },

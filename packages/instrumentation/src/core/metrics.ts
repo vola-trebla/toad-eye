@@ -110,6 +110,11 @@ export function initMetrics() {
   initialized = true;
 }
 
+/** Reset metrics state so the next initMetrics() creates fresh instruments. Called from shutdown(). */
+export function resetMetrics() {
+  initialized = false;
+}
+
 /** Build metric labels: provider + model + optional FinOps attributes. */
 function baseLabels(
   provider: string,

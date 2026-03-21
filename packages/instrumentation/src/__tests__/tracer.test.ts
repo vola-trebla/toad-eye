@@ -27,7 +27,16 @@ vi.mock("@opentelemetry/api", () => ({
   diag: { warn: vi.fn(), debug: vi.fn() },
   trace: { getTracer: () => ({}) },
 }));
-vi.mock("../core/metrics.js", () => ({ initMetrics: vi.fn() }));
+vi.mock("../core/metrics.js", () => ({
+  initMetrics: vi.fn(),
+  resetMetrics: vi.fn(),
+}));
+vi.mock("../core/pricing.js", () => ({
+  resetCustomPricing: vi.fn(),
+  calculateCost: vi.fn(),
+  setCustomPricing: vi.fn(),
+  getModelPricing: vi.fn(),
+}));
 vi.mock("../instrumentations/registry.js", () => ({
   enableAll: vi.fn(),
   disableAll: vi.fn(),
@@ -138,5 +147,32 @@ describe("initObservability — cloud mode", () => {
     );
 
     await shutdown();
+  });
+});
+
+describe("singleton lifecycle", () => {
+  it("warns when initObservability is called twice", async () => {
+    const { diag } = await import("@opentelemetry/api");
+    await shutdown();
+
+    initObservability({ serviceName: "first" });
+    initObservability({ serviceName: "second" });
+
+    expect(diag.warn).toHaveBeenCalledWith(
+      expect.stringContaining("already called"),
+    );
+
+    await shutdown();
+  });
+
+  it("calls resetMetrics and resetCustomPricing on shutdown", async () => {
+    const { resetMetrics } = await import("../core/metrics.js");
+    const { resetCustomPricing } = await import("../core/pricing.js");
+
+    initObservability({ serviceName: "reset-test" });
+    await shutdown();
+
+    expect(resetMetrics).toHaveBeenCalled();
+    expect(resetCustomPricing).toHaveBeenCalled();
   });
 });
