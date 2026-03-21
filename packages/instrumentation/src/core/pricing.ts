@@ -42,6 +42,11 @@ export function setCustomPricing(pricing: Record<string, ModelPricing>) {
   customPricing = { ...pricing };
 }
 
+/** Reset custom pricing to empty. Called from shutdown() to avoid stale state across re-inits. */
+export function resetCustomPricing() {
+  customPricing = {};
+}
+
 /**
  * Get pricing for a model. Custom pricing takes precedence.
  * Returns undefined if model is not in any pricing table.

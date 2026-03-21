@@ -38,10 +38,18 @@ export interface LLMCallOutput {
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
 
 let saltWarningEmitted = false;
+// Track the last config ref so saltWarningEmitted resets across re-inits without circular imports
+let lastConfigRef: object | null = null;
 
 function sha256(text: string): string {
   const config = getConfig();
   const salt = config?.salt ?? "";
+
+  // Auto-reset saltWarningEmitted when SDK is re-initialized (config ref changes)
+  if (config !== lastConfigRef) {
+    lastConfigRef = config;
+    saltWarningEmitted = false;
+  }
 
   if (config?.hashContent && !config.salt && !saltWarningEmitted) {
     diag.warn(
@@ -190,6 +198,12 @@ export async function traceLLMCall(
   input: LLMCallInput,
   fn: () => Promise<LLMCallOutput>,
 ): Promise<LLMCallOutput> {
+  if (!getConfig()) {
+    diag.warn(
+      "toad-eye: traceLLMCall called before initObservability() — no telemetry will be recorded.",
+    );
+  }
+
   const budget = getBudgetTracker();
   let effectiveInput = input;
 

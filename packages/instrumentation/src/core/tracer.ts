@@ -8,8 +8,10 @@ import {
   ParentBasedSampler,
 } from "@opentelemetry/sdk-trace-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { diag } from "@opentelemetry/api";
 import type { ToadEyeConfig } from "../types/index.js";
-import { initMetrics } from "./metrics.js";
+import { initMetrics, resetMetrics } from "./metrics.js";
+import { resetCustomPricing } from "./pricing.js";
 import { enableAll, disableAll } from "../instrumentations/registry.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
@@ -65,7 +67,12 @@ function resolveTransport(config: ToadEyeConfig) {
 }
 
 export function initObservability(config: ToadEyeConfig) {
-  if (sdk) return;
+  if (sdk) {
+    diag.warn(
+      "toad-eye: initObservability() already called. Call shutdown() first to reconfigure.",
+    );
+    return;
+  }
 
   validateConfig(config);
   const { endpoint, headers, isCloudMode } = resolveTransport(config);
@@ -150,4 +157,6 @@ export async function shutdown() {
   sdk = null;
   currentConfig = null;
   budgetTracker = null;
+  resetMetrics();
+  resetCustomPricing();
 }
