@@ -5,6 +5,8 @@ import { Hono } from "hono";
 
 import type { MemoryStore } from "../storage/memory.js";
 import type { OtlpSpan } from "../types.js";
+import { getAttrString } from "../utils/span-helpers.js";
+import { parsePeriod, periodError } from "../utils/periods.js";
 
 type ProviderStatus = "healthy" | "degraded" | "down" | "no_data";
 
@@ -18,30 +20,15 @@ interface ProviderHealth {
   readonly timeoutErrors: number;
 }
 
-const DEGRADED_THRESHOLD = 0.1; // 10% error rate
-const DOWN_THRESHOLD = 0.5; // 50% error rate
+const DEGRADED_THRESHOLD = 0.1;
+const DOWN_THRESHOLD = 0.5;
 
-function getAttrString(span: OtlpSpan, key: string): string | undefined {
-  const attr = span.attributes?.find((a) => a.key === key);
-  return attr?.value.stringValue;
-}
+const RATE_LIMIT_RE = /rate_limit|429|quota/i;
+const TIMEOUT_RE = /timeout|timed out|deadline/i;
 
 function classifyError(errorType: string): "rate_limit" | "timeout" | "other" {
-  const lower = errorType.toLowerCase();
-  if (
-    lower.includes("rate_limit") ||
-    lower.includes("429") ||
-    lower.includes("quota")
-  ) {
-    return "rate_limit";
-  }
-  if (
-    lower.includes("timeout") ||
-    lower.includes("timed out") ||
-    lower.includes("deadline")
-  ) {
-    return "timeout";
-  }
+  if (RATE_LIMIT_RE.test(errorType)) return "rate_limit";
+  if (TIMEOUT_RE.test(errorType)) return "timeout";
   return "other";
 }
 
@@ -57,35 +44,19 @@ function determineStatus(
   return "healthy";
 }
 
-const PERIOD_MAP: Record<string, number> = {
-  "5m": 5 * 60 * 1000,
-  "15m": 15 * 60 * 1000,
-  "1h": 60 * 60 * 1000,
-  "1d": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-};
-
 export function createProviderRoutes(store: MemoryStore) {
   const app = new Hono();
 
-  // GET /api/providers/health?period=5m
   app.get("/api/providers/health", (c) => {
     const period = c.req.query("period") ?? "5m";
-    const periodMs = PERIOD_MAP[period];
+    const periodMs = parsePeriod(period);
 
     if (periodMs === undefined) {
-      return c.json(
-        {
-          error: `Invalid period. Valid: ${Object.keys(PERIOD_MAP).join(", ")}`,
-        },
-        400,
-      );
+      return c.json({ error: periodError() }, 400);
     }
 
     const allSpans = store.querySpans("", periodMs);
 
-    // Group by provider
     const byProvider = new Map<string, OtlpSpan[]>();
     for (const span of allSpans) {
       const provider = getAttrString(span, "gen_ai.provider.name") ?? "unknown";
