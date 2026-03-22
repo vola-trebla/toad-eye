@@ -18,6 +18,8 @@ export interface AccumulatedToolCall {
 /** Accumulated stream data — only primitives, no raw SDK objects. */
 export interface StreamAccumulator {
   completion: string;
+  /** Anthropic extended thinking content (tracked separately from completion). */
+  thinkingContent: string;
   inputTokens: number;
   outputTokens: number;
   toolCalls: AccumulatedToolCall[];

@@ -5,7 +5,13 @@ import type { StreamAccumulator } from "../instrumentations/types.js";
 // Test the accumulator-based stream extraction and message parsing
 
 function freshAcc(): StreamAccumulator {
-  return { completion: "", inputTokens: 0, outputTokens: 0, toolCalls: [] };
+  return {
+    completion: "",
+    thinkingContent: "",
+    inputTokens: 0,
+    outputTokens: 0,
+    toolCalls: [],
+  };
 }
 
 describe("OpenAI multi-modal extraction (#98)", () => {
@@ -130,6 +136,7 @@ describe("OpenAI stream accumulator", () => {
     // acc only has primitives, no reference to bigChunk
     expect(Object.keys(acc)).toEqual([
       "completion",
+      "thinkingContent",
       "inputTokens",
       "outputTokens",
       "toolCalls",

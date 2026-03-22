@@ -56,11 +56,22 @@ const messagesCreate: PatchTarget = {
       index?: number;
       message?: { usage?: { input_tokens?: number } };
       content_block?: { type?: string; id?: string; name?: string };
-      delta?: { type?: string; text?: string; partial_json?: string };
+      delta?: {
+        type?: string;
+        text?: string;
+        thinking?: string;
+        partial_json?: string;
+      };
       usage?: { output_tokens?: number };
     };
-    if (event.type === "content_block_delta" && event.delta?.text) {
-      acc.completion += event.delta.text;
+
+    if (event.type === "content_block_delta") {
+      if (event.delta?.type === "thinking_delta" && event.delta.thinking) {
+        // Extended thinking — track separately from completion
+        acc.thinkingContent += event.delta.thinking;
+      } else if (event.delta?.text) {
+        acc.completion += event.delta.text;
+      }
     }
 
     // Tool use: content_block_start with type "tool_use"

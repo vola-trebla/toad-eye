@@ -73,6 +73,7 @@ async function* wrapAsyncIterable<T>(
 ): AsyncGenerator<T> {
   const acc: StreamAccumulator = {
     completion: "",
+    thinkingContent: "",
     inputTokens: 0,
     outputTokens: 0,
     toolCalls: [],
@@ -226,6 +227,14 @@ function createStreamingHandler(
           );
 
           const processedCompletion = processContent(acc.completion);
+
+          // Anthropic extended thinking — track separately from completion
+          if (acc.thinkingContent.length > 0) {
+            span.setAttribute(
+              "gen_ai.toad_eye.thinking.content_length",
+              acc.thinkingContent.length,
+            );
+          }
 
           // Record tool calls from streaming chunks
           if (acc.toolCalls.length > 0) {
