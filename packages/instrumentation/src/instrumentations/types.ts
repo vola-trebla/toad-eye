@@ -8,11 +8,19 @@ export interface Instrumentation {
   disable(): void;
 }
 
+/** Tool call accumulated from streaming chunks. */
+export interface AccumulatedToolCall {
+  name: string;
+  arguments: string;
+  id?: string | undefined;
+}
+
 /** Accumulated stream data — only primitives, no raw SDK objects. */
 export interface StreamAccumulator {
   completion: string;
   inputTokens: number;
   outputTokens: number;
+  toolCalls: AccumulatedToolCall[];
 }
 
 /** Describes a single method to monkey-patch on an SDK prototype. */

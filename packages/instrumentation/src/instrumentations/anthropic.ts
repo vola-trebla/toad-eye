@@ -53,13 +53,38 @@ const messagesCreate: PatchTarget = {
   accumulateChunk: (acc, chunk) => {
     const event = chunk as {
       type?: string;
+      index?: number;
       message?: { usage?: { input_tokens?: number } };
-      delta?: { text?: string };
+      content_block?: { type?: string; id?: string; name?: string };
+      delta?: { type?: string; text?: string; partial_json?: string };
       usage?: { output_tokens?: number };
     };
     if (event.type === "content_block_delta" && event.delta?.text) {
       acc.completion += event.delta.text;
     }
+
+    // Tool use: content_block_start with type "tool_use"
+    if (
+      event.type === "content_block_start" &&
+      event.content_block?.type === "tool_use"
+    ) {
+      acc.toolCalls.push({
+        name: event.content_block.name ?? "",
+        arguments: "",
+        id: event.content_block.id,
+      });
+    }
+
+    // Tool use: input_json_delta accumulates arguments
+    if (
+      event.type === "content_block_delta" &&
+      event.delta?.type === "input_json_delta" &&
+      event.delta.partial_json
+    ) {
+      const last = acc.toolCalls[acc.toolCalls.length - 1];
+      if (last) last.arguments += event.delta.partial_json;
+    }
+
     if (event.type === "message_start" && event.message?.usage) {
       acc.inputTokens = event.message.usage.input_tokens ?? 0;
     }

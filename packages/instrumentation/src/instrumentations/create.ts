@@ -73,6 +73,7 @@ async function* wrapAsyncIterable<T>(
     completion: "",
     inputTokens: 0,
     outputTokens: 0,
+    toolCalls: [],
   };
   let firstChunk = true;
   let completed = false;
@@ -218,6 +219,15 @@ function createStreamingHandler(
           );
 
           const processedCompletion = processContent(acc.completion);
+
+          // Record tool calls from streaming chunks
+          if (acc.toolCalls.length > 0) {
+            span.setAttribute(
+              GEN_AI_ATTRS.TOOL_NAME,
+              acc.toolCalls.map((t) => t.name).join(", "),
+            );
+            span.setAttribute("gen_ai.tool.call.count", acc.toolCalls.length);
+          }
 
           span.setAttributes({
             ...(processedCompletion !== undefined && {

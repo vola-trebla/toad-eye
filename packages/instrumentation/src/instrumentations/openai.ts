@@ -50,11 +50,38 @@ const chatCompletions: PatchTarget = {
   isStreaming: (body) => !!(body as { stream?: boolean })?.stream,
   accumulateChunk: (acc, chunk) => {
     const c = chunk as {
-      choices?: { delta?: { content?: string } }[];
+      choices?: {
+        delta?: {
+          content?: string;
+          tool_calls?: {
+            index: number;
+            id?: string;
+            function?: { name?: string; arguments?: string };
+          }[];
+        };
+      }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    const delta = c?.choices?.[0]?.delta?.content;
-    if (delta) acc.completion += delta;
+    const delta = c?.choices?.[0]?.delta;
+    if (delta?.content) acc.completion += delta.content;
+
+    // Accumulate tool calls from streaming chunks
+    if (delta?.tool_calls) {
+      for (const tc of delta.tool_calls) {
+        const existing = acc.toolCalls[tc.index];
+        if (existing) {
+          if (tc.function?.arguments)
+            existing.arguments += tc.function.arguments;
+        } else {
+          acc.toolCalls[tc.index] = {
+            name: tc.function?.name ?? "",
+            arguments: tc.function?.arguments ?? "",
+            id: tc.id,
+          };
+        }
+      }
+    }
+
     if (c?.usage) {
       acc.inputTokens = c.usage.prompt_tokens ?? acc.inputTokens;
       acc.outputTokens = c.usage.completion_tokens ?? acc.outputTokens;
