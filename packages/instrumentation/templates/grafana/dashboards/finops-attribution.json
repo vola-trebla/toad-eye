@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -9,8 +11,16 @@
     {
       "title": "Total Spend",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(gen_ai_client_request_cost_USD_sum)",
@@ -22,9 +32,18 @@
           "unit": "currencyUSD",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "red", "value": 500 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
             ]
           }
         },
@@ -35,8 +54,16 @@
       "title": "Projected Monthly Spend",
       "description": "Linear projection based on last 7 days",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(increase(gen_ai_client_request_cost_USD_sum[7d])) / 7 * 30",
@@ -48,9 +75,18 @@
           "unit": "currencyUSD",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 200 },
-              { "color": "red", "value": 1000 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 200
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
             ]
           }
         },
@@ -60,8 +96,16 @@
     {
       "title": "Requests Today",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(increase(gen_ai_client_requests_total[24h]))",
@@ -69,15 +113,25 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short" },
+        "defaults": {
+          "unit": "short"
+        },
         "overrides": []
       }
     },
     {
       "title": "Avg Cost per Request",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(gen_ai_client_request_cost_USD_sum) / sum(gen_ai_client_request_cost_USD_count) or vector(0)",
@@ -85,18 +139,29 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "currencyUSD", "decimals": 4 },
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
         "overrides": []
       }
     },
     {
       "title": "Cost by Team",
       "type": "piechart",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum by (toad_eye_team) (gen_ai_client_request_cost_USD_sum{toad_eye_team=~\"$team\"})",
+          "expr": "sum by (toad_eye_team) (gen_ai_client_request_cost_USD_sum{job=~\"$service\", toad_eye_team=~\"$team\"})",
           "legendFormat": "{{toad_eye_team}}",
           "refId": "A"
         }
@@ -113,11 +178,19 @@
     {
       "title": "Cost by Model (stacked by Team)",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum by (gen_ai_request_model, toad_eye_team) (gen_ai_client_request_cost_USD_sum{toad_eye_team=~\"$team\", gen_ai_request_model=~\"$model\"})",
+          "expr": "sum by (gen_ai_request_model, toad_eye_team) (gen_ai_client_request_cost_USD_sum{job=~\"$service\", toad_eye_team=~\"$team\", gen_ai_request_model=~\"$model\"})",
           "legendFormat": "{{gen_ai_request_model}} / {{toad_eye_team}}",
           "refId": "A"
         }
@@ -129,11 +202,19 @@
     {
       "title": "Cost by Feature / Endpoint",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sort_desc(sum by (toad_eye_feature) (gen_ai_client_request_cost_USD_sum{toad_eye_feature=~\"$feature\"}))",
+          "expr": "sort_desc(sum by (toad_eye_feature) (gen_ai_client_request_cost_USD_sum{job=~\"$service\", toad_eye_feature=~\"$feature\"}))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -154,11 +235,19 @@
     {
       "title": "Top 10 Users by Cost",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "topk(10, sum by (toad_eye_user_id) (gen_ai_client_request_cost_USD_sum{toad_eye_user_id!=\"\"}))",
+          "expr": "topk(10, sum by (toad_eye_user_id) (gen_ai_client_request_cost_USD_sum{job=~\"$service\", toad_eye_user_id!=\"\"}))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -179,22 +268,37 @@
     {
       "title": "Daily Cost Trend (by Team)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum by (toad_eye_team) (increase(gen_ai_client_request_cost_USD_sum{toad_eye_team=~\"$team\"}[1d]))",
+          "expr": "sum by (toad_eye_team) (increase(gen_ai_client_request_cost_USD_sum{job=~\"$service\", toad_eye_team=~\"$team\"}[1d]))",
           "legendFormat": "{{toad_eye_team}}",
           "refId": "A"
         }
       ],
       "options": {
-        "tooltip": { "mode": "multi" }
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
-          "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } }
+          "custom": {
+            "fillOpacity": 20,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
         },
         "overrides": []
       }
@@ -203,8 +307,16 @@
       "title": "What-If: Model Substitution Savings",
       "description": "Current cost per model vs estimated cost if all traffic moved to cheapest model",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum by (gen_ai_request_model) (gen_ai_client_request_cost_USD_sum)",
@@ -238,38 +350,75 @@
   "templating": {
     "list": [
       {
+        "name": "service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_client_requests_total, job)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true
+      },
+      {
         "name": "team",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_request_cost_USD_sum, toad_eye_team)",
         "includeAll": true,
         "multi": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "regex": ""
       },
       {
         "name": "feature",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_request_cost_USD_sum, toad_eye_feature)",
         "includeAll": true,
         "multi": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "regex": ""
       },
       {
         "name": "model",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_request_cost_USD_sum, gen_ai_request_model)",
         "includeAll": true,
         "multi": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "regex": ""
       }
     ]
   },
-  "time": { "from": "now-7d", "to": "now" },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "utc",
   "title": "toad-eye / FinOps Attribution",

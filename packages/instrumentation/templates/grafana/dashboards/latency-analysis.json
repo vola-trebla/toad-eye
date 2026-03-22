@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -9,21 +11,29 @@
     {
       "title": "Latency p50 / p95 / p99 by Model",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
+          "expr": "histogram_quantile(0.50, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
           "legendFormat": "p50 {{ gen_ai_request_model }}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
+          "expr": "histogram_quantile(0.95, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
           "legendFormat": "p95 {{ gen_ai_request_model }}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
+          "expr": "histogram_quantile(0.99, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_request_model))",
           "legendFormat": "p99 {{ gen_ai_request_model }}",
           "refId": "C"
         }
@@ -31,7 +41,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
         },
         "overrides": []
       }
@@ -39,11 +53,19 @@
     {
       "title": "Latency Distribution",
       "type": "histogram",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le)",
+          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le)",
           "legendFormat": "{{ le }}",
           "refId": "A",
           "format": "heatmap"
@@ -52,7 +74,9 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "fillOpacity": 50 }
+          "custom": {
+            "fillOpacity": 50
+          }
         },
         "overrides": []
       }
@@ -60,11 +84,19 @@
     {
       "title": "Avg Latency by Model",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_sum{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) / sum(rate(gen_ai_client_operation_duration_milliseconds_count{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model)",
+          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_sum{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model) / sum(rate(gen_ai_client_operation_duration_milliseconds_count{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (gen_ai_request_model)",
           "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
@@ -72,7 +104,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
         },
         "overrides": []
       }
@@ -80,11 +116,19 @@
     {
       "title": "Slow Requests p99 by Provider",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_provider_name))",
+          "expr": "histogram_quantile(0.99, sum(rate(gen_ai_client_operation_duration_milliseconds_bucket{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[5m])) by (le, gen_ai_provider_name))",
           "legendFormat": "p99 {{ gen_ai_provider_name }}",
           "refId": "A"
         }
@@ -92,7 +136,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
         },
         "overrides": []
       }
@@ -104,28 +152,59 @@
   "templating": {
     "list": [
       {
+        "name": "service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_client_requests_total, job)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true
+      },
+      {
         "name": "provider",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
         "includeAll": true,
         "allValue": ".*",
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "multi": true
       },
       {
         "name": "model",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}, gen_ai_request_model)",
         "includeAll": true,
         "allValue": ".*",
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "multi": true
       }
     ]
   },
-  "time": { "from": "now-15m", "to": "now" },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "toad-eye: Latency Analysis",

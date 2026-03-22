@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -9,8 +11,16 @@
     {
       "title": "Avg Steps per Query",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(gen_ai_agent_steps_per_query_sum) / sum(gen_ai_agent_steps_per_query_count) or vector(0)",
@@ -23,9 +33,18 @@
           "decimals": 1,
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10 },
-              { "color": "red", "value": 20 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
             ]
           }
         },
@@ -35,8 +54,16 @@
     {
       "title": "Total Agent Queries",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(gen_ai_agent_steps_per_query_count)",
@@ -44,15 +71,25 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short" },
+        "defaults": {
+          "unit": "short"
+        },
         "overrides": []
       }
     },
     {
       "title": "Total Tool Invocations",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(gen_ai_agent_tool_usage_total)",
@@ -60,15 +97,25 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short" },
+        "defaults": {
+          "unit": "short"
+        },
         "overrides": []
       }
     },
     {
       "title": "Unique Tools Used",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "count(count by (gen_ai_agent_tool_name) (gen_ai_agent_tool_usage_total))",
@@ -76,7 +123,9 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short" },
+        "defaults": {
+          "unit": "short"
+        },
         "overrides": []
       }
     },
@@ -84,8 +133,16 @@
       "title": "Agent Step Type Breakdown",
       "description": "Distribution of think / act / observe / answer steps",
       "type": "piechart",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum by (gen_ai_agent_step_type) (gen_ai_agent_steps_per_query_sum)",
@@ -106,8 +163,16 @@
       "title": "Tool Usage Frequency",
       "description": "Invocations per tool name",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sort_desc(sum by (gen_ai_agent_tool_name) (gen_ai_agent_tool_usage_total))",
@@ -119,8 +184,16 @@
     {
       "title": "Steps per Query Over Time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum(rate(gen_ai_agent_steps_per_query_sum[5m])) / sum(rate(gen_ai_agent_steps_per_query_count[5m]))",
@@ -136,7 +209,9 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "fillOpacity": 10 }
+          "custom": {
+            "fillOpacity": 10
+          }
         },
         "overrides": []
       }
@@ -144,8 +219,16 @@
     {
       "title": "Tool Invocations Over Time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum by (gen_ai_agent_tool_name) (rate(gen_ai_agent_tool_usage_total[5m]))",
@@ -156,7 +239,12 @@
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } }
+          "custom": {
+            "fillOpacity": 20,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
         },
         "overrides": []
       }
@@ -165,8 +253,16 @@
       "title": "Steps Distribution Histogram",
       "description": "How many steps do agent queries typically take?",
       "type": "histogram",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "expr": "sum by (le) (gen_ai_agent_steps_per_query_bucket)",
@@ -176,7 +272,9 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": { "fillOpacity": 80 }
+          "custom": {
+            "fillOpacity": 80
+          }
         },
         "overrides": []
       }
@@ -187,18 +285,43 @@
   "templating": {
     "list": [
       {
+        "name": "service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_client_requests_total, job)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true
+      },
+      {
         "name": "tool",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_agent_tool_usage_total, gen_ai_agent_tool_name)",
         "includeAll": true,
         "multi": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "regex": ""
       }
     ]
   },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "utc",
   "title": "toad-eye / Agent Workflow",
