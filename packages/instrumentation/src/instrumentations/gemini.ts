@@ -73,6 +73,11 @@ const generateContentStream: PatchTarget = {
         promptTokenCount?: number;
         candidatesTokenCount?: number;
       };
+      candidates?: {
+        content?: {
+          parts?: { functionCall?: { name: string; args: unknown } }[];
+        };
+      }[];
     };
     try {
       const text = c?.text?.();
@@ -80,6 +85,20 @@ const generateContentStream: PatchTarget = {
     } catch {
       // text() may throw if content is blocked
     }
+
+    // Gemini function calls in streaming
+    const parts = c?.candidates?.[0]?.content?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.functionCall) {
+          acc.toolCalls.push({
+            name: part.functionCall.name,
+            arguments: JSON.stringify(part.functionCall.args ?? {}),
+          });
+        }
+      }
+    }
+
     if (c?.usageMetadata) {
       acc.inputTokens = c.usageMetadata.promptTokenCount ?? acc.inputTokens;
       acc.outputTokens =
