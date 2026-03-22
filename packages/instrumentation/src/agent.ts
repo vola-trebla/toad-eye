@@ -5,7 +5,11 @@ import type {
   AgentQueryInput,
 } from "./types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "./types/index.js";
-import { recordAgentSteps, recordAgentToolUsage } from "./core/metrics.js";
+import {
+  recordAgentSteps,
+  recordAgentToolUsage,
+  recordAgentToolDuration,
+} from "./core/metrics.js";
 import { getConfig, shouldEmitDeprecatedAttrs } from "./core/tracer.js";
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
@@ -70,7 +74,11 @@ function traceAgentStep(input: AgentStepInput) {
   });
 
   if (input.type === "act" && input.toolName !== undefined) {
-    recordAgentToolUsage(input.toolName);
+    recordAgentToolUsage(input.toolName, input.toolStatus ?? "success");
+    if (input.toolDurationMs !== undefined) {
+      recordAgentToolDuration(input.toolName, input.toolDurationMs);
+      span.setAttribute("gen_ai.tool.duration_ms", input.toolDurationMs);
+    }
   }
 
   span.setStatus({ code: SpanStatusCode.OK });

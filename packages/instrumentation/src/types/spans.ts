@@ -19,6 +19,10 @@ export interface AgentStepInput {
     | "retrieval"
     | "builtin"
     | undefined;
+  /** Duration of tool execution in milliseconds (for act steps). */
+  readonly toolDurationMs?: number | undefined;
+  /** Whether the tool execution succeeded or failed (for act steps). */
+  readonly toolStatus?: "success" | "error" | undefined;
   /** Target agent name for handoff steps */
   readonly toAgent?: string | undefined;
   /** Reason for handoff */

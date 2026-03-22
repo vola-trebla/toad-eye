@@ -139,7 +139,10 @@ describe("traceAgentStep", () => {
   it("records tool usage metric for act steps", () => {
     traceAgentStep({ type: "act", stepNumber: 2, toolName: "web-search" });
 
-    expect(mockRecordAgentToolUsage).toHaveBeenCalledWith("web-search");
+    expect(mockRecordAgentToolUsage).toHaveBeenCalledWith(
+      "web-search",
+      "success",
+    );
   });
 
   it("does not record tool usage for non-act steps", () => {
