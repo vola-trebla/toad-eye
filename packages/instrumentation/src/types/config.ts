@@ -68,6 +68,17 @@ export interface ToadEyeConfig {
   /** Callback for 'downgrade' mode — receives original provider/model, returns replacement. */
   readonly downgradeCallback?: DowngradeCallback | undefined;
 
+  // Context guard
+  /** Warn or block when context window utilization exceeds thresholds. */
+  readonly contextGuard?:
+    | {
+        /** Warn when utilization exceeds this ratio (0.0–1.0). Default: none. */
+        readonly warnAt?: number | undefined;
+        /** Block (throw ToadContextExceededError) when utilization exceeds this ratio. Default: none. */
+        readonly blockAt?: number | undefined;
+      }
+    | undefined;
+
   // Session tracking
   /** Static session ID — all spans will carry this value as `session.id`. */
   readonly sessionId?: string | undefined;

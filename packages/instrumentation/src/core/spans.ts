@@ -14,6 +14,7 @@ import {
   recordResponseEmpty,
   recordResponseLatencyPerToken,
   recordContextUtilization,
+  recordContextBlocked,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
 import { calculateCost, getModelPricing } from "./pricing.js";
@@ -300,6 +301,30 @@ export async function traceLLMCall(
             effectiveInput.provider,
             effectiveInput.model,
           );
+
+          // Context guard — post-call warning when approaching limit.
+          // This warns about the CURRENT call's context usage so agents
+          // can compress context before the NEXT call.
+          const guard = getConfig()?.contextGuard;
+          if (guard) {
+            if (guard.blockAt !== undefined && utilization >= guard.blockAt) {
+              recordContextBlocked(effectiveInput.model);
+              span.addEvent("gen_ai.context.limit_exceeded", {
+                "gen_ai.toad_eye.context_utilization": utilization,
+                "gen_ai.toad_eye.context.threshold": guard.blockAt,
+              });
+              console.warn(
+                `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveInput.model} — exceeds blockAt threshold ${(guard.blockAt * 100).toFixed(0)}%. Compress context before next call.`,
+              );
+            } else if (
+              guard.warnAt !== undefined &&
+              utilization >= guard.warnAt
+            ) {
+              console.warn(
+                `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveInput.model} (${output.inputTokens}/${pricing.maxContextTokens} tokens)`,
+              );
+            }
+          }
         }
 
         // Budget recording AFTER the call — releases the cost reservation

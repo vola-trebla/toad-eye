@@ -19,6 +19,7 @@ import {
   recordResponseEmpty,
   recordResponseLatencyPerToken,
   recordContextUtilization,
+  recordContextBlocked,
   recordBudgetExceeded,
   recordBudgetDowngraded,
 } from "../core/metrics.js";
@@ -280,6 +281,28 @@ function createStreamingHandler(
               effectiveProvider,
               effectiveModel,
             );
+
+            // Context guard — post-stream warning
+            const guard = config?.contextGuard;
+            if (guard) {
+              if (guard.blockAt !== undefined && utilization >= guard.blockAt) {
+                recordContextBlocked(effectiveModel);
+                span.addEvent("gen_ai.context.limit_exceeded", {
+                  "gen_ai.toad_eye.context_utilization": utilization,
+                  "gen_ai.toad_eye.context.threshold": guard.blockAt,
+                });
+                console.warn(
+                  `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveModel} — exceeds blockAt threshold ${(guard.blockAt * 100).toFixed(0)}%. Compress context before next call.`,
+                );
+              } else if (
+                guard.warnAt !== undefined &&
+                utilization >= guard.warnAt
+              ) {
+                console.warn(
+                  `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveModel} (${acc.inputTokens}/${pricing.maxContextTokens} tokens)`,
+                );
+              }
+            }
           }
 
           // Prefill/decode latency split — TTFT = prefill, rest = decode
