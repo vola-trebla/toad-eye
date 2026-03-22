@@ -253,6 +253,7 @@ describe("stream wrapping (async iterable)", () => {
     ) {
       const acc: StreamAccumulator = {
         completion: "",
+        thinkingContent: "",
         inputTokens: 0,
         outputTokens: 0,
         toolCalls: [],
