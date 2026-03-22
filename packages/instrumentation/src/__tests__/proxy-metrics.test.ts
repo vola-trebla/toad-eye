@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Shared mock span
 const mockSpan = {
+  setAttribute: vi.fn(),
   setAttributes: vi.fn(),
   setStatus: vi.fn(),
   end: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("../core/metrics.js", () => ({
   recordBudgetDowngraded: vi.fn(),
   recordResponseEmpty: mockRecordResponseEmpty,
   recordResponseLatencyPerToken: mockRecordResponseLatencyPerToken,
+  recordContextUtilization: vi.fn(),
 }));
 
 vi.mock("../core/tracer.js", () => ({

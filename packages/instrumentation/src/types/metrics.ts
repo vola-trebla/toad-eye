@@ -29,6 +29,8 @@ export const GEN_AI_METRICS = {
   // Response quality proxy metrics
   RESPONSE_EMPTY: "gen_ai.toad_eye.response.empty",
   RESPONSE_LATENCY_PER_TOKEN: "gen_ai.toad_eye.response.latency_per_token",
+  // Context utilization
+  CONTEXT_UTILIZATION: "gen_ai.toad_eye.context_utilization",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

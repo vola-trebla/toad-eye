@@ -13,9 +13,10 @@ import {
   recordBudgetDowngraded,
   recordResponseEmpty,
   recordResponseLatencyPerToken,
+  recordContextUtilization,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
-import { calculateCost } from "./pricing.js";
+import { calculateCost, getModelPricing } from "./pricing.js";
 import { ToadBudgetExceededError } from "../budget/index.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
@@ -286,6 +287,18 @@ export async function traceLLMCall(
             effectiveInput.provider,
             effectiveInput.model,
             attrs,
+          );
+        }
+
+        // Context window utilization — ratio of input tokens to model's max context
+        const pricing = getModelPricing(effectiveInput.model);
+        if (pricing?.maxContextTokens && output.inputTokens > 0) {
+          const utilization = output.inputTokens / pricing.maxContextTokens;
+          span.setAttribute(GEN_AI_ATTRS.CONTEXT_UTILIZATION, utilization);
+          recordContextUtilization(
+            utilization,
+            effectiveInput.provider,
+            effectiveInput.model,
           );
         }
 

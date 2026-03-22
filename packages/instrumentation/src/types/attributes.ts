@@ -58,6 +58,7 @@ export const GEN_AI_ATTRS = {
   COMPLETION: "gen_ai.toad_eye.completion",
   COST: "gen_ai.toad_eye.cost",
   STATUS: "gen_ai.toad_eye.status",
+  CONTEXT_UTILIZATION: "gen_ai.toad_eye.context_utilization",
   SESSION_ID: "session.id",
 
   // FinOps attribution

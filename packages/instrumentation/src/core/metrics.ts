@@ -22,6 +22,7 @@ let budgetBlocked: Counter;
 let budgetDowngraded: Counter;
 let responseEmpty: Counter;
 let responseLatencyPerToken: Histogram;
+let contextUtilization: Histogram;
 
 let initialized = false;
 
@@ -104,6 +105,14 @@ export function initMetrics() {
       description:
         "Generation latency normalized per output token (ms/token). Higher values indicate slower generation speed.",
       unit: "ms",
+    },
+  );
+
+  contextUtilization = meter.createHistogram(
+    GEN_AI_METRICS.CONTEXT_UTILIZATION,
+    {
+      description:
+        "Ratio of input tokens to model context window (0.0–1.0+). Values above 0.8 indicate risk of context overflow.",
     },
   );
 
@@ -245,4 +254,15 @@ export function recordResponseLatencyPerToken(
     msPerToken,
     baseLabels(provider, model, attrs),
   );
+}
+
+export function recordContextUtilization(
+  utilization: number,
+  provider: string,
+  model: string,
+) {
+  contextUtilization.record(utilization, {
+    [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+  });
 }

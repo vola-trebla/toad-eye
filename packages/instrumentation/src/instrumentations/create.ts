@@ -8,7 +8,7 @@ import {
 } from "@opentelemetry/api";
 import { traceLLMCall, processContent } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
-import { calculateCost } from "../core/pricing.js";
+import { calculateCost, getModelPricing } from "../core/pricing.js";
 import {
   recordRequestDuration,
   recordRequestCost,
@@ -18,6 +18,7 @@ import {
   recordTimeToFirstToken,
   recordResponseEmpty,
   recordResponseLatencyPerToken,
+  recordContextUtilization,
   recordBudgetExceeded,
   recordBudgetDowngraded,
 } from "../core/metrics.js";
@@ -264,6 +265,18 @@ function createStreamingHandler(
           if (acc.outputTokens > 0) {
             recordResponseLatencyPerToken(
               duration / acc.outputTokens,
+              effectiveProvider,
+              effectiveModel,
+            );
+          }
+
+          // Context window utilization — ratio of input tokens to model's max context
+          const pricing = getModelPricing(effectiveModel);
+          if (pricing?.maxContextTokens && acc.inputTokens > 0) {
+            const utilization = acc.inputTokens / pricing.maxContextTokens;
+            span.setAttribute(GEN_AI_ATTRS.CONTEXT_UTILIZATION, utilization);
+            recordContextUtilization(
+              utilization,
               effectiveProvider,
               effectiveModel,
             );

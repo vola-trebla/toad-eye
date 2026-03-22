@@ -7,29 +7,67 @@
 export interface ModelPricing {
   readonly inputPer1M: number;
   readonly outputPer1M: number;
+  /** Maximum context window size in tokens. Used to calculate context utilization ratio. */
+  readonly maxContextTokens?: number | undefined;
 }
 
 const BUILT_IN_PRICING: Record<string, ModelPricing> = {
   // OpenAI
-  "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10 },
-  "gpt-4o-mini": { inputPer1M: 0.15, outputPer1M: 0.6 },
-  "gpt-4-turbo": { inputPer1M: 10, outputPer1M: 30 },
-  "gpt-4.1": { inputPer1M: 2, outputPer1M: 8 },
-  "gpt-4.1-mini": { inputPer1M: 0.4, outputPer1M: 1.6 },
-  "gpt-4.1-nano": { inputPer1M: 0.1, outputPer1M: 0.4 },
-  o3: { inputPer1M: 10, outputPer1M: 40 },
-  "o3-mini": { inputPer1M: 1.1, outputPer1M: 4.4 },
-  "o4-mini": { inputPer1M: 1.1, outputPer1M: 4.4 },
+  "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10, maxContextTokens: 128_000 },
+  "gpt-4o-mini": {
+    inputPer1M: 0.15,
+    outputPer1M: 0.6,
+    maxContextTokens: 128_000,
+  },
+  "gpt-4-turbo": { inputPer1M: 10, outputPer1M: 30, maxContextTokens: 128_000 },
+  "gpt-4.1": { inputPer1M: 2, outputPer1M: 8, maxContextTokens: 1_047_576 },
+  "gpt-4.1-mini": {
+    inputPer1M: 0.4,
+    outputPer1M: 1.6,
+    maxContextTokens: 1_047_576,
+  },
+  "gpt-4.1-nano": {
+    inputPer1M: 0.1,
+    outputPer1M: 0.4,
+    maxContextTokens: 1_047_576,
+  },
+  o3: { inputPer1M: 10, outputPer1M: 40, maxContextTokens: 200_000 },
+  "o3-mini": { inputPer1M: 1.1, outputPer1M: 4.4, maxContextTokens: 200_000 },
+  "o4-mini": { inputPer1M: 1.1, outputPer1M: 4.4, maxContextTokens: 200_000 },
 
   // Anthropic
-  "claude-opus-4-20250514": { inputPer1M: 15, outputPer1M: 75 },
-  "claude-sonnet-4-20250514": { inputPer1M: 3, outputPer1M: 15 },
-  "claude-haiku-3-5-20241022": { inputPer1M: 0.8, outputPer1M: 4 },
+  "claude-opus-4-20250514": {
+    inputPer1M: 15,
+    outputPer1M: 75,
+    maxContextTokens: 200_000,
+  },
+  "claude-sonnet-4-20250514": {
+    inputPer1M: 3,
+    outputPer1M: 15,
+    maxContextTokens: 200_000,
+  },
+  "claude-haiku-3-5-20241022": {
+    inputPer1M: 0.8,
+    outputPer1M: 4,
+    maxContextTokens: 200_000,
+  },
 
   // Google Gemini
-  "gemini-2.5-pro": { inputPer1M: 1.25, outputPer1M: 10 },
-  "gemini-2.5-flash": { inputPer1M: 0.15, outputPer1M: 0.6 },
-  "gemini-2.0-flash": { inputPer1M: 0.1, outputPer1M: 0.4 },
+  "gemini-2.5-pro": {
+    inputPer1M: 1.25,
+    outputPer1M: 10,
+    maxContextTokens: 1_048_576,
+  },
+  "gemini-2.5-flash": {
+    inputPer1M: 0.15,
+    outputPer1M: 0.6,
+    maxContextTokens: 1_048_576,
+  },
+  "gemini-2.0-flash": {
+    inputPer1M: 0.1,
+    outputPer1M: 0.4,
+    maxContextTokens: 1_048_576,
+  },
 };
 
 let customPricing: Record<string, ModelPricing> = {};
