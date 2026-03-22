@@ -13,6 +13,7 @@ let requestsTotal: Counter;
 let errorsTotal: Counter;
 let agentStepsPerQuery: Histogram;
 let agentToolUsage: Counter;
+let agentToolDuration: Histogram;
 let guardEvaluations: Counter;
 let guardWouldBlock: Counter;
 let semanticDrift: Histogram;
@@ -62,8 +63,16 @@ export function initMetrics() {
   );
 
   agentToolUsage = meter.createCounter(GEN_AI_METRICS.AGENT_TOOL_USAGE, {
-    description: "Agent tool invocations by tool name",
+    description: "Agent tool invocations by tool name and status",
   });
+
+  agentToolDuration = meter.createHistogram(
+    GEN_AI_METRICS.AGENT_TOOL_DURATION,
+    {
+      description: "Agent tool execution duration in milliseconds",
+      unit: "ms",
+    },
+  );
 
   guardEvaluations = meter.createCounter(GEN_AI_METRICS.GUARD_EVALUATIONS, {
     description: "Total guard evaluations (shadow + enforce)",
@@ -189,8 +198,18 @@ export function recordAgentSteps(stepCount: number) {
   agentStepsPerQuery.record(stepCount);
 }
 
-export function recordAgentToolUsage(toolName: string) {
+export function recordAgentToolUsage(
+  toolName: string,
+  status: "success" | "error" = "success",
+) {
   agentToolUsage.add(1, {
+    [GEN_AI_ATTRS.TOOL_NAME]: toolName,
+    "tool.status": status,
+  });
+}
+
+export function recordAgentToolDuration(toolName: string, durationMs: number) {
+  agentToolDuration.record(durationMs, {
     [GEN_AI_ATTRS.TOOL_NAME]: toolName,
   });
 }
