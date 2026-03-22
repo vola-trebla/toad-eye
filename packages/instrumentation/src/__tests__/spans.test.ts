@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Shared mock span — accessible in tests for assertion
 const mockSpan = {
+  setAttribute: vi.fn(),
   setAttributes: vi.fn(),
   setStatus: vi.fn(),
   end: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock("../core/metrics.js", () => ({
   recordBudgetDowngraded: vi.fn(),
   recordResponseEmpty: vi.fn(),
   recordResponseLatencyPerToken: vi.fn(),
+  recordContextUtilization: vi.fn(),
 }));
 
 // Mock tracer config
