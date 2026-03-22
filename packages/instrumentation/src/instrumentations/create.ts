@@ -153,6 +153,7 @@ function createStreamingHandler(
     const span: Span = tracer.startSpan(`chat ${effectiveModel}`);
     const ctx = trace.setSpan(context.active(), span);
     const sessionId = config?.sessionExtractor?.() ?? config?.sessionId;
+    let ttftMs = 0;
 
     span.setAttributes({
       [GEN_AI_ATTRS.PROVIDER]: effectiveProvider,
@@ -204,11 +205,15 @@ function createStreamingHandler(
         streamIterable,
         (acc, chunk) => patch.accumulateChunk!(acc, chunk),
         () => {
-          recordTimeToFirstToken(
-            performance.now() - start,
-            effectiveProvider,
-            effectiveModel,
-          );
+          const ttft = performance.now() - start;
+          ttftMs = ttft;
+          recordTimeToFirstToken(ttft, effectiveProvider, effectiveModel);
+
+          // Span event for per-trace TTFT debugging in Jaeger
+          span.addEvent("gen_ai.content.first_token", {
+            "gen_ai.response.time_to_first_token_ms": ttft,
+          });
+          span.setAttribute("gen_ai.response.time_to_first_token_ms", ttft);
         },
         (acc) => {
           const duration = performance.now() - start;
@@ -262,6 +267,18 @@ function createStreamingHandler(
               effectiveProvider,
               effectiveModel,
             );
+          }
+
+          // Prefill/decode latency split — TTFT = prefill, rest = decode
+          if (ttftMs > 0) {
+            const decodeMs = duration - ttftMs;
+            span.setAttribute("gen_ai.toad_eye.latency.decode_ms", decodeMs);
+            if (acc.outputTokens > 0 && decodeMs > 0) {
+              span.setAttribute(
+                "gen_ai.toad_eye.throughput.tokens_per_second",
+                acc.outputTokens / (decodeMs / 1000),
+              );
+            }
           }
 
           // Budget recording — releases the reservation made in checkBefore
