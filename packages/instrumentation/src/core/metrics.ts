@@ -23,6 +23,7 @@ let budgetDowngraded: Counter;
 let responseEmpty: Counter;
 let responseLatencyPerToken: Histogram;
 let contextUtilization: Histogram;
+let contextBlocked: Counter;
 
 let initialized = false;
 
@@ -115,6 +116,10 @@ export function initMetrics() {
         "Ratio of input tokens to model context window (0.0–1.0+). Values above 0.8 indicate risk of context overflow.",
     },
   );
+
+  contextBlocked = meter.createCounter(GEN_AI_METRICS.CONTEXT_BLOCKED, {
+    description: "Number of LLM calls blocked by context guard",
+  });
 
   initialized = true;
 }
@@ -263,6 +268,12 @@ export function recordContextUtilization(
 ) {
   contextUtilization.record(utilization, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+  });
+}
+
+export function recordContextBlocked(model: string) {
+  contextBlocked.add(1, {
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }

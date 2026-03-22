@@ -12,6 +12,7 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics, resetMetrics } from "./metrics.js";
 import { resetCustomPricing } from "./pricing.js";
+import { resetContextGuardState } from "../context/guard.js";
 import { enableAll, disableAll } from "../instrumentations/registry.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
@@ -182,4 +183,5 @@ export async function shutdown() {
   budgetTracker = null;
   resetMetrics();
   resetCustomPricing();
+  resetContextGuardState();
 }

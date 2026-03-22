@@ -31,6 +31,7 @@ export const GEN_AI_METRICS = {
   RESPONSE_LATENCY_PER_TOKEN: "gen_ai.toad_eye.response.latency_per_token",
   // Context utilization
   CONTEXT_UTILIZATION: "gen_ai.toad_eye.context_utilization",
+  CONTEXT_BLOCKED: "gen_ai.toad_eye.context.blocked",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */
