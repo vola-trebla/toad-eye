@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -9,11 +11,19 @@
     {
       "title": "Total Errors",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
+          "expr": "sum(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"})",
           "refId": "A"
         }
       ],
@@ -22,9 +32,18 @@
           "unit": "short",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10 },
-              { "color": "red", "value": 100 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
             ]
           }
         },
@@ -34,11 +53,19 @@
     {
       "title": "Error Rate %",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) / sum(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) * 100",
+          "expr": "sum(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) / sum(gen_ai_client_requests_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}) * 100",
           "refId": "A"
         }
       ],
@@ -47,9 +74,18 @@
           "unit": "percent",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 20 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
             ]
           }
         },
@@ -59,11 +95,19 @@
     {
       "title": "Errors Last Hour",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(increase(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1h]))",
+          "expr": "sum(increase(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1h]))",
           "refId": "A"
         }
       ],
@@ -72,9 +116,18 @@
           "unit": "short",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 50 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
             ]
           }
         },
@@ -84,11 +137,19 @@
     {
       "title": "Error Rate by Provider",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_provider_name) * 60",
+          "expr": "sum(rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_provider_name) * 60",
           "legendFormat": "{{ gen_ai_provider_name }}",
           "refId": "A"
         }
@@ -96,7 +157,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "reqpm",
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
         },
         "overrides": []
       }
@@ -104,11 +169,19 @@
     {
       "title": "Error Rate by Model",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_request_model) * 60",
+          "expr": "sum(rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) by (gen_ai_request_model) * 60",
           "legendFormat": "{{ gen_ai_request_model }}",
           "refId": "A"
         }
@@ -116,7 +189,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "reqpm",
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          }
         },
         "overrides": []
       }
@@ -124,16 +201,24 @@
     {
       "title": "Error vs Success Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) * 60",
+          "expr": "sum(rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) * 60",
           "legendFormat": "errors/min",
           "refId": "A"
         },
         {
-          "expr": "(sum(rate(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) - sum(rate(gen_ai_client_errors_total{gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m]))) * 60",
+          "expr": "(sum(rate(gen_ai_client_requests_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m])) - sum(rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\", gen_ai_request_model=~\"$model\"}[1m]))) * 60",
           "legendFormat": "success/min",
           "refId": "B"
         }
@@ -145,7 +230,9 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2,
-            "stacking": { "mode": "normal" }
+            "stacking": {
+              "mode": "normal"
+            }
           }
         },
         "overrides": []
@@ -158,28 +245,59 @@
   "templating": {
     "list": [
       {
+        "name": "service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_client_requests_total, job)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true
+      },
+      {
         "name": "provider",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
         "includeAll": true,
         "allValue": ".*",
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "multi": true
       },
       {
         "name": "model",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "query": "label_values(gen_ai_client_requests_total{gen_ai_provider_name=~\"$provider\"}, gen_ai_request_model)",
         "includeAll": true,
         "allValue": ".*",
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "multi": true
       }
     ]
   },
-  "time": { "from": "now-15m", "to": "now" },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "toad-eye: Error Drill-down",
