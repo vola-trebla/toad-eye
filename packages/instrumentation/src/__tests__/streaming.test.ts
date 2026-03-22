@@ -5,7 +5,7 @@ import type { StreamAccumulator } from "../instrumentations/types.js";
 // Test the accumulator-based stream extraction and message parsing
 
 function freshAcc(): StreamAccumulator {
-  return { completion: "", inputTokens: 0, outputTokens: 0 };
+  return { completion: "", inputTokens: 0, outputTokens: 0, toolCalls: [] };
 }
 
 describe("OpenAI multi-modal extraction (#98)", () => {
@@ -132,6 +132,7 @@ describe("OpenAI stream accumulator", () => {
       "completion",
       "inputTokens",
       "outputTokens",
+      "toolCalls",
     ]);
   });
 });
@@ -247,6 +248,7 @@ describe("stream wrapping (async iterable)", () => {
         completion: "",
         inputTokens: 0,
         outputTokens: 0,
+        toolCalls: [],
       };
       for await (const chunk of stream) {
         acc.completion += String((chunk as { n: number }).n);
