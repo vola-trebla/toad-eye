@@ -385,7 +385,7 @@ import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel
 
 ## Architecture
 
-![toad-eye architecture](demo/toad_eye_architecture.svg)
+![toad-eye architecture](demo/toad_eye_architecture_v2.svg)
 
 ## What it tracks
 
