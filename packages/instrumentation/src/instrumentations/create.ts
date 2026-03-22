@@ -113,6 +113,15 @@ function createStreamingHandler(
     body: unknown,
     rest: unknown[],
   ) {
+    // OpenAI does not send usage in streaming chunks by default.
+    // Auto-inject stream_options to get token counts in the final chunk.
+    if (providerName === "openai") {
+      const b = body as Record<string, unknown>;
+      if (!b["stream_options"]) {
+        b["stream_options"] = { include_usage: true };
+      }
+    }
+
     // Pass thisArg so extractRequest can access instance properties (e.g., Gemini model name)
     const req = patch.extractRequest(body, thisArg);
     const start = performance.now();
