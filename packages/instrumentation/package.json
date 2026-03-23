@@ -30,6 +30,11 @@
       "types": "./dist/vercel.d.ts",
       "import": "./dist/vercel.js",
       "default": "./dist/vercel.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js",
+      "default": "./dist/mcp/index.js"
     }
   },
   "bin": {
@@ -87,7 +92,8 @@
     "@anthropic-ai/sdk": ">=0.30.0",
     "@google/generative-ai": ">=0.20.0",
     "nodemailer": ">=8.0.0",
-    "openai": ">=4.0.0"
+    "openai": ">=4.0.0",
+    "@modelcontextprotocol/sdk": ">=1.0.0"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -100,6 +106,9 @@
       "optional": true
     },
     "nodemailer": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
       "optional": true
     }
   },
