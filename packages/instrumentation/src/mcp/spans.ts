@@ -2,9 +2,10 @@
  * OTel span creation for MCP operations.
  *
  * Maps MCP methods to OTel GenAI semantic conventions:
- * - tools/call       → execute_tool {tool_name}
- * - resources/read   → retrieval {uri}
- * - prompts/get      → prompt {name}
+ * - tools/call              → execute_tool {tool_name}
+ * - resources/read          → retrieval {uri}
+ * - prompts/get             → prompt {name}
+ * - sampling/createMessage  → chat {model}
  */
 
 import {
@@ -64,6 +65,28 @@ export function startPromptSpan(promptName: string, options: SpanOptions) {
       attributes: {
         "gen_ai.operation.name": "prompt",
         "gen_ai.prompt.name": promptName,
+        "mcp.server.name": options.serverName,
+        "mcp.server.version": options.serverVersion,
+      },
+    },
+    options.parentContext,
+  );
+}
+
+export interface SamplingSpanOptions {
+  readonly serverName: string;
+  readonly serverVersion: string;
+  readonly parentContext?: Context | undefined;
+}
+
+export function startSamplingSpan(model: string, options: SamplingSpanOptions) {
+  return tracer.startSpan(
+    `chat ${model}`,
+    {
+      kind: SpanKind.CLIENT,
+      attributes: {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": model,
         "mcp.server.name": options.serverName,
         "mcp.server.version": options.serverVersion,
       },
