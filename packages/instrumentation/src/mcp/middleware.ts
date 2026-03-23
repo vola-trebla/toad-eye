@@ -9,7 +9,12 @@
  * and strict TypeScript. Wrapping the public API is the stable path.
  */
 
-import { context } from "@opentelemetry/api";
+import {
+  context,
+  diag,
+  DiagConsoleLogger,
+  DiagLogLevel,
+} from "@opentelemetry/api";
 import type { ToadMcpOptions } from "./types.js";
 import { extractContextFromMeta } from "./context.js";
 import {
@@ -63,11 +68,30 @@ function redactObject(
  * });
  * ```
  */
+/**
+ * Redirect OTel diagnostics to stderr to avoid polluting stdout.
+ * In stdio MCP transport, stdout IS the JSON-RPC channel —
+ * any stray console.log or OTel diagnostic would crash the connection.
+ */
+function ensureStdioSafe() {
+  const stderrLogger = new DiagConsoleLogger();
+  // Override the logger to use stderr-only methods
+  const safeLogger = {
+    verbose: (...args: unknown[]) => stderrLogger.verbose(String(args[0])),
+    debug: (...args: unknown[]) => stderrLogger.debug(String(args[0])),
+    info: (...args: unknown[]) => stderrLogger.info(String(args[0])),
+    warn: (...args: unknown[]) => stderrLogger.warn(String(args[0])),
+    error: (...args: unknown[]) => stderrLogger.error(String(args[0])),
+  };
+  diag.setLogger(safeLogger, DiagLogLevel.WARN);
+}
+
 export function toadEyeMiddleware(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server: any,
   options: ToadMcpOptions = {},
 ) {
+  ensureStdioSafe();
   const serverName: string = server.name ?? server._name ?? "mcp-server";
   const serverVersion: string = server.version ?? server._version ?? "unknown";
   const recordInputs = options.recordInputs ?? false;
