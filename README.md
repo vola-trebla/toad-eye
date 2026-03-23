@@ -124,6 +124,39 @@ const result = await traceLLMCall(
 
 </details>
 
+<details>
+<summary>MCP Server observability</summary>
+
+Drop-in middleware for MCP servers — one line for full tracing of every tool call, resource read, and prompt request.
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/index.js";
+import { toadEyeMiddleware } from "toad-eye/mcp";
+
+const server = new McpServer({ name: "my-server", version: "1.0.0" });
+toadEyeMiddleware(server);
+
+// All handlers are now instrumented — spans appear in Jaeger
+server.tool("calculate", { expression: z.string() }, async ({ expression }) => {
+  return { content: [{ type: "text", text: String(eval(expression)) }] };
+});
+```
+
+Spans follow OTel GenAI semconv: `execute_tool calculate`, `retrieval file:///docs`, `prompt greeting`.
+
+Privacy by default — tool arguments and results are NOT recorded unless you opt in:
+
+```typescript
+toadEyeMiddleware(server, {
+  recordInputs: true,
+  redactKeys: ["apiKey", "token"],
+});
+```
+
+> Safe for stdio transport — OTel diagnostics are redirected to stderr.
+
+</details>
+
 ## Budget guards
 
 Prevent cost overruns at runtime. Three modes: warn, block, or auto-downgrade to a cheaper model.
