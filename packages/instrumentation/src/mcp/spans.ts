@@ -105,7 +105,9 @@ export function endSpanError(
   error: unknown,
 ) {
   const message = error instanceof Error ? error.message : String(error);
+  const errorType =
+    error instanceof Error ? error.constructor.name : "UnknownError";
   span.setStatus({ code: SpanStatusCode.ERROR, message });
-  span.setAttribute("error.type", message);
+  span.setAttribute("error.type", errorType);
   span.end();
 }
