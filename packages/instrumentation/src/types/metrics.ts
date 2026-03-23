@@ -33,6 +33,12 @@ export const GEN_AI_METRICS = {
   // Context utilization
   CONTEXT_UTILIZATION: "gen_ai.toad_eye.context_utilization",
   CONTEXT_BLOCKED: "gen_ai.toad_eye.context.blocked",
+  // MCP metrics
+  MCP_TOOL_DURATION: "gen_ai.mcp.tool.duration",
+  MCP_TOOL_CALLS: "gen_ai.mcp.tool.calls",
+  MCP_TOOL_ERRORS: "gen_ai.mcp.tool.errors",
+  MCP_RESOURCE_READS: "gen_ai.mcp.resource.reads",
+  MCP_SESSION_ACTIVE: "gen_ai.mcp.session.active",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

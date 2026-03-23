@@ -29,6 +29,7 @@ import {
   recordMcpToolCall,
   recordMcpToolError,
   recordMcpResourceRead,
+  recordMcpSessionStart,
 } from "./metrics.js";
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 4096;
@@ -93,6 +94,7 @@ export function toadEyeMiddleware(
   options: ToadMcpOptions = {},
 ) {
   ensureStdioSafe();
+  recordMcpSessionStart();
   const serverName: string = server.name ?? server._name ?? "mcp-server";
   const serverVersion: string = server.version ?? server._version ?? "unknown";
   const recordInputs = options.recordInputs ?? false;
