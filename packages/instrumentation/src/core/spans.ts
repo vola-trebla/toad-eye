@@ -26,6 +26,8 @@ export interface LLMCallInput {
   readonly model: string;
   readonly prompt: string;
   readonly temperature?: number | undefined;
+  /** OTel operation name for span naming. Default: "chat". */
+  readonly operationName?: string | undefined;
   /** Per-request FinOps attributes (team, userId, feature, etc). Merged with global attributes. */
   readonly attributes?: Readonly<Record<string, string>> | undefined;
 }
@@ -90,6 +92,11 @@ export function processContent(text: string): string | undefined {
   const config = getConfig();
   if (config?.recordContent === false) return undefined;
 
+  // Content sampling — record only a fraction of calls
+  if (config?.contentSamplingRate !== undefined) {
+    if (Math.random() >= config.contentSamplingRate) return undefined;
+  }
+
   let processed = text;
   let totalRedacted = 0;
 
@@ -148,7 +155,7 @@ function setBaseAttributes(span: Span, input: LLMCallInput) {
     [GEN_AI_ATTRS.PROVIDER]: input.provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: input.model,
     [GEN_AI_ATTRS.TEMPERATURE]: input.temperature ?? 1.0,
-    [GEN_AI_ATTRS.OPERATION]: "chat",
+    [GEN_AI_ATTRS.OPERATION]: input.operationName ?? "chat",
     ...(prompt !== undefined && { [GEN_AI_ATTRS.PROMPT]: prompt }),
     ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
     ...attrs,
@@ -236,8 +243,10 @@ export async function traceLLMCall(
     }
   }
 
+  const op = effectiveInput.operationName ?? "chat";
+
   return tracer.startActiveSpan(
-    `chat ${effectiveInput.model}`,
+    `${op} ${effectiveInput.model}`,
     async (span) => {
       const start = performance.now();
       setBaseAttributes(span, effectiveInput);

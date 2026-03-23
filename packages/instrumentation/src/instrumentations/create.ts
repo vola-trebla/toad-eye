@@ -153,7 +153,8 @@ function createStreamingHandler(
       }
     }
 
-    const span: Span = tracer.startSpan(`chat ${effectiveModel}`);
+    const op = patch.operationName ?? "chat";
+    const span: Span = tracer.startSpan(`${op} ${effectiveModel}`);
     const ctx = trace.setSpan(context.active(), span);
     const sessionId = config?.sessionExtractor?.() ?? config?.sessionId;
     let ttftMs = 0;
@@ -162,7 +163,7 @@ function createStreamingHandler(
       [GEN_AI_ATTRS.PROVIDER]: effectiveProvider,
       [GEN_AI_ATTRS.REQUEST_MODEL]: effectiveModel,
       [GEN_AI_ATTRS.TEMPERATURE]: req.temperature ?? 1.0,
-      [GEN_AI_ATTRS.OPERATION]: "chat",
+      [GEN_AI_ATTRS.OPERATION]: op,
       ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
     });
 
@@ -253,10 +254,18 @@ function createStreamingHandler(
             [GEN_AI_ATTRS.INPUT_TOKENS]: acc.inputTokens,
             [GEN_AI_ATTRS.OUTPUT_TOKENS]: acc.outputTokens,
             [GEN_AI_ATTRS.COST]: cost,
-            [GEN_AI_ATTRS.STATUS]: "success",
-            [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
+            [GEN_AI_ATTRS.STATUS]:
+              acc.finishReason === "SAFETY" ? "error" : "success",
+            [GEN_AI_ATTRS.FINISH_REASONS]: [acc.finishReason ?? "stop"],
           });
-          span.setStatus({ code: SpanStatusCode.OK });
+          if (acc.finishReason === "SAFETY") {
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: "Content blocked by safety filter",
+            });
+          } else {
+            span.setStatus({ code: SpanStatusCode.OK });
+          }
           span.end();
 
           recordRequest(effectiveProvider, effectiveModel);
@@ -408,6 +417,7 @@ function createPatchedMethod(
         model: req.model,
         prompt: req.prompt,
         temperature: req.temperature,
+        operationName: patch.operationName,
       },
       async (): Promise<LLMCallOutput> => {
         const response = await original.call(this, body, ...rest);
