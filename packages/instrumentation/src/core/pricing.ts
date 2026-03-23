@@ -71,6 +71,7 @@ const BUILT_IN_PRICING: Record<string, ModelPricing> = {
 };
 
 let customPricing: Record<string, ModelPricing> = {};
+const warnedModels = new Set<string>();
 
 /**
  * Set custom pricing for models (overrides built-in prices).
@@ -83,6 +84,7 @@ export function setCustomPricing(pricing: Record<string, ModelPricing>) {
 /** Reset custom pricing to empty. Called from shutdown() to avoid stale state across re-inits. */
 export function resetCustomPricing() {
   customPricing = {};
+  warnedModels.clear();
 }
 
 /**
@@ -104,7 +106,15 @@ export function calculateCost(
 ): number {
   if (inputTokens < 0 || outputTokens < 0) return 0;
   const pricing = getModelPricing(model);
-  if (!pricing) return 0;
+  if (!pricing) {
+    if (inputTokens + outputTokens > 0 && !warnedModels.has(model)) {
+      warnedModels.add(model);
+      console.warn(
+        `toad-eye: unknown pricing for "${model}" — cost reported as $0. Use setCustomPricing() to set rates.`,
+      );
+    }
+    return 0;
+  }
 
   const cost =
     (inputTokens / 1_000_000) * pricing.inputPer1M +

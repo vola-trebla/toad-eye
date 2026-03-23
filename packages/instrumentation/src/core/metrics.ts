@@ -138,6 +138,11 @@ export function resetMetrics() {
   initialized = false;
 }
 
+/** Returns true if metrics are safe to record. Prevents crash if called before initMetrics(). */
+function isReady(): boolean {
+  return initialized;
+}
+
 /** Build metric labels: provider + model + optional FinOps attributes. */
 function baseLabels(
   provider: string,
@@ -157,6 +162,7 @@ export function recordRequestDuration(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   requestDuration.record(ms, baseLabels(provider, model, attrs));
 }
 
@@ -166,6 +172,7 @@ export function recordRequestCost(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   requestCost.record(usd, baseLabels(provider, model, attrs));
 }
 
@@ -175,6 +182,7 @@ export function recordTokens(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   tokenUsage.add(count, baseLabels(provider, model, attrs));
 }
 
@@ -183,6 +191,7 @@ export function recordRequest(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   requestsTotal.add(1, baseLabels(provider, model, attrs));
 }
 
@@ -191,10 +200,12 @@ export function recordError(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   errorsTotal.add(1, baseLabels(provider, model, attrs));
 }
 
 export function recordAgentSteps(stepCount: number) {
+  if (!isReady()) return;
   agentStepsPerQuery.record(stepCount);
 }
 
@@ -202,6 +213,7 @@ export function recordAgentToolUsage(
   toolName: string,
   status: "success" | "error" = "success",
 ) {
+  if (!isReady()) return;
   agentToolUsage.add(1, {
     [GEN_AI_ATTRS.TOOL_NAME]: toolName,
     "tool.status": status,
@@ -209,18 +221,21 @@ export function recordAgentToolUsage(
 }
 
 export function recordAgentToolDuration(toolName: string, durationMs: number) {
+  if (!isReady()) return;
   agentToolDuration.record(durationMs, {
     [GEN_AI_ATTRS.TOOL_NAME]: toolName,
   });
 }
 
 export function recordGuardEvaluation(ruleName: string) {
+  if (!isReady()) return;
   guardEvaluations.add(1, {
     [GEN_AI_ATTRS.GUARD_RULE_NAME]: ruleName,
   });
 }
 
 export function recordGuardWouldBlock(ruleName: string) {
+  if (!isReady()) return;
   guardWouldBlock.add(1, {
     [GEN_AI_ATTRS.GUARD_RULE_NAME]: ruleName,
   });
@@ -231,6 +246,7 @@ export function recordSemanticDrift(
   provider: string,
   model: string,
 ) {
+  if (!isReady()) return;
   semanticDrift.record(drift, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
@@ -242,6 +258,7 @@ export function recordTimeToFirstToken(
   provider: string,
   model: string,
 ) {
+  if (!isReady()) return;
   timeToFirstToken.record(ms, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
@@ -249,14 +266,17 @@ export function recordTimeToFirstToken(
 }
 
 export function recordBudgetExceeded(budgetType: string) {
+  if (!isReady()) return;
   budgetExceeded.add(1, { budget_type: budgetType });
 }
 
 export function recordBudgetBlocked(budgetType: string) {
+  if (!isReady()) return;
   budgetBlocked.add(1, { budget_type: budgetType });
 }
 
 export function recordBudgetDowngraded(budgetType: string) {
+  if (!isReady()) return;
   budgetDowngraded.add(1, { budget_type: budgetType });
 }
 
@@ -265,6 +285,7 @@ export function recordResponseEmpty(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   responseEmpty.add(1, baseLabels(provider, model, attrs));
 }
 
@@ -274,6 +295,7 @@ export function recordResponseLatencyPerToken(
   model: string,
   attrs?: Record<string, string>,
 ) {
+  if (!isReady()) return;
   responseLatencyPerToken.record(
     msPerToken,
     baseLabels(provider, model, attrs),
@@ -285,6 +307,7 @@ export function recordContextUtilization(
   provider: string,
   model: string,
 ) {
+  if (!isReady()) return;
   contextUtilization.record(utilization, {
     [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
@@ -292,6 +315,7 @@ export function recordContextUtilization(
 }
 
 export function recordContextBlocked(model: string) {
+  if (!isReady()) return;
   contextBlocked.add(1, {
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
