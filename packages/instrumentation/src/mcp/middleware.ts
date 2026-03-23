@@ -19,6 +19,11 @@ import {
   endSpanSuccess,
   endSpanError,
 } from "./spans.js";
+import {
+  recordMcpToolCall,
+  recordMcpToolError,
+  recordMcpResourceRead,
+} from "./metrics.js";
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 4096;
 
@@ -118,10 +123,12 @@ export function toadEyeMiddleware(
         options.onToolCall(span, name, firstArg);
       }
 
+      const start = performance.now();
       try {
         const result = await context.with(context.active(), () =>
           originalHandler(...handlerArgs),
         );
+        const durationMs = performance.now() - start;
 
         // Record outputs if enabled
         if (recordOutputs && result) {
@@ -130,9 +137,15 @@ export function toadEyeMiddleware(
         }
 
         endSpanSuccess(span);
+        recordMcpToolCall(name, durationMs, "success");
         return result;
       } catch (error) {
+        const durationMs = performance.now() - start;
+        const errorType =
+          error instanceof Error ? error.constructor.name : "UnknownError";
         endSpanError(span, error);
+        recordMcpToolCall(name, durationMs, "error");
+        recordMcpToolError(name, errorType);
         throw error;
       }
     };
@@ -181,6 +194,7 @@ export function toadEyeMiddleware(
         try {
           const result = await originalHandler(...handlerArgs);
           endSpanSuccess(span);
+          recordMcpResourceRead(uri);
           return result;
         } catch (error) {
           endSpanError(span, error);
