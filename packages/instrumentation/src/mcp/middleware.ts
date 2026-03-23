@@ -21,6 +21,7 @@ import {
   startToolSpan,
   startResourceSpan,
   startPromptSpan,
+  startSamplingSpan,
   endSpanSuccess,
   endSpanError,
 } from "./spans.js";
@@ -272,4 +273,81 @@ export function toadEyeMiddleware(
       return originalPrompt(name, ...rest);
     };
   }
+}
+
+/**
+ * Trace a sampling/createMessage call (server → client LLM request).
+ *
+ * Sampling is an outgoing request from the MCP server to the client,
+ * asking the client's LLM to generate a response. This cannot be
+ * auto-intercepted via wrapper pattern, so wrap manually.
+ *
+ * @example
+ * ```ts
+ * import { traceSampling } from "toad-eye/mcp";
+ *
+ * server.tool("summarize", { text: z.string() }, async ({ text }, ctx) => {
+ *   const response = await traceSampling(
+ *     () => ctx.mcpReq.requestSampling({
+ *       messages: [{ role: "user", content: { type: "text", text } }],
+ *       maxTokens: 500,
+ *     }),
+ *     { model: "gpt-4" }
+ *   );
+ *   return { content: [{ type: "text", text: response.content.text }] };
+ * });
+ * ```
+ */
+export async function traceSampling<T>(
+  fn: () => Promise<T>,
+  options: TraceSamplingOptions,
+): Promise<T> {
+  const model = options.model ?? "unknown";
+  const span = startSamplingSpan(model, {
+    serverName: options.serverName ?? "mcp-server",
+    serverVersion: options.serverVersion ?? "unknown",
+    parentContext: options.parentContext,
+  });
+
+  if (options.maxTokens !== undefined) {
+    span.setAttribute("gen_ai.request.max_tokens", options.maxTokens);
+  }
+
+  const start = performance.now();
+  try {
+    const result = await fn();
+    const durationMs = performance.now() - start;
+
+    // Extract token usage from response if available
+    const response = result as Record<string, unknown> | null;
+    if (response && typeof response === "object") {
+      if (response["model"]) {
+        span.setAttribute("gen_ai.response.model", String(response["model"]));
+      }
+    }
+
+    span.setAttribute("gen_ai.mcp.sampling.duration_ms", durationMs);
+    endSpanSuccess(span);
+    return result;
+  } catch (error) {
+    endSpanError(span, error);
+    throw error;
+  }
+}
+
+export interface TraceSamplingOptions {
+  /** The model being requested for sampling. */
+  readonly model?: string | undefined;
+
+  /** Max tokens requested. */
+  readonly maxTokens?: number | undefined;
+
+  /** MCP server name for span attributes. */
+  readonly serverName?: string | undefined;
+
+  /** MCP server version for span attributes. */
+  readonly serverVersion?: string | undefined;
+
+  /** Parent OTel context. */
+  readonly parentContext?: import("@opentelemetry/api").Context | undefined;
 }

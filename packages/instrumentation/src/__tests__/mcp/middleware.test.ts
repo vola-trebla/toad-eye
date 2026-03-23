@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { toadEyeMiddleware } from "../../mcp/index.js";
+import { toadEyeMiddleware, traceSampling } from "../../mcp/index.js";
 
 function createMockServer() {
   const tools: Record<string, (...args: unknown[]) => Promise<unknown>> = {};
@@ -174,5 +174,40 @@ describe("toadEyeMiddleware", () => {
       "hooked-tool",
       expect.objectContaining({ data: "test" }),
     );
+  });
+});
+
+describe("traceSampling", () => {
+  it("wraps async function and returns its result", async () => {
+    const mockResponse = {
+      model: "gpt-4",
+      role: "assistant",
+      content: { type: "text", text: "Summary result" },
+    };
+
+    const result = await traceSampling(async () => mockResponse, {
+      model: "gpt-4",
+      maxTokens: 500,
+      serverName: "test-server",
+      serverVersion: "1.0.0",
+    });
+
+    expect(result).toEqual(mockResponse);
+  });
+
+  it("propagates errors from the sampling call", async () => {
+    await expect(
+      traceSampling(
+        async () => {
+          throw new Error("Sampling failed");
+        },
+        { model: "gpt-4" },
+      ),
+    ).rejects.toThrow("Sampling failed");
+  });
+
+  it("works with default options", async () => {
+    const result = await traceSampling(async () => ({ done: true }), {});
+    expect(result).toEqual({ done: true });
   });
 });
