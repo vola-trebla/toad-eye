@@ -23,7 +23,16 @@ export interface StreamAccumulator {
   inputTokens: number;
   outputTokens: number;
   toolCalls: AccumulatedToolCall[];
+  /** Finish reason from the final chunk (e.g., "stop", "SAFETY"). */
+  finishReason?: string | undefined;
 }
+
+/** OTel GenAI operation types. Default is "chat". */
+export type OperationName =
+  | "chat"
+  | "text_completion"
+  | "embeddings"
+  | "generate_content";
 
 /** Describes a single method to monkey-patch on an SDK prototype. */
 export interface PatchTarget {
@@ -32,6 +41,8 @@ export interface PatchTarget {
   getPrototype: (sdk: any) => any | undefined;
   /** Method name on the prototype to patch */
   method: string;
+  /** OTel operation name for span naming. Default: "chat". */
+  operationName?: OperationName | undefined;
   /** Extract LLMCallInput fields from the request arguments.
    *  thisArg is the SDK object instance — use it when the model name is not in the request body
    *  (e.g., Gemini's GenerativeModel stores it as this.model). */

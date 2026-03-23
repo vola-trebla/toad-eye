@@ -52,6 +52,8 @@ export interface ToadEyeConfig {
   readonly redactDefaults?: boolean | undefined;
   /** Log what was masked to console (for debugging redaction config). No data is sent externally. */
   readonly auditMasking?: boolean | undefined;
+  /** Record content for only this fraction of calls (0.0–1.0). E.g., 0.01 = 1%. Enables debugging without full storage/privacy cost. */
+  readonly contentSamplingRate?: number | undefined;
 
   // Sampling
   /** Configure trace sampling. Tail sampling happens in OTel Collector, not SDK. */

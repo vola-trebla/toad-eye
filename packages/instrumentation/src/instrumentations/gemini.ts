@@ -19,6 +19,7 @@ function extractPrompt(request: unknown): string {
 const generateContent: PatchTarget = {
   getPrototype: (sdk) => sdk?.GenerativeModel?.prototype,
   method: "generateContent",
+  operationName: "chat",
   extractRequest(body, thisArg) {
     return {
       prompt: extractPrompt(body),
@@ -52,6 +53,7 @@ const generateContent: PatchTarget = {
 const generateContentStream: PatchTarget = {
   getPrototype: (sdk) => sdk?.GenerativeModel?.prototype,
   method: "generateContentStream",
+  operationName: "chat",
   extractRequest(body, thisArg) {
     return {
       prompt: extractPrompt(body),
@@ -74,6 +76,7 @@ const generateContentStream: PatchTarget = {
         candidatesTokenCount?: number;
       };
       candidates?: {
+        finishReason?: string;
         content?: {
           parts?: { functionCall?: { name: string; args: unknown } }[];
         };
@@ -97,6 +100,12 @@ const generateContentStream: PatchTarget = {
           });
         }
       }
+    }
+
+    // Track finish reason (especially SAFETY blocks)
+    const finishReason = c?.candidates?.[0]?.finishReason;
+    if (finishReason) {
+      acc.finishReason = finishReason;
     }
 
     if (c?.usageMetadata) {

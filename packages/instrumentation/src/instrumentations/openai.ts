@@ -92,6 +92,7 @@ const chatCompletions: PatchTarget = {
 const embeddings: PatchTarget = {
   getPrototype: (sdk) => sdk?.Embeddings?.prototype,
   method: "create",
+  operationName: "embeddings",
   extractRequest: (body) => {
     const b = body as Record<string, unknown>;
     const input = b?.input;
