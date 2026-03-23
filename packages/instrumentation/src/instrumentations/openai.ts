@@ -73,6 +73,10 @@ const chatCompletions: PatchTarget = {
           if (tc.function?.arguments)
             existing.arguments += tc.function.arguments;
         } else {
+          // Fill gaps to avoid sparse array with non-contiguous indices
+          while (acc.toolCalls.length < tc.index) {
+            acc.toolCalls.push({ name: "", arguments: "" });
+          }
           acc.toolCalls[tc.index] = {
             name: tc.function?.name ?? "",
             arguments: tc.function?.arguments ?? "",

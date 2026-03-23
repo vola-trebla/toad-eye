@@ -468,6 +468,11 @@ export function createInstrumentation(config: {
 
         return activePatches.length > 0;
       } catch (err) {
+        // Clean up any patches applied before the failure
+        for (const { proto, method, original } of activePatches) {
+          proto[method] = original;
+        }
+        activePatches.length = 0;
         diag.warn(`toad-eye: failed to patch ${config.name}: ${err}`);
         return false;
       }
