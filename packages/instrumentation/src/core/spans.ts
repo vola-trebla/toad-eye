@@ -112,9 +112,15 @@ export function processContent(text: string): string | undefined {
   // Apply custom patterns
   if (config?.redactPatterns?.length) {
     for (const pattern of config.redactPatterns) {
-      const [result, count] = applyRedaction(processed, pattern);
-      processed = result;
-      totalRedacted += count;
+      try {
+        const [result, count] = applyRedaction(processed, pattern);
+        processed = result;
+        totalRedacted += count;
+      } catch {
+        console.warn(
+          `toad-eye: invalid redact pattern skipped: ${pattern.source}`,
+        );
+      }
     }
   }
 

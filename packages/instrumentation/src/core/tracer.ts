@@ -55,6 +55,14 @@ function validateConfig(config: ToadEyeConfig) {
   if (config.apiKey !== undefined && !config.apiKey.startsWith("toad_")) {
     throw new Error('toad-eye: apiKey must start with "toad_" prefix');
   }
+  if (
+    config.onBudgetExceeded === "downgrade" &&
+    config.downgradeCallback === undefined
+  ) {
+    throw new Error(
+      'toad-eye: downgradeCallback is required when onBudgetExceeded is "downgrade"',
+    );
+  }
 }
 
 /** Resolve endpoint and auth headers based on config mode (self-hosted vs cloud). */
@@ -169,7 +177,11 @@ export function initObservability(config: ToadEyeConfig) {
     if (patchProviders.length > 0) {
       // enableAll is async (lazy-loads provider modules on first call).
       // Fire-and-forget: patching completes before any async SDK call.
-      void enableAll(patchProviders);
+      void enableAll(patchProviders).catch((err) => {
+        console.warn(
+          `toad-eye: auto-instrumentation failed: ${err instanceof Error ? err.message : err}`,
+        );
+      });
     }
   }
 }
