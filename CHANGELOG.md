@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.6.1 (2026-03-23)
+
+### Fixes
+
+- **npm README** — package README was missing on npm due to prior publish without the file included. No code changes.
+
 ## v2.6.0 (2026-03-23)
 
 ### Features
