@@ -5,7 +5,6 @@ export {
   getBudgetTracker,
 } from "./core/tracer.js";
 export { BudgetTracker, ToadBudgetExceededError } from "./budget/index.js";
-export { ToadContextExceededError } from "./context/index.js";
 export type {
   BudgetConfig,
   BudgetExceededMode,

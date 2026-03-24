@@ -71,13 +71,13 @@ export interface ToadEyeConfig {
   readonly downgradeCallback?: DowngradeCallback | undefined;
 
   // Context guard
-  /** Warn or block when context window utilization exceeds thresholds. */
+  /** Warn when context window utilization exceeds thresholds (post-call). */
   readonly contextGuard?:
     | {
         /** Warn when utilization exceeds this ratio (0.0–1.0). Default: none. */
         readonly warnAt?: number | undefined;
-        /** Block (throw ToadContextExceededError) when utilization exceeds this ratio. Default: none. */
-        readonly blockAt?: number | undefined;
+        /** Alert (span event + metric + warning) when utilization exceeds this ratio. Default: none. */
+        readonly alertAt?: number | undefined;
       }
     | undefined;
 
