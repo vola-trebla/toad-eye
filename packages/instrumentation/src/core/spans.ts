@@ -372,16 +372,18 @@ export async function traceLLMCall(
           effectiveInput.model,
           attrs,
         );
-        recordError(effectiveInput.provider, effectiveInput.model, attrs);
 
         // Release cost reservation on any error (no cost was incurred)
         if (budget) {
           budget.releaseReservation(estimatedCost);
         }
 
-        // If this was a budget block, record the metric with the correct budget type
         if (error instanceof ToadBudgetExceededError) {
+          // Budget blocks are intentional guardrails, not errors — record
+          // only the budget-specific metric to avoid inflating error rate
           recordBudgetBlocked(error.budget);
+        } else {
+          recordError(effectiveInput.provider, effectiveInput.model, attrs);
         }
 
         throw error;
