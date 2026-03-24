@@ -108,6 +108,7 @@ export function calculateCost(
   const pricing = getModelPricing(model);
   if (!pricing) {
     if (inputTokens + outputTokens > 0 && !warnedModels.has(model)) {
+      if (warnedModels.size >= 100) warnedModels.clear();
       warnedModels.add(model);
       console.warn(
         `toad-eye: unknown pricing for "${model}" — cost reported as $0. Use setCustomPricing() to set rates.`,
