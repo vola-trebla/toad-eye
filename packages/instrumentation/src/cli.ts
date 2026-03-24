@@ -288,7 +288,13 @@ async function exportTraceCommand() {
       outputDir = resolve(args[i + 1]!);
       i++;
     } else if (args[i] === "--jaeger-url" && args[i + 1]) {
-      jaegerUrl = args[i + 1];
+      try {
+        new URL(args[i + 1]!);
+        jaegerUrl = args[i + 1];
+      } catch {
+        console.error(`❌ Invalid --jaeger-url: ${args[i + 1]}`);
+        process.exit(1);
+      }
       i++;
     }
   }
