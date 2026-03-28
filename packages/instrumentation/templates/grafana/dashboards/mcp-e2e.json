@@ -1,0 +1,323 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Total Request Rate",
+      "description": "Combined rate of MCP client + server operations",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_mcp_tool_calls_total[5m])) + sum(rate(gen_ai_client_requests_total[5m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "LLM Avg Latency",
+      "description": "Average LLM call duration (client-side)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_client_operation_duration_sum[5m])) / sum(rate(gen_ai_client_operation_duration_count[5m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 5000 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Tool Avg Latency",
+      "description": "Average MCP tool execution duration (server-side)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_mcp_tool_duration_sum[5m])) / sum(rate(gen_ai_mcp_tool_duration_count[5m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "End-to-End Error Rate",
+      "description": "Combined error rate across LLM + MCP",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "(sum(rate(gen_ai_client_errors_total[5m])) + sum(rate(gen_ai_mcp_tool_errors_total[5m]))) / (sum(rate(gen_ai_client_requests_total[5m])) + sum(rate(gen_ai_mcp_tool_calls_total[5m]))) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Latency Breakdown: LLM vs Tool",
+      "description": "Compare LLM call latency vs MCP tool execution latency over time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_client_operation_duration_sum[5m])) / sum(rate(gen_ai_client_operation_duration_count[5m]))",
+          "legendFormat": "LLM Avg Latency",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(gen_ai_mcp_tool_duration_sum[5m])) / sum(rate(gen_ai_mcp_tool_duration_count[5m]))",
+          "legendFormat": "Tool Avg Latency",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "pointSize": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "LLM Avg Latency" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "orange", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tool Avg Latency" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "blue", "mode": "fixed" }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "max"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Tool Call Waterfall by Tool",
+      "description": "Duration per tool over time — identify slow tools",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_sum[5m])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_count[5m]))",
+          "legendFormat": "{{gen_ai_tool_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": { "mode": "normal" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "sum"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Error Propagation: LLM vs Tool",
+      "description": "Error rates split by LLM errors and MCP tool errors",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_client_errors_total[5m]))",
+          "legendFormat": "LLM Errors",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(gen_ai_mcp_tool_errors_total[5m]))",
+          "legendFormat": "Tool Errors",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 30,
+            "pointSize": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "LLM Errors" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "red", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tool Errors" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "purple", "mode": "fixed" }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["sum"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Cost: LLM Calls",
+      "description": "Total LLM cost over time — visible when tools call LLMs via sampling",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_sum[5m]))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["sum"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["toad-eye", "mcp", "e2e", "distributed-tracing"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MCP End-to-End",
+  "uid": "toad-eye-mcp-e2e",
+  "version": 1
+}
