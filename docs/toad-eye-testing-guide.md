@@ -111,7 +111,7 @@ GEMINI_API_KEY=твой_ключ npx tsx test-auto.ts
 ### Создай файл `test-manual.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
+import { initObservability, traceLLMCall, shutdown } from "toad-eye";
 
 initObservability({
   serviceName: "test-manual-trace",
@@ -142,6 +142,9 @@ async function main() {
 
   console.log("Результат:", result);
   console.log("\n✅ Ручной trace отправлен. Ищи custom-provider в Jaeger.");
+
+  // Flush traces before exit — without this, batch processor may not send data
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -208,6 +211,8 @@ async function testNoContent() {
   console.log(
     "   → Открой Jaeger, найди trace, убедись что текста промпта НЕТ",
   );
+
+  await shutdown();
 }
 
 testNoContent().catch(console.error);
@@ -216,7 +221,7 @@ testNoContent().catch(console.error);
 ### Создай файл `test-privacy-hash.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
+import { initObservability, traceLLMCall, shutdown } from "toad-eye";
 
 // --- Режим 2: hashContent: true ---
 initObservability({
@@ -247,6 +252,8 @@ async function testHash() {
 
   console.log("✅ Промпт отправлен с hashContent: true");
   console.log("   → В Jaeger вместо текста должен быть sha256:... хэш");
+
+  await shutdown();
 }
 
 testHash().catch(console.error);
@@ -255,7 +262,7 @@ testHash().catch(console.error);
 ### Создай файл `test-privacy-redact.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
+import { initObservability, traceLLMCall, shutdown } from "toad-eye";
 
 // --- Режим 3: redactDefaults + custom patterns ---
 initObservability({
@@ -289,6 +296,8 @@ async function testRedact() {
   console.log(
     "   → В Jaeger: email, SSN и 'секретКод42' заменены на [REDACTED]",
   );
+
+  await shutdown();
 }
 
 testRedact().catch(console.error);
@@ -317,7 +326,7 @@ npx tsx test-privacy-redact.ts
 ### Создай файл `test-sessions.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
+import { initObservability, traceLLMCall, shutdown } from "toad-eye";
 
 initObservability({
   serviceName: "test-sessions",
@@ -351,6 +360,8 @@ async function main() {
   console.log("\n✅ 3 turns одной сессии отправлены");
   console.log('   → В Jaeger ищи session.id = "user-123-conversation-abc"');
   console.log("   → В Grafana: токены должны расти с каждым turn");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -382,7 +393,12 @@ npx tsx test-sessions.ts
 ### Создай файл `test-cost.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall, setCustomPricing } from "toad-eye";
+import {
+  initObservability,
+  traceLLMCall,
+  setCustomPricing,
+  shutdown,
+} from "toad-eye";
 
 initObservability({
   serviceName: "test-cost-tracking",
@@ -439,6 +455,8 @@ async function main() {
   console.log("\n✅ 3 вызова с разными моделями отправлены");
   console.log("   → Grafana Cost Breakdown: сравни стоимость 3 моделей");
   console.log("   → Jaeger: каждый trace содержит gen_ai.toad_eye.cost");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -476,13 +494,14 @@ import {
   initObservability,
   traceLLMCall,
   ToadBudgetExceededError,
+  shutdown,
 } from "toad-eye";
 
 initObservability({
   serviceName: "test-budget-guards",
   endpoint: "http://localhost:4318",
   budgets: {
-    daily: 0.001, // $0.001 — сработает почти сразу
+    daily: 0.005, // $0.005 — пропустит первый вызов, заблокирует второй
   },
   onBudgetExceeded: "block", // блокирует вызовы при превышении
 });
@@ -520,6 +539,8 @@ async function main() {
 
   console.log("\n✅ Budget guard проверен");
   console.log("   → Grafana: метрика gen_ai.toad_eye.budget.blocked");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -546,7 +567,7 @@ npx tsx test-budget.ts
 ### Создай файл `test-agent.ts`:
 
 ```typescript
-import { initObservability, traceAgentQuery } from "toad-eye";
+import { initObservability, traceAgentQuery, shutdown } from "toad-eye";
 
 initObservability({
   serviceName: "test-agent-tracing",
@@ -624,6 +645,8 @@ async function main() {
   console.log("\n✅ Agent trace с 6 шагами отправлен");
   console.log("   → Jaeger: ищи span 'invoke_agent space-monitor'");
   console.log("   → Jaeger: tool spans 'execute_tool near-earth-asteroids'");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -662,7 +685,12 @@ npx tsx test-agent.ts
 ### Создай файл `test-guard.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall, recordGuardResult } from "toad-eye";
+import {
+  initObservability,
+  traceLLMCall,
+  recordGuardResult,
+  shutdown,
+} from "toad-eye";
 
 initObservability({
   serviceName: "test-shadow-guardrails",
@@ -720,6 +748,8 @@ async function main() {
   console.log("\n✅ 2 вызова с shadow guardrails отправлены");
   console.log("   → Grafana: guard.evaluations = 2, guard.would_block = 1");
   console.log("   → Jaeger: gen_ai.toad_eye.guard.* attributes");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -878,7 +908,7 @@ alerts:
 ### Создай файл `test-alerts.ts`:
 
 ```typescript
-import { initObservability, traceLLMCall } from "toad-eye";
+import { initObservability, traceLLMCall, shutdown } from "toad-eye";
 import { startAlertsFromFile } from "toad-eye/alerts";
 
 initObservability({
@@ -907,6 +937,8 @@ async function main() {
   await new Promise((resolve) => setTimeout(resolve, 20000));
   manager.stop();
   console.log("\n✅ Проверь консоль — должно быть alert-сообщение");
+
+  await shutdown();
 }
 
 main().catch(console.error);
@@ -1141,6 +1173,7 @@ import {
   traceAgentQuery,
   recordGuardResult,
   setCustomPricing,
+  shutdown,
 } from "toad-eye";
 
 initObservability({
@@ -1244,6 +1277,8 @@ async function main() {
   console.log("   → Guard: 1 passed, 1 would_block");
   console.log("   → Cost: 3 модели с разными ценами");
   console.log("   → Privacy: email [REDACTED] в третьем trace");
+
+  await shutdown();
 }
 
 main().catch(console.error);

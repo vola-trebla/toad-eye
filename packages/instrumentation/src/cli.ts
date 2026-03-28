@@ -131,6 +131,12 @@ function down() {
   console.log("\u2705 Stack stopped.");
 }
 
+interface ContainerInfo {
+  Service: string;
+  State: string;
+  ExitCode: number;
+}
+
 /** Find the docker container matching a service by exact service name. Exported for testing. */
 export function findContainerByService(
   containers: ReadonlyArray<{ Service: string; State: string }>,
@@ -139,29 +145,40 @@ export function findContainerByService(
   return containers.find((c) => c.Service === serviceKey);
 }
 
+function isContainerHealthy(container: ContainerInfo | undefined): boolean {
+  return container?.State === "running" && container.ExitCode === 0;
+}
+
 function status() {
   const composeFile = requireInfra();
 
   try {
     const output = execFileSync(
       "docker",
-      ["compose", "-f", composeFile, "ps", "--format", "json"],
+      ["compose", "-f", composeFile, "ps", "--all", "--format", "json"],
       { encoding: "utf-8" },
     );
 
     const lines = output.trim().split("\n").filter(Boolean);
-    const containers = lines.map(
-      (line) => JSON.parse(line) as { Service: string; State: string },
-    );
+    const containers = lines.map((line) => JSON.parse(line) as ContainerInfo);
 
     console.log("\u{1f438} toad-eye stack:");
     console.log();
 
     for (const svc of SERVICES) {
-      const container = findContainerByService(containers, svc.service);
-      const state = container?.State === "running" ? "\u{1f7e2}" : "\u{1f534}";
+      const container = containers.find((c) => c.Service === svc.service) as
+        | ContainerInfo
+        | undefined;
+      const healthy = isContainerHealthy(container);
+      const icon = healthy ? "\u{1f7e2}" : "\u{1f534}";
+      const suffix =
+        container && !healthy
+          ? ` (${container.State}${container.ExitCode ? `, exit code ${container.ExitCode}` : ""})`
+          : "";
       const loginInfo = "login" in svc ? ` (${svc.login})` : "";
-      console.log(`  ${state} ${svc.name.padEnd(16)} ${svc.url}${loginInfo}`);
+      console.log(
+        `  ${icon} ${svc.name.padEnd(16)} ${svc.url}${loginInfo}${suffix}`,
+      );
     }
     console.log();
   } catch {
