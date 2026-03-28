@@ -3,6 +3,8 @@
  *
  * Separate from core metrics (core/metrics.ts) — these only exist
  * when MCP middleware is active. Initialized on first middleware call.
+ *
+ * All metrics include `mcp.method.name` dimension per OTel MCP semconv.
  */
 
 import {
@@ -12,6 +14,7 @@ import {
   type UpDownCounter,
 } from "@opentelemetry/api";
 import { GEN_AI_METRICS } from "../types/metrics.js";
+import { MCP_METHODS } from "./spans.js";
 
 const METER_NAME = "toad-eye-mcp";
 
@@ -57,18 +60,32 @@ export function recordMcpToolCall(
   status: "success" | "error",
 ) {
   ensureInit();
-  toolCalls.add(1, { "gen_ai.tool.name": toolName, status });
-  toolDuration.record(durationMs, { "gen_ai.tool.name": toolName });
+  toolCalls.add(1, {
+    "gen_ai.tool.name": toolName,
+    "mcp.method.name": MCP_METHODS.TOOLS_CALL,
+    status,
+  });
+  toolDuration.record(durationMs, {
+    "gen_ai.tool.name": toolName,
+    "mcp.method.name": MCP_METHODS.TOOLS_CALL,
+  });
 }
 
 export function recordMcpToolError(toolName: string, errorType: string) {
   ensureInit();
-  toolErrors.add(1, { "gen_ai.tool.name": toolName, "error.type": errorType });
+  toolErrors.add(1, {
+    "gen_ai.tool.name": toolName,
+    "mcp.method.name": MCP_METHODS.TOOLS_CALL,
+    "error.type": errorType,
+  });
 }
 
 export function recordMcpResourceRead(uri: string) {
   ensureInit();
-  resourceReads.add(1, { "gen_ai.data_source.id": uri });
+  resourceReads.add(1, {
+    "gen_ai.data_source.id": uri,
+    "mcp.method.name": MCP_METHODS.RESOURCES_READ,
+  });
 }
 
 export function recordMcpSessionStart() {
