@@ -20,3 +20,20 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run format:check
       - run: npm run test --workspace=packages/instrumentation
+
+  mcp-sdk-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mcp-sdk-version: ["1.12.1", "1.27.1", "latest"]
+    name: MCP SDK v${{ matrix.mcp-sdk-version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install @modelcontextprotocol/sdk@${{ matrix.mcp-sdk-version }} --workspace=demo --save-dev --no-audit
+      - run: npm run build --workspace=packages/instrumentation
+      - run: npm run test --workspace=packages/instrumentation
