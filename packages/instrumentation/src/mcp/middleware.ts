@@ -15,6 +15,7 @@ import {
   DiagConsoleLogger,
   DiagLogLevel,
 } from "@opentelemetry/api";
+import { randomUUID } from "node:crypto";
 import type { ToadMcpOptions } from "./types.js";
 import { extractContextFromMeta } from "./context.js";
 import {
@@ -33,6 +34,19 @@ import {
 } from "./metrics.js";
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 4096;
+
+/** Detect MCP transport type from server internals. */
+function detectTransport(server: Record<string, unknown>): string {
+  // Check if server has a transport reference
+  const transport = server.transport ?? server._transport;
+  if (transport && typeof transport === "object") {
+    const name = (transport as Record<string, unknown>).constructor?.name ?? "";
+    if (/stdio/i.test(name)) return "pipe";
+    if (/sse|http/i.test(name)) return "tcp";
+  }
+  // Default: stdio is most common for local dev
+  return "pipe";
+}
 
 function truncate(value: string, maxBytes: number): string {
   if (value.length <= maxBytes) return value;
@@ -103,7 +117,24 @@ export function toadEyeMiddleware(
   const maxPayload = options.maxPayloadSize ?? DEFAULT_MAX_PAYLOAD_SIZE;
   const propagate = options.propagateContext ?? true;
 
-  const spanOpts = { serverName, serverVersion };
+  // Session ID: explicit > server-provided > generated
+  const sessionId =
+    options.sessionId ?? server.sessionId ?? randomUUID().slice(0, 8);
+
+  // Protocol version from server capabilities or default
+  const protocolVersion: string =
+    server.protocolVersion ?? server._protocolVersion ?? "2025-03-26";
+
+  // Detect transport type: pipe (stdio) vs tcp (HTTP)
+  const networkTransport = detectTransport(server);
+
+  const spanOpts = {
+    serverName,
+    serverVersion,
+    sessionId,
+    protocolVersion,
+    networkTransport,
+  };
 
   // --- Wrap .tool() ---
   const originalTool = server.tool.bind(server);
@@ -309,6 +340,9 @@ export async function traceSampling<T>(
     serverName: options.serverName ?? "mcp-server",
     serverVersion: options.serverVersion ?? "unknown",
     parentContext: options.parentContext,
+    sessionId: options.sessionId,
+    protocolVersion: options.protocolVersion,
+    networkTransport: options.networkTransport,
   });
 
   if (options.maxTokens !== undefined) {
@@ -352,4 +386,13 @@ export interface TraceSamplingOptions {
 
   /** Parent OTel context. */
   readonly parentContext?: import("@opentelemetry/api").Context | undefined;
+
+  /** MCP session ID. */
+  readonly sessionId?: string | undefined;
+
+  /** MCP protocol version. */
+  readonly protocolVersion?: string | undefined;
+
+  /** Network transport: "pipe" (stdio) or "tcp" (HTTP). */
+  readonly networkTransport?: string | undefined;
 }

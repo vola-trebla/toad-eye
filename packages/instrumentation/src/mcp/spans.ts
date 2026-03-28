@@ -31,6 +31,25 @@ export interface SpanOptions {
   readonly serverName: string;
   readonly serverVersion: string;
   readonly parentContext: Context;
+  readonly sessionId?: string | undefined;
+  readonly protocolVersion?: string | undefined;
+  readonly networkTransport?: string | undefined;
+}
+
+/** Build common MCP attributes shared across all span types. */
+function baseAttrs(method: string, options: SpanOptions | SamplingSpanOptions) {
+  const attrs: Record<string, string> = {
+    "gen_ai.operation.name": method,
+    "mcp.method.name": method,
+    "mcp.server.name": options.serverName,
+    "mcp.server.version": options.serverVersion,
+  };
+  if (options.sessionId) attrs["mcp.session.id"] = options.sessionId;
+  if (options.protocolVersion)
+    attrs["mcp.protocol.version"] = options.protocolVersion;
+  if (options.networkTransport)
+    attrs["network.transport"] = options.networkTransport;
+  return attrs;
 }
 
 export function startToolSpan(toolName: string, options: SpanOptions) {
@@ -39,11 +58,8 @@ export function startToolSpan(toolName: string, options: SpanOptions) {
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": MCP_METHODS.TOOLS_CALL,
-        "mcp.method.name": MCP_METHODS.TOOLS_CALL,
+        ...baseAttrs(MCP_METHODS.TOOLS_CALL, options),
         "gen_ai.tool.name": toolName,
-        "mcp.server.name": options.serverName,
-        "mcp.server.version": options.serverVersion,
       },
     },
     options.parentContext,
@@ -56,11 +72,8 @@ export function startResourceSpan(uri: string, options: SpanOptions) {
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": MCP_METHODS.RESOURCES_READ,
-        "mcp.method.name": MCP_METHODS.RESOURCES_READ,
+        ...baseAttrs(MCP_METHODS.RESOURCES_READ, options),
         "gen_ai.data_source.id": uri,
-        "mcp.server.name": options.serverName,
-        "mcp.server.version": options.serverVersion,
       },
     },
     options.parentContext,
@@ -73,11 +86,8 @@ export function startPromptSpan(promptName: string, options: SpanOptions) {
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": MCP_METHODS.PROMPTS_GET,
-        "mcp.method.name": MCP_METHODS.PROMPTS_GET,
+        ...baseAttrs(MCP_METHODS.PROMPTS_GET, options),
         "gen_ai.prompt.name": promptName,
-        "mcp.server.name": options.serverName,
-        "mcp.server.version": options.serverVersion,
       },
     },
     options.parentContext,
@@ -88,6 +98,9 @@ export interface SamplingSpanOptions {
   readonly serverName: string;
   readonly serverVersion: string;
   readonly parentContext?: Context | undefined;
+  readonly sessionId?: string | undefined;
+  readonly protocolVersion?: string | undefined;
+  readonly networkTransport?: string | undefined;
 }
 
 export function startSamplingSpan(model: string, options: SamplingSpanOptions) {
@@ -96,11 +109,8 @@ export function startSamplingSpan(model: string, options: SamplingSpanOptions) {
     {
       kind: SpanKind.CLIENT,
       attributes: {
-        "gen_ai.operation.name": MCP_METHODS.SAMPLING_CREATE_MESSAGE,
-        "mcp.method.name": MCP_METHODS.SAMPLING_CREATE_MESSAGE,
+        ...baseAttrs(MCP_METHODS.SAMPLING_CREATE_MESSAGE, options),
         "gen_ai.request.model": model,
-        "mcp.server.name": options.serverName,
-        "mcp.server.version": options.serverVersion,
       },
     },
     options.parentContext,
@@ -121,5 +131,12 @@ export function endSpanError(
     error instanceof Error ? error.constructor.name : "UnknownError";
   span.setStatus({ code: SpanStatusCode.ERROR, message });
   span.setAttribute("error.type", errorType);
+
+  // JSON-RPC error code if available (MCP SDK errors often carry a code)
+  const code = (error as Record<string, unknown> | null)?.code;
+  if (typeof code === "number") {
+    span.setAttribute("rpc.response.status_code", code);
+  }
+
   span.end();
 }
