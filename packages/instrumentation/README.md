@@ -46,13 +46,14 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 
 ## What you get
 
-| Feature                  | Description                                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| **Auto-instrumentation** | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                             |
-| **8 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent Workflow |
-| **Cost tracking**        | Per-request USD cost, daily totals, projected monthly spend                                |
-| **Budget guards**        | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                     |
-| **Privacy controls**     | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                   |
+| Feature                   | Description                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| **Auto-instrumentation**  | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                         |
+| **MCP server monitoring** | One-line middleware for MCP servers — trace every tool call, resource read, prompt     |
+| **9 Grafana dashboards**  | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent, MCP |
+| **Cost tracking**         | Per-request USD cost, daily totals, projected monthly spend                            |
+| **Budget guards**         | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                 |
+| **Privacy controls**      | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking               |
 
 <details>
 <summary>Advanced features</summary>
@@ -124,38 +125,42 @@ const result = await traceLLMCall(
 
 </details>
 
-<details>
-<summary>MCP Server observability</summary>
+## MCP Server observability
 
-Drop-in middleware for MCP servers — one line for full tracing of every tool call, resource read, and prompt request.
+8,600+ MCP servers. Zero built-in observability. toad-eye fixes that with one line:
 
 ```typescript
-import { McpServer } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { initObservability } from "toad-eye";
 import { toadEyeMiddleware } from "toad-eye/mcp";
 
-const server = new McpServer({ name: "my-server", version: "1.0.0" });
-toadEyeMiddleware(server);
+initObservability({ serviceName: "my-mcp-server" });
 
-// All handlers are now instrumented — spans appear in Jaeger
+const server = new McpServer({ name: "my-server", version: "1.0.0" });
+toadEyeMiddleware(server); // every tool call, resource read, prompt — traced
+
 server.tool("calculate", { expression: z.string() }, async ({ expression }) => {
   return { content: [{ type: "text", text: String(eval(expression)) }] };
 });
 ```
 
-Spans follow OTel GenAI semconv: `execute_tool calculate`, `retrieval file:///docs`, `prompt greeting`.
+Spans follow [OTel MCP semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/): `tools/call calculate`, `resources/read file:///docs`, `prompts/get greeting`.
+
+Every span includes: `mcp.method.name`, `mcp.session.id`, `mcp.protocol.version`, `network.transport`.
 
 Privacy by default — tool arguments and results are NOT recorded unless you opt in:
 
 ```typescript
 toadEyeMiddleware(server, {
   recordInputs: true,
+  recordOutputs: true,
   redactKeys: ["apiKey", "token"],
 });
 ```
 
-> Safe for stdio transport — OTel diagnostics are redirected to stderr.
+Dedicated MCP dashboard in Grafana: tool call rate, duration p50/p95, error rate, resource reads, tool performance table.
 
-</details>
+> Safe for stdio transport — OTel diagnostics are redirected to stderr.
 
 ## Budget guards
 
@@ -378,7 +383,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 
 ## Grafana dashboards
 
-8 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+9 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
 | Dashboard              | What it shows                                                    |
 | ---------------------- | ---------------------------------------------------------------- |
@@ -390,6 +395,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table        |
 | **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
 | **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
+| **MCP Server**         | Tool call rate, duration p50/p95, errors by tool, resource reads |
 
 ## Subpath imports
 
@@ -448,24 +454,24 @@ import { ToadEyeAISpanProcessor, withToadEye } from "toad-eye/vercel"; // Vercel
 
 ### Span attributes (OTel GenAI semconv)
 
-| Attribute                          | Description                                     |
-| ---------------------------------- | ----------------------------------------------- |
-| `gen_ai.operation.name`            | `chat`, `invoke_agent`, `execute_tool`          |
-| `gen_ai.provider.name`             | `anthropic`, `gemini`, `openai`                 |
-| `gen_ai.request.model`             | Model identifier                                |
-| `gen_ai.usage.input_tokens`        | Tokens in the prompt                            |
-| `gen_ai.usage.output_tokens`       | Tokens in the completion                        |
-| `gen_ai.request.temperature`       | Temperature parameter                           |
-| `gen_ai.agent.name`                | Agent name (for agent spans)                    |
-| `gen_ai.agent.id`                  | Agent identifier                                |
-| `gen_ai.tool.name`                 | Tool name for execute_tool spans                |
-| `gen_ai.tool.type`                 | `function`, `extension`, `retrieval`, `builtin` |
-| `gen_ai.toad_eye.cost`             | Cost in USD                                     |
-| `gen_ai.toad_eye.agent.step.type`  | ReAct step: think/act/observe/answer/handoff    |
-| `gen_ai.toad_eye.agent.handoff.to` | Target agent for handoff steps                  |
-| `gen_ai.toad_eye.agent.loop_count` | Agent loop iterations (observe→think)           |
-| `gen_ai.toad_eye.guard.mode`       | Guard mode: shadow/enforce                      |
-| `session.id`                       | Session identifier (if configured)              |
+| Attribute                          | Description                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `gen_ai.operation.name`            | `chat`, `invoke_agent`, `execute_tool`, `tools/call`, `resources/read` |
+| `gen_ai.provider.name`             | `anthropic`, `gemini`, `openai`                                        |
+| `gen_ai.request.model`             | Model identifier                                                       |
+| `gen_ai.usage.input_tokens`        | Tokens in the prompt                                                   |
+| `gen_ai.usage.output_tokens`       | Tokens in the completion                                               |
+| `gen_ai.request.temperature`       | Temperature parameter                                                  |
+| `gen_ai.agent.name`                | Agent name (for agent spans)                                           |
+| `gen_ai.agent.id`                  | Agent identifier                                                       |
+| `gen_ai.tool.name`                 | Tool name for execute_tool spans                                       |
+| `gen_ai.tool.type`                 | `function`, `extension`, `retrieval`, `builtin`                        |
+| `gen_ai.toad_eye.cost`             | Cost in USD                                                            |
+| `gen_ai.toad_eye.agent.step.type`  | ReAct step: think/act/observe/answer/handoff                           |
+| `gen_ai.toad_eye.agent.handoff.to` | Target agent for handoff steps                                         |
+| `gen_ai.toad_eye.agent.loop_count` | Agent loop iterations (observe→think)                                  |
+| `gen_ai.toad_eye.guard.mode`       | Guard mode: shadow/enforce                                             |
+| `session.id`                       | Session identifier (if configured)                                     |
 
 </details>
 

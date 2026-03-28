@@ -1,7 +1,7 @@
 {
   "name": "toad-eye",
-  "version": "2.6.1",
-  "description": "Auto-instrumentation, cost tracking, budget guards, and observability for LLM services",
+  "version": "2.7.0",
+  "description": "Observability for MCP servers and LLM applications — traces, metrics, dashboards. One-line instrumentation for OpenAI, Anthropic, Gemini, and MCP. Self-hosted with Grafana + Prometheus + Jaeger.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -58,6 +58,11 @@
   "homepage": "https://github.com/vola-trebla/toad-eye#readme",
   "author": "albertalov",
   "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "mcp-observability",
+    "mcp-monitoring",
     "opentelemetry",
     "llm",
     "instrumentation",
@@ -71,9 +76,13 @@
     "cost-tracking",
     "auto-instrumentation",
     "gen-ai",
+    "ai-agent",
+    "tool-calling",
     "budget-guards",
     "finops",
-    "streaming"
+    "streaming",
+    "jaeger",
+    "prometheus"
   ],
   "license": "ISC",
   "dependencies": {
