@@ -17,6 +17,10 @@ import {
   enableMcpInstrumentation,
   disableMcpInstrumentation,
 } from "../instrumentations/mcp.js";
+import {
+  enableMcpClientInstrumentation,
+  disableMcpClientInstrumentation,
+} from "../mcp/client.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
 import type { LLMProvider } from "../types/index.js";
@@ -173,19 +177,29 @@ export function initObservability(config: ToadEyeConfig) {
   }
 
   if (config.instrument?.length) {
-    // Handle MCP auto-instrumentation separately
+    // Handle MCP server auto-instrumentation
     if (config.instrument.includes("mcp")) {
       const patched = enableMcpInstrumentation();
       if (!patched) {
         console.warn(
-          `toad-eye: "@modelcontextprotocol/sdk" not found — install it to enable MCP auto-instrumentation`,
+          `toad-eye: "@modelcontextprotocol/sdk" not found — install it to enable MCP server auto-instrumentation`,
         );
       }
     }
 
-    // Filter out 'ai' and 'mcp' — they use separate mechanisms
+    // Handle MCP client auto-instrumentation
+    if (config.instrument.includes("mcp-client")) {
+      const patched = enableMcpClientInstrumentation();
+      if (!patched) {
+        console.warn(
+          `toad-eye: "@modelcontextprotocol/sdk" not found — install it to enable MCP client auto-instrumentation`,
+        );
+      }
+    }
+
+    // Filter out special targets — they use separate mechanisms
     const patchProviders = config.instrument.filter(
-      (i): i is LLMProvider => i !== "ai" && i !== "mcp",
+      (i): i is LLMProvider => i !== "ai" && i !== "mcp" && i !== "mcp-client",
     );
     if (patchProviders.length > 0) {
       // enableAll is async (lazy-loads provider modules on first call).
@@ -203,6 +217,7 @@ export async function shutdown() {
   if (!sdk) return;
   disableAll();
   disableMcpInstrumentation();
+  disableMcpClientInstrumentation();
   await sdk.shutdown();
   sdk = null;
   currentConfig = null;
