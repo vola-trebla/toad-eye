@@ -52,3 +52,24 @@ alerts:
     condition: ratio_5m > 0.2
     channels: [slack]
     cooldown: 15
+
+  # --- MCP Server alerts ---
+
+  # MCP tool error rate: >10% over 5 minutes
+  - name: mcp_tool_error_rate
+    metric: gen_ai.mcp.tool.errors
+    condition: ratio_5m > 0.1
+    channels: [slack]
+
+  # MCP tool latency spike: avg > 2 seconds over 5 minutes
+  - name: mcp_tool_latency
+    metric: gen_ai.mcp.tool.duration
+    condition: avg_5m > 2000
+    channels: [slack]
+
+  # MCP tool call spike: >100 calls in 5 minutes
+  - name: mcp_tool_call_spike
+    metric: gen_ai.mcp.tool.calls
+    condition: sum_5m > 100
+    channels: [slack]
+    cooldown: 15
