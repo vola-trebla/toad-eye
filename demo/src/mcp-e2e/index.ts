@@ -20,7 +20,7 @@ import { enableMcpClientInstrumentation } from "toad-eye/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { z } from "zod";
+import { registerDemoTools } from "../mcp-shared/tools.js";
 
 // Initialize with both server and client instrumentation
 initObservability({
@@ -43,40 +43,7 @@ toadEyeMiddleware(server, {
   recordOutputs: true,
 });
 
-server.tool(
-  "calculate",
-  "Evaluate a math expression",
-  { expression: z.string() },
-  async ({ expression }) => {
-    const sanitized = expression.replace(/[^0-9+\-*/().% ]/g, "");
-    const result = new Function(`return (${sanitized})`)() as number;
-    return {
-      content: [{ type: "text", text: `${expression} = ${result}` }],
-    };
-  },
-);
-
-server.tool(
-  "get-weather",
-  "Get weather for a city (mock)",
-  { city: z.string() },
-  async ({ city }) => {
-    await new Promise((r) => setTimeout(r, 50 + Math.random() * 150));
-    const tempC = Math.round(-10 + Math.random() * 45);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ city, tempC, condition: "sunny" }),
-        },
-      ],
-    };
-  },
-);
-
-server.tool("timestamp", "Get current timestamp", {}, async () => ({
-  content: [{ type: "text", text: new Date().toISOString() }],
-}));
+registerDemoTools(server);
 
 // --- Connect Client ↔ Server via InMemoryTransport ---
 

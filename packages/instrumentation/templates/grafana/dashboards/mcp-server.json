@@ -507,25 +507,6 @@
   "templating": {
     "list": [
       {
-        "name": "mcp_method",
-        "label": "MCP Method",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": "label_values(gen_ai_mcp_tool_calls_total, mcp_method_name)",
-        "refresh": 2,
-        "includeAll": true,
-        "allValue": ".*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "multi": true,
-        "sort": 1
-      },
-      {
         "name": "tool_name",
         "label": "Tool",
         "type": "query",

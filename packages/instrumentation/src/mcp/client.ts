@@ -7,14 +7,8 @@
  */
 
 import { createRequire } from "node:module";
-import {
-  trace,
-  context,
-  propagation,
-  SpanKind,
-  SpanStatusCode,
-} from "@opentelemetry/api";
-import { MCP_METHODS } from "./spans.js";
+import { trace, context, propagation, SpanKind } from "@opentelemetry/api";
+import { MCP_METHODS, endSpanSuccess, endSpanError } from "./spans.js";
 
 const require = createRequire(import.meta.url);
 
@@ -103,16 +97,10 @@ export function enableMcpClientInstrumentation(): boolean {
         trace.setSpan(context.active(), span),
         () => originals!.callTool.call(this, enrichedParams, ...rest),
       );
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
+      endSpanSuccess(span);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorType =
-        error instanceof Error ? error.constructor.name : "UnknownError";
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
-      span.setAttribute("error.type", errorType);
-      span.end();
+      endSpanError(span, error);
       throw error;
     }
   };
@@ -139,16 +127,10 @@ export function enableMcpClientInstrumentation(): boolean {
         trace.setSpan(context.active(), span),
         () => originals!.readResource.call(this, enrichedParams, ...rest),
       );
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
+      endSpanSuccess(span);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorType =
-        error instanceof Error ? error.constructor.name : "UnknownError";
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
-      span.setAttribute("error.type", errorType);
-      span.end();
+      endSpanError(span, error);
       throw error;
     }
   };
@@ -175,16 +157,10 @@ export function enableMcpClientInstrumentation(): boolean {
         trace.setSpan(context.active(), span),
         () => originals!.getPrompt.call(this, enrichedParams, ...rest),
       );
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
+      endSpanSuccess(span);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorType =
-        error instanceof Error ? error.constructor.name : "UnknownError";
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
-      span.setAttribute("error.type", errorType);
-      span.end();
+      endSpanError(span, error);
       throw error;
     }
   };

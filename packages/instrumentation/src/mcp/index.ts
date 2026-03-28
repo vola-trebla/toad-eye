@@ -3,7 +3,7 @@ export type {
   TraceSamplingOptions,
   ToadEyeMiddlewareDispose,
 } from "./middleware.js";
-export type { ToadMcpOptions, McpSpanAttributes } from "./types.js";
+export type { ToadMcpOptions } from "./types.js";
 export { MCP_METHODS } from "./spans.js";
 export {
   enableMcpClientInstrumentation,
