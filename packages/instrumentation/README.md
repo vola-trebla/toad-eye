@@ -46,14 +46,14 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 
 ## What you get
 
-| Feature                   | Description                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------- |
-| **Auto-instrumentation**  | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                              |
-| **MCP server monitoring** | One-line middleware for MCP servers — trace every tool call, resource read, prompt          |
-| **10 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent, MCP, E2E |
-| **Cost tracking**         | Per-request USD cost, daily totals, projected monthly spend                                 |
-| **Budget guards**         | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                      |
-| **Privacy controls**      | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                    |
+| Feature                   | Description                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Auto-instrumentation**  | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                                         |
+| **MCP server monitoring** | One-line middleware for MCP servers — trace every tool call, resource read, prompt                     |
+| **11 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent, MCP, E2E, Analytics |
+| **Cost tracking**         | Per-request USD cost, daily totals, projected monthly spend                                            |
+| **Budget guards**         | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                                 |
+| **Privacy controls**      | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                               |
 
 <details>
 <summary>Advanced features</summary>
@@ -385,20 +385,21 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 
 ## Grafana dashboards
 
-10 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+11 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
-| Dashboard              | What it shows                                                    |
-| ---------------------- | ---------------------------------------------------------------- |
-| **Overview**           | Request rate, error rate, latency p50/p95, cost, totals          |
-| **Cost Breakdown**     | Spend by provider/model, daily trend, projected monthly          |
-| **Latency Analysis**   | p50/p95/p99 by model, distribution histogram, TTFT               |
-| **Error Drill-down**   | Error rate by provider/model, error vs success                   |
-| **Model Comparison**   | Latency vs cost vs error rate vs throughput per model            |
-| **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table        |
-| **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
-| **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
-| **MCP Server**         | Tool call rate, duration p50/p95, errors by tool, resource reads |
-| **MCP End-to-End**     | LLM vs tool latency, error propagation, cost by model            |
+| Dashboard              | What it shows                                                      |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Overview**           | Request rate, error rate, latency p50/p95, cost, totals            |
+| **Cost Breakdown**     | Spend by provider/model, daily trend, projected monthly            |
+| **Latency Analysis**   | p50/p95/p99 by model, distribution histogram, TTFT                 |
+| **Error Drill-down**   | Error rate by provider/model, error vs success                     |
+| **Model Comparison**   | Latency vs cost vs error rate vs throughput per model              |
+| **FinOps Attribution** | Cost by team/user/feature, projected spend, what-if table          |
+| **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown   |
+| **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown         |
+| **MCP Server**         | Tool call rate, duration p50/p95, errors by tool, resource reads   |
+| **MCP End-to-End**     | LLM vs tool latency, error propagation, cost by model              |
+| **MCP Tool Analytics** | Tool popularity, unique callers, cost per model, performance table |
 
 ## Subpath imports
 
