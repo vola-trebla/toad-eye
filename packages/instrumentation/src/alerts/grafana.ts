@@ -6,7 +6,13 @@ export async function postGrafanaAnnotation(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  } else {
+    // Fall back to Basic Auth with default Grafana credentials
+    headers["Authorization"] = `Basic ${btoa("admin:admin")}`;
+  }
 
   const res = await fetch(`${grafanaUrl}/api/annotations`, {
     method: "POST",
