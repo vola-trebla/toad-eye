@@ -1,0 +1,295 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Tool Popularity Ranking",
+      "description": "Most called tools by total invocations",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (gen_ai_tool_name) (increase(gen_ai_mcp_tool_calls_total[1h])))",
+          "legendFormat": "{{gen_ai_tool_name}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      }
+    },
+    {
+      "title": "Unique Callers per Tool",
+      "description": "Number of distinct sessions calling each tool",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "count by (gen_ai_tool_name) (sum by (gen_ai_tool_name, mcp_session_id) (gen_ai_mcp_tool_callers_total))",
+          "legendFormat": "{{gen_ai_tool_name}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "purple", "value": null },
+              { "color": "blue", "value": 5 },
+              { "color": "green", "value": 20 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      }
+    },
+    {
+      "title": "Tool Usage Over Time",
+      "description": "Call rate per tool — spot trends and spikes",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total[5m]))",
+          "legendFormat": "{{gen_ai_tool_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "mode": "none" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["mean", "max", "sum"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Cost per LLM Model (via sampling)",
+      "description": "LLM cost breakdown — visible when MCP tools call LLMs internally",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_request_model) (increase(gen_ai_client_request_cost_sum[1h]))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value", "percent"]
+        },
+        "pieType": "donut",
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Cost Over Time",
+      "description": "LLM cost rate — attribute to tools via trace context",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_sum[5m])) * 3600",
+          "legendFormat": "{{gen_ai_request_model}} ($/hr)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["sum", "mean"]
+        },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "title": "Tool Performance Summary",
+      "description": "All tools: call count, avg duration, error rate, unique callers",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (gen_ai_tool_name) (increase(gen_ai_mcp_tool_calls_total[1h]))",
+          "legendFormat": "",
+          "refId": "calls",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_sum[1h])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_count[1h]))",
+          "legendFormat": "",
+          "refId": "avg_duration",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "sum by (gen_ai_tool_name) (increase(gen_ai_mcp_tool_errors_total[1h])) / sum by (gen_ai_tool_name) (increase(gen_ai_mcp_tool_calls_total[1h]))",
+          "legendFormat": "",
+          "refId": "error_rate",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "count by (gen_ai_tool_name) (sum by (gen_ai_tool_name, mcp_session_id) (gen_ai_mcp_tool_callers_total))",
+          "legendFormat": "",
+          "refId": "callers",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "merge" },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "gen_ai_tool_name": "Tool",
+              "Value #calls": "Calls (1h)",
+              "Value #avg_duration": "Avg Duration (ms)",
+              "Value #error_rate": "Error Rate",
+              "Value #callers": "Unique Callers"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "center" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Avg Duration (ms)" },
+            "properties": [
+              { "id": "unit", "value": "ms" },
+              { "id": "decimals", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Error Rate" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "decimals", "value": 2 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 0.05 },
+                    { "color": "red", "value": 0.1 }
+                  ]
+                }
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Calls (1h)" },
+            "properties": [{ "id": "decimals", "value": 0 }]
+          }
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["toad-eye", "mcp", "analytics", "cost"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MCP Tool Analytics",
+  "uid": "toad-eye-mcp-analytics",
+  "version": 1
+}
