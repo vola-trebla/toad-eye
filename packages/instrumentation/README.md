@@ -46,14 +46,14 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin) to see your 
 
 ## What you get
 
-| Feature                   | Description                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| **Auto-instrumentation**  | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                         |
-| **MCP server monitoring** | One-line middleware for MCP servers — trace every tool call, resource read, prompt     |
-| **9 Grafana dashboards**  | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent, MCP |
-| **Cost tracking**         | Per-request USD cost, daily totals, projected monthly spend                            |
-| **Budget guards**         | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                 |
-| **Privacy controls**      | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking               |
+| Feature                   | Description                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| **Auto-instrumentation**  | OpenAI, Anthropic, Gemini, Vercel AI SDK — regular + streaming                              |
+| **MCP server monitoring** | One-line middleware for MCP servers — trace every tool call, resource read, prompt          |
+| **10 Grafana dashboards** | Overview, Cost, Latency, Errors, Model Comparison, FinOps, Provider Health, Agent, MCP, E2E |
+| **Cost tracking**         | Per-request USD cost, daily totals, projected monthly spend                                 |
+| **Budget guards**         | Daily/per-user/per-model spend limits — warn, block, or auto-downgrade                      |
+| **Privacy controls**      | Built-in PII redaction (email, SSN, CC, phone), hashing, content masking                    |
 
 <details>
 <summary>Advanced features</summary>
@@ -385,7 +385,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 
 ## Grafana dashboards
 
-9 pre-built dashboards auto-provisioned on `npx toad-eye init`:
+10 pre-built dashboards auto-provisioned on `npx toad-eye init`:
 
 | Dashboard              | What it shows                                                    |
 | ---------------------- | ---------------------------------------------------------------- |
@@ -398,6 +398,7 @@ Self-hosted mode remains the default. Cloud mode activates automatically when `a
 | **Provider Health**    | Provider status (healthy/degraded/down), uptime, error breakdown |
 | **Agent Workflow**     | Steps per query, tool usage frequency, step type breakdown       |
 | **MCP Server**         | Tool call rate, duration p50/p95, errors by tool, resource reads |
+| **MCP End-to-End**     | LLM vs tool latency, error propagation, cost by model            |
 
 ## Subpath imports
 
