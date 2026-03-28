@@ -161,6 +161,8 @@ toadEyeMiddleware(server, {
 Dedicated MCP dashboard in Grafana: tool call rate, duration p50/p95, error rate, resource reads, tool performance table.
 
 > Safe for stdio transport — OTel diagnostics are redirected to stderr.
+>
+> **Supported MCP SDK versions:** `@modelcontextprotocol/sdk` v1.12+ (tested in CI against v1.12, v1.27, and latest).
 
 ## Budget guards
 
