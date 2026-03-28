@@ -195,14 +195,14 @@ export function toadEyeMiddleware(
         }
 
         endSpanSuccess(span);
-        recordMcpToolCall(name, durationMs, "success");
+        recordMcpToolCall(name, durationMs, "success", sessionId);
         return result;
       } catch (error) {
         const durationMs = performance.now() - start;
         const errorType =
           error instanceof Error ? error.constructor.name : "UnknownError";
         endSpanError(span, error);
-        recordMcpToolCall(name, durationMs, "error");
+        recordMcpToolCall(name, durationMs, "error", sessionId);
         recordMcpToolError(name, errorType);
         throw error;
       }
