@@ -110,3 +110,8 @@ export function recordMcpSessionEnd() {
   ensureInit();
   sessionActive.add(-1);
 }
+
+/** Reset MCP metrics state — must be called from shutdown() alongside resetMetrics(). */
+export function resetMcpMetrics() {
+  initialized = false;
+}

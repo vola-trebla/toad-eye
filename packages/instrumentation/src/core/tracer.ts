@@ -21,6 +21,7 @@ import {
   enableMcpClientInstrumentation,
   disableMcpClientInstrumentation,
 } from "../mcp/client.js";
+import { resetMcpMetrics } from "../mcp/metrics.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
 import type { LLMProvider } from "../types/index.js";
@@ -223,5 +224,6 @@ export async function shutdown() {
   currentConfig = null;
   budgetTracker = null;
   resetMetrics();
+  resetMcpMetrics();
   resetCustomPricing();
 }

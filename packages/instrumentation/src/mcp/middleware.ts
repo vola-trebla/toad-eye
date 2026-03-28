@@ -32,6 +32,7 @@ import {
   recordMcpToolError,
   recordMcpResourceRead,
   recordMcpSessionStart,
+  recordMcpSessionEnd,
 } from "./metrics.js";
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 4096;
@@ -61,7 +62,13 @@ function redactObject(
   if (typeof obj !== "object" || obj === null) return {};
   const result: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-    result[k] = keys.includes(k) ? "[REDACTED]" : v;
+    if (keys.includes(k)) {
+      result[k] = "[REDACTED]";
+    } else if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+      result[k] = redactObject(v, keys);
+    } else {
+      result[k] = v;
+    }
   }
   return result;
 }
@@ -103,11 +110,16 @@ function ensureStdioSafe() {
   diag.setLogger(safeLogger, DiagLogLevel.WARN);
 }
 
+export interface ToadEyeMiddlewareDispose {
+  /** Call when the MCP server is shutting down to decrement the active session counter. */
+  (): void;
+}
+
 export function toadEyeMiddleware(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server: any,
   options: ToadMcpOptions = {},
-) {
+): ToadEyeMiddlewareDispose {
   ensureStdioSafe();
   recordMcpSessionStart();
   const serverName: string = server.name ?? server._name ?? "mcp-server";
@@ -313,6 +325,13 @@ export function toadEyeMiddleware(
       return originalPrompt(name, ...rest);
     };
   }
+
+  let disposed = false;
+  return () => {
+    if (disposed) return;
+    disposed = true;
+    recordMcpSessionEnd();
+  };
 }
 
 /**
