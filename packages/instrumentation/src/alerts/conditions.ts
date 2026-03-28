@@ -8,6 +8,12 @@ const METRIC_MAP: Record<string, string> = {
   "gen_ai.client.requests": "gen_ai_client_requests_total",
   "gen_ai.client.errors": "gen_ai_client_errors_total",
   "gen_ai.client.token.usage": "gen_ai_client_token_usage_total",
+  // MCP metrics
+  "gen_ai.mcp.tool.calls": "gen_ai_mcp_tool_calls_total",
+  "gen_ai.mcp.tool.errors": "gen_ai_mcp_tool_errors_total",
+  "gen_ai.mcp.tool.duration": "gen_ai_mcp_tool_duration",
+  "gen_ai.mcp.resource.reads": "gen_ai_mcp_resource_reads_total",
+  "gen_ai.mcp.tool.callers": "gen_ai_mcp_tool_callers_total",
   // Legacy names (backward compat)
   "llm.request.cost": "gen_ai_client_request_cost_USD_sum",
   "llm.request.duration": "gen_ai_client_operation_duration_milliseconds",
@@ -18,6 +24,10 @@ const METRIC_MAP: Record<string, string> = {
 
 function toPromMetric(metric: string): string {
   return METRIC_MAP[metric] ?? metric.replace(/\./g, "_");
+}
+
+function isMcpMetric(metric: string): boolean {
+  return metric.startsWith("gen_ai.mcp.");
 }
 
 type ConditionOperator = "sum" | "avg" | "rate" | "max" | "p95_pct" | "ratio";
@@ -96,7 +106,10 @@ function buildPromQL(
 
 function buildTopModelsQuery(metric: string, window: string): string {
   const m = toPromMetric(metric);
-  return `topk(5, sum by (gen_ai_request_model) (increase(${m}[${window}])))`;
+  const groupBy = isMcpMetric(metric)
+    ? "gen_ai_tool_name"
+    : "gen_ai_request_model";
+  return `topk(5, sum by (${groupBy}) (increase(${m}[${window}])))`;
 }
 
 function matches(
@@ -140,17 +153,20 @@ async function queryTopModels(
   const url = `${prometheusUrl}/api/v1/query?query=${encodeURIComponent(promql)}`;
   const res = await fetch(url);
   if (!res.ok) return [];
+  const labelKey = isMcpMetric(metric)
+    ? "gen_ai_tool_name"
+    : "gen_ai_request_model";
   const data = (await res.json()) as {
     data: {
       result: Array<{
-        metric: { gen_ai_request_model?: string };
+        metric: Record<string, string>;
         value: [number, string];
       }>;
     };
   };
   return data.data.result
     .map((r) => ({
-      model: r.metric.gen_ai_request_model ?? "unknown",
+      model: r.metric[labelKey] ?? "unknown",
       value: parseFloat(r.value[1]),
     }))
     .sort((a, b) => b.value - a.value);
@@ -180,15 +196,27 @@ async function evalP95Baseline(
 /** Evaluate error ratio: errors / requests over window */
 async function evalErrorRatio(
   prometheusUrl: string,
+  metric: string,
   window: string,
 ): Promise<number> {
+  let errorMetric: string;
+  let requestMetric: string;
+
+  if (isMcpMetric(metric)) {
+    errorMetric = "gen_ai_mcp_tool_errors_total";
+    requestMetric = "gen_ai_mcp_tool_calls_total";
+  } else {
+    errorMetric = "gen_ai_client_errors_total";
+    requestMetric = "gen_ai_client_requests_total";
+  }
+
   const errors = await queryScalar(
     prometheusUrl,
-    `sum(increase(gen_ai_client_errors_total[${window}]))`,
+    `sum(increase(${errorMetric}[${window}]))`,
   );
   const requests = await queryScalar(
     prometheusUrl,
-    `sum(increase(gen_ai_client_requests_total[${window}]))`,
+    `sum(increase(${requestMetric}[${window}]))`,
   );
   if (requests === 0) return 0;
   return errors / requests;
@@ -217,7 +245,7 @@ export async function evaluateCondition(
         parsed.baselineWindow!,
       );
     } else if (parsed.operator === "ratio") {
-      value = await evalErrorRatio(prometheusUrl, parsed.window);
+      value = await evalErrorRatio(prometheusUrl, rule.metric, parsed.window);
     } else {
       const promql = buildPromQL(rule.metric, parsed.operator, parsed.window);
       value = await queryScalar(prometheusUrl, promql);
