@@ -23,7 +23,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_mcp_tool_calls_total[5m]))",
+          "expr": "sum(rate(gen_ai_mcp_tool_calls_total{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -66,7 +66,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_mcp_tool_duration_sum[5m])) / sum(rate(gen_ai_mcp_tool_duration_count[5m])) or vector(0)",
+          "expr": "sum(rate(gen_ai_mcp_tool_duration_sum{gen_ai_tool_name=~\"$tool_name\"}[5m])) / sum(rate(gen_ai_mcp_tool_duration_count{gen_ai_tool_name=~\"$tool_name\"}[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -109,7 +109,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_mcp_tool_errors_total[5m])) / sum(rate(gen_ai_mcp_tool_calls_total[5m])) or vector(0)",
+          "expr": "sum(rate(gen_ai_mcp_tool_errors_total{gen_ai_tool_name=~\"$tool_name\"}[5m])) / sum(rate(gen_ai_mcp_tool_calls_total{gen_ai_tool_name=~\"$tool_name\"}[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -187,7 +187,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total[5m]))",
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "legendFormat": "{{gen_ai_tool_name}}",
           "refId": "A"
         }
@@ -231,12 +231,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket{gen_ai_tool_name=~\"$tool_name\"}[5m])))",
           "legendFormat": "p50 {{gen_ai_tool_name}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket{gen_ai_tool_name=~\"$tool_name\"}[5m])))",
           "legendFormat": "p95 {{gen_ai_tool_name}}",
           "refId": "B"
         }
@@ -280,7 +280,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (gen_ai_tool_name, error_type) (rate(gen_ai_mcp_tool_errors_total[5m]))",
+          "expr": "sum by (gen_ai_tool_name, error_type) (rate(gen_ai_mcp_tool_errors_total{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "legendFormat": "{{gen_ai_tool_name}} ({{error_type}})",
           "refId": "A"
         }
@@ -371,28 +371,28 @@
       },
       "targets": [
         {
-          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total[5m]))",
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "legendFormat": "",
           "refId": "calls",
           "format": "table",
           "instant": true
         },
         {
-          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_sum[5m])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_count[5m]))",
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_sum{gen_ai_tool_name=~\"$tool_name\"}[5m])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_duration_count{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "legendFormat": "",
           "refId": "avg_duration",
           "format": "table",
           "instant": true
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (gen_ai_tool_name, le) (rate(gen_ai_mcp_tool_duration_bucket{gen_ai_tool_name=~\"$tool_name\"}[5m])))",
           "legendFormat": "",
           "refId": "p95_duration",
           "format": "table",
           "instant": true
         },
         {
-          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_errors_total[5m])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total[5m]))",
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_errors_total{gen_ai_tool_name=~\"$tool_name\"}[5m])) / sum by (gen_ai_tool_name) (rate(gen_ai_mcp_tool_calls_total{gen_ai_tool_name=~\"$tool_name\"}[5m]))",
           "legendFormat": "",
           "refId": "error_rate",
           "format": "table",
@@ -505,7 +505,46 @@
   "schemaVersion": 39,
   "tags": ["toad-eye", "mcp", "llm"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "mcp_method",
+        "label": "MCP Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_mcp_tool_calls_total, mcp_method_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true,
+        "sort": 1
+      },
+      {
+        "name": "tool_name",
+        "label": "Tool",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(gen_ai_mcp_tool_calls_total, gen_ai_tool_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "multi": true,
+        "sort": 1
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
