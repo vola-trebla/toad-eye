@@ -56,7 +56,7 @@ export function startToolSpan(toolName: string, options: SpanOptions) {
   return tracer.startSpan(
     `${MCP_METHODS.TOOLS_CALL} ${toolName}`,
     {
-      kind: SpanKind.INTERNAL,
+      kind: SpanKind.SERVER,
       attributes: {
         ...baseAttrs(MCP_METHODS.TOOLS_CALL, options),
         "gen_ai.tool.name": toolName,
@@ -70,7 +70,7 @@ export function startResourceSpan(uri: string, options: SpanOptions) {
   return tracer.startSpan(
     `${MCP_METHODS.RESOURCES_READ} ${uri}`,
     {
-      kind: SpanKind.INTERNAL,
+      kind: SpanKind.SERVER,
       attributes: {
         ...baseAttrs(MCP_METHODS.RESOURCES_READ, options),
         "gen_ai.data_source.id": uri,
@@ -84,7 +84,7 @@ export function startPromptSpan(promptName: string, options: SpanOptions) {
   return tracer.startSpan(
     `${MCP_METHODS.PROMPTS_GET} ${promptName}`,
     {
-      kind: SpanKind.INTERNAL,
+      kind: SpanKind.SERVER,
       attributes: {
         ...baseAttrs(MCP_METHODS.PROMPTS_GET, options),
         "gen_ai.prompt.name": promptName,
