@@ -31,7 +31,7 @@ processors:
           sampling_percentage: 100
 
 exporters:
-  otlp_http/jaeger:
+  otlphttp/jaeger:
     endpoint: http://jaeger:4318
     tls:
       insecure: true
@@ -44,7 +44,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp_http/jaeger]
+      exporters: [otlphttp/jaeger]
     metrics:
       receivers: [otlp]
       processors: [batch]
