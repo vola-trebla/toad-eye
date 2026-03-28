@@ -20,6 +20,9 @@ export interface ToadMcpOptions {
   /** Max payload size in bytes before truncation. Default: 4096. */
   readonly maxPayloadSize?: number | undefined;
 
+  /** Explicit session ID. Auto-generated if not provided. */
+  readonly sessionId?: string | undefined;
+
   /** Extract W3C traceparent from _meta field. Default: true. */
   readonly propagateContext?: boolean | undefined;
 
@@ -35,12 +38,15 @@ export interface ToadMcpOptions {
 /** OTel attributes set on MCP spans. */
 export interface McpSpanAttributes {
   readonly "gen_ai.operation.name": string;
+  readonly "mcp.method.name": string;
   readonly "gen_ai.tool.name"?: string;
   readonly "gen_ai.tool.call.id"?: string;
   readonly "gen_ai.data_source.id"?: string;
   readonly "gen_ai.prompt.name"?: string;
   readonly "mcp.server.name": string;
   readonly "mcp.server.version": string;
-  readonly "mcp.transport"?: "stdio" | "sse" | "streamable-http";
   readonly "mcp.session.id"?: string;
+  readonly "mcp.protocol.version"?: string;
+  readonly "network.transport"?: "pipe" | "tcp";
+  readonly "rpc.response.status_code"?: number;
 }
