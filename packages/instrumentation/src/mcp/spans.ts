@@ -1,11 +1,11 @@
 /**
  * OTel span creation for MCP operations.
  *
- * Maps MCP methods to OTel GenAI semantic conventions:
- * - tools/call              → execute_tool {tool_name}
- * - resources/read          → retrieval {uri}
- * - prompts/get             → prompt {name}
- * - sampling/createMessage  → chat {model}
+ * Follows OTel MCP semantic conventions (PR #2083):
+ * - tools/call              → `tools/call {tool_name}`
+ * - resources/read          → `resources/read {uri}`
+ * - prompts/get             → `prompts/get {name}`
+ * - sampling/createMessage  → `sampling/createMessage {model}`
  */
 
 import {
@@ -19,6 +19,14 @@ const TRACER_NAME = "toad-eye-mcp";
 
 const tracer = trace.getTracer(TRACER_NAME);
 
+/** MCP method names per OTel semconv. */
+export const MCP_METHODS = {
+  TOOLS_CALL: "tools/call",
+  RESOURCES_READ: "resources/read",
+  PROMPTS_GET: "prompts/get",
+  SAMPLING_CREATE_MESSAGE: "sampling/createMessage",
+} as const;
+
 export interface SpanOptions {
   readonly serverName: string;
   readonly serverVersion: string;
@@ -27,11 +35,12 @@ export interface SpanOptions {
 
 export function startToolSpan(toolName: string, options: SpanOptions) {
   return tracer.startSpan(
-    `execute_tool ${toolName}`,
+    `${MCP_METHODS.TOOLS_CALL} ${toolName}`,
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.operation.name": MCP_METHODS.TOOLS_CALL,
+        "mcp.method.name": MCP_METHODS.TOOLS_CALL,
         "gen_ai.tool.name": toolName,
         "mcp.server.name": options.serverName,
         "mcp.server.version": options.serverVersion,
@@ -43,11 +52,12 @@ export function startToolSpan(toolName: string, options: SpanOptions) {
 
 export function startResourceSpan(uri: string, options: SpanOptions) {
   return tracer.startSpan(
-    `retrieval ${uri}`,
+    `${MCP_METHODS.RESOURCES_READ} ${uri}`,
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": "retrieval",
+        "gen_ai.operation.name": MCP_METHODS.RESOURCES_READ,
+        "mcp.method.name": MCP_METHODS.RESOURCES_READ,
         "gen_ai.data_source.id": uri,
         "mcp.server.name": options.serverName,
         "mcp.server.version": options.serverVersion,
@@ -59,11 +69,12 @@ export function startResourceSpan(uri: string, options: SpanOptions) {
 
 export function startPromptSpan(promptName: string, options: SpanOptions) {
   return tracer.startSpan(
-    `prompt ${promptName}`,
+    `${MCP_METHODS.PROMPTS_GET} ${promptName}`,
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        "gen_ai.operation.name": "prompt",
+        "gen_ai.operation.name": MCP_METHODS.PROMPTS_GET,
+        "mcp.method.name": MCP_METHODS.PROMPTS_GET,
         "gen_ai.prompt.name": promptName,
         "mcp.server.name": options.serverName,
         "mcp.server.version": options.serverVersion,
@@ -81,11 +92,12 @@ export interface SamplingSpanOptions {
 
 export function startSamplingSpan(model: string, options: SamplingSpanOptions) {
   return tracer.startSpan(
-    `chat ${model}`,
+    `${MCP_METHODS.SAMPLING_CREATE_MESSAGE} ${model}`,
     {
       kind: SpanKind.CLIENT,
       attributes: {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": MCP_METHODS.SAMPLING_CREATE_MESSAGE,
+        "mcp.method.name": MCP_METHODS.SAMPLING_CREATE_MESSAGE,
         "gen_ai.request.model": model,
         "mcp.server.name": options.serverName,
         "mcp.server.version": options.serverVersion,

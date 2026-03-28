@@ -1027,10 +1027,11 @@ npx @modelcontextprotocol/inspector npx tsx demo/src/mcp-server/index.ts
 **Jaeger (http://localhost:16686):**
 
 - [ ] Service: `toad-eye-mcp-demo`
-- [ ] Span names: `execute_tool calculate`, `execute_tool get-weather`, `execute_tool timestamp`
-- [ ] Span: `retrieval toad-eye-mcp-demo://info` (resource read)
-- [ ] Span: `prompt weather-report` (prompt get)
-- [ ] Каждый span содержит `gen_ai.operation.name` (execute_tool, retrieval, prompt)
+- [ ] Span names: `tools/call calculate`, `tools/call get-weather`, `tools/call timestamp`
+- [ ] Span: `resources/read toad-eye-mcp-demo://info` (resource read)
+- [ ] Span: `prompts/get weather-report` (prompt get)
+- [ ] Каждый span содержит `gen_ai.operation.name` (tools/call, resources/read, prompts/get)
+- [ ] Каждый span содержит `mcp.method.name`
 - [ ] Каждый span содержит `mcp.server.name = toad-eye-mcp-demo`
 - [ ] Tool arguments записаны (recordInputs: true в demo)
 - [ ] Tool results записаны (recordOutputs: true в demo)
