@@ -39,6 +39,7 @@ export const GEN_AI_METRICS = {
   MCP_TOOL_ERRORS: "gen_ai.mcp.tool.errors",
   MCP_RESOURCE_READS: "gen_ai.mcp.resource.reads",
   MCP_SESSION_ACTIVE: "gen_ai.mcp.session.active",
+  MCP_TOOL_CALLERS: "gen_ai.mcp.tool.callers",
 } as const;
 
 /** @deprecated Use GEN_AI_METRICS instead. Kept for backward compatibility. */

@@ -23,6 +23,7 @@ let toolCalls: Counter;
 let toolErrors: Counter;
 let resourceReads: Counter;
 let sessionActive: UpDownCounter;
+let toolCallers: Counter;
 
 let initialized = false;
 
@@ -52,12 +53,18 @@ function ensureInit() {
   sessionActive = meter.createUpDownCounter(GEN_AI_METRICS.MCP_SESSION_ACTIVE, {
     description: "Number of active MCP sessions",
   });
+
+  toolCallers = meter.createCounter(GEN_AI_METRICS.MCP_TOOL_CALLERS, {
+    description:
+      "MCP tool calls by session — use count(distinct) for unique callers",
+  });
 }
 
 export function recordMcpToolCall(
   toolName: string,
   durationMs: number,
   status: "success" | "error",
+  sessionId?: string,
 ) {
   ensureInit();
   toolCalls.add(1, {
@@ -69,6 +76,12 @@ export function recordMcpToolCall(
     "gen_ai.tool.name": toolName,
     "mcp.method.name": MCP_METHODS.TOOLS_CALL,
   });
+  if (sessionId) {
+    toolCallers.add(1, {
+      "gen_ai.tool.name": toolName,
+      "mcp.session.id": sessionId,
+    });
+  }
 }
 
 export function recordMcpToolError(toolName: string, errorType: string) {
