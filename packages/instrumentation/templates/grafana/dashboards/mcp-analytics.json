@@ -126,7 +126,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (gen_ai_request_model) (increase(gen_ai_client_request_cost_sum[1h]))",
+          "expr": "sum by (gen_ai_request_model) (increase(gen_ai_client_request_cost_USD_sum[1h]))",
           "legendFormat": "{{gen_ai_request_model}}",
           "refId": "A",
           "instant": true
@@ -158,7 +158,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_sum[5m])) * 3600",
+          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_USD_sum[5m])) * 3600",
           "legendFormat": "{{gen_ai_request_model}} ($/hr)",
           "refId": "A"
         }

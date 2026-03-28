@@ -276,7 +276,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_sum[5m]))",
+          "expr": "sum by (gen_ai_request_model) (rate(gen_ai_client_request_cost_USD_sum[5m]))",
           "legendFormat": "{{gen_ai_request_model}}",
           "refId": "A"
         }
