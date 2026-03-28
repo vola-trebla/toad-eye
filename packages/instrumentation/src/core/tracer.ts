@@ -13,6 +13,10 @@ import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics, resetMetrics } from "./metrics.js";
 import { resetCustomPricing } from "./pricing.js";
 import { enableAll, disableAll } from "../instrumentations/registry.js";
+import {
+  enableMcpInstrumentation,
+  disableMcpInstrumentation,
+} from "../instrumentations/mcp.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
 import type { LLMProvider } from "../types/index.js";
@@ -169,9 +173,19 @@ export function initObservability(config: ToadEyeConfig) {
   }
 
   if (config.instrument?.length) {
-    // Filter out 'ai' — it uses SpanProcessor, not monkey-patching
+    // Handle MCP auto-instrumentation separately
+    if (config.instrument.includes("mcp")) {
+      const patched = enableMcpInstrumentation();
+      if (!patched) {
+        console.warn(
+          `toad-eye: "@modelcontextprotocol/sdk" not found — install it to enable MCP auto-instrumentation`,
+        );
+      }
+    }
+
+    // Filter out 'ai' and 'mcp' — they use separate mechanisms
     const patchProviders = config.instrument.filter(
-      (i): i is LLMProvider => i !== "ai",
+      (i): i is LLMProvider => i !== "ai" && i !== "mcp",
     );
     if (patchProviders.length > 0) {
       // enableAll is async (lazy-loads provider modules on first call).
@@ -188,6 +202,7 @@ export function initObservability(config: ToadEyeConfig) {
 export async function shutdown() {
   if (!sdk) return;
   disableAll();
+  disableMcpInstrumentation();
   await sdk.shutdown();
   sdk = null;
   currentConfig = null;
