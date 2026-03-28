@@ -11,6 +11,7 @@
 
 import {
   context,
+  trace,
   diag,
   DiagConsoleLogger,
   DiagLogLevel,
@@ -183,7 +184,7 @@ export function toadEyeMiddleware(
 
       const start = performance.now();
       try {
-        const result = await context.with(context.active(), () =>
+        const result = await context.with(trace.setSpan(parentCtx, span), () =>
           originalHandler(...handlerArgs),
         );
         const durationMs = performance.now() - start;
@@ -250,7 +251,10 @@ export function toadEyeMiddleware(
         }
 
         try {
-          const result = await originalHandler(...handlerArgs);
+          const result = await context.with(
+            trace.setSpan(parentCtx, span),
+            () => originalHandler(...handlerArgs),
+          );
           endSpanSuccess(span);
           recordMcpResourceRead(uri);
           return result;
@@ -294,7 +298,10 @@ export function toadEyeMiddleware(
         });
 
         try {
-          const result = await originalHandler(...handlerArgs);
+          const result = await context.with(
+            trace.setSpan(parentCtx, span),
+            () => originalHandler(...handlerArgs),
+          );
           endSpanSuccess(span);
           return result;
         } catch (error) {
