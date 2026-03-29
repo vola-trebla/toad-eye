@@ -55,6 +55,16 @@ function truncate(value: string, maxBytes: number): string {
   return value.slice(0, maxBytes) + "...[truncated]";
 }
 
+function redactValue(v: unknown, keys: readonly string[]): unknown {
+  if (Array.isArray(v)) {
+    return v.map((item) => redactValue(item, keys));
+  }
+  if (typeof v === "object" && v !== null) {
+    return redactObject(v, keys);
+  }
+  return v;
+}
+
 function redactObject(
   obj: unknown,
   keys: readonly string[],
@@ -64,10 +74,8 @@ function redactObject(
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
     if (keys.includes(k)) {
       result[k] = "[REDACTED]";
-    } else if (typeof v === "object" && v !== null && !Array.isArray(v)) {
-      result[k] = redactObject(v, keys);
     } else {
-      result[k] = v;
+      result[k] = redactValue(v, keys);
     }
   }
   return result;
@@ -97,7 +105,10 @@ function redactObject(
  * In stdio MCP transport, stdout IS the JSON-RPC channel —
  * any stray console.log or OTel diagnostic would crash the connection.
  */
+let stdioSafe = false;
 function ensureStdioSafe() {
+  if (stdioSafe) return;
+  stdioSafe = true;
   const stderrLogger = new DiagConsoleLogger();
   // Override the logger to use stderr-only methods
   const safeLogger = {
