@@ -22,11 +22,15 @@ vi.mock("@opentelemetry/sdk-metrics", () => ({
 vi.mock("@opentelemetry/semantic-conventions", () => ({
   ATTR_SERVICE_NAME: "service.name",
 }));
-vi.mock("@opentelemetry/api", () => ({
-  metrics: { getMeter: () => ({}) },
-  diag: { warn: vi.fn(), debug: vi.fn() },
-  trace: { getTracer: () => ({}) },
-}));
+vi.mock("@opentelemetry/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@opentelemetry/api")>();
+  return {
+    ...actual,
+    metrics: { getMeter: () => ({}) },
+    diag: { warn: vi.fn(), debug: vi.fn() },
+    trace: { getTracer: () => ({}) },
+  };
+});
 vi.mock("../core/metrics.js", () => ({
   initMetrics: vi.fn(),
   resetMetrics: vi.fn(),
