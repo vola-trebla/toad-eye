@@ -1,6 +1,6 @@
 {
   "name": "toad-eye",
-  "version": "2.10.0",
+  "version": "2.11.1",
   "description": "Observability for MCP servers and LLM applications — traces, metrics, dashboards. One-line instrumentation for OpenAI, Anthropic, Gemini, and MCP. Self-hosted with Grafana + Prometheus + Jaeger.",
   "type": "module",
   "main": "dist/index.js",
@@ -49,13 +49,14 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "grep -q 'toad-eye' README.md || { echo '❌ README.md is missing or broken'; exit 1; } && npm run build"
+    "prepublishOnly": "grep -q 'toad-eye' README.md || { echo '❌ README.md is missing or broken'; exit 1; } && npm run build && npm pack --dry-run 2>&1 | grep -q 'README.md' || { echo '❌ README.md not in tarball'; exit 1; }"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/vola-trebla/toad-eye"
   },
   "homepage": "https://github.com/vola-trebla/toad-eye#readme",
+  "readmeFilename": "README.md",
   "author": "albertalov",
   "keywords": [
     "mcp",
