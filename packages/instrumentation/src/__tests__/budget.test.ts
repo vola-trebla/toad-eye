@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import { BudgetTracker } from "../budget/tracker.js";
 import { ToadBudgetExceededError } from "../budget/error.js";

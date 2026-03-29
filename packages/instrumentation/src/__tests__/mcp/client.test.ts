@@ -1,28 +1,26 @@
 import { describe, it, expect, vi } from "vitest";
-import { SpanKind, trace, context } from "@opentelemetry/api";
+import { SpanKind } from "@opentelemetry/api";
 import {
   enableMcpClientInstrumentation,
   disableMcpClientInstrumentation,
 } from "../../mcp/client.js";
-import { extractContextFromMeta } from "../../mcp/context.js";
 import { toadEyeMiddleware } from "../../mcp/middleware.js";
 import {
   setupOTelForTests,
   findSpan,
   getSpanAttr,
-  getSpans,
   SpanStatusCode,
 } from "./test-utils.js";
 
 // Minimal mock Client class that behaves like @modelcontextprotocol/sdk Client
 class MockClient {
-  async callTool(params: Record<string, unknown>) {
+  async callTool(_params: Record<string, unknown>) {
     return { content: [{ type: "text", text: "mock result" }] };
   }
   async readResource(params: Record<string, unknown>) {
     return { contents: [{ uri: params.uri, text: "data" }] };
   }
-  async getPrompt(params: Record<string, unknown>) {
+  async getPrompt(_params: Record<string, unknown>) {
     return {
       messages: [{ role: "user", content: { type: "text", text: "hi" } }],
     };
@@ -76,9 +74,10 @@ describe("enableMcpClientInstrumentation", () => {
 
   it("records error status on callTool failure", async () => {
     class FailingClient extends MockClient {
-      override async callTool(_params: Record<string, unknown>) {
+      override async callTool(
+        _params: Record<string, unknown>,
+      ): Promise<never> {
         throw new TypeError("connection refused");
-        return undefined as never;
       }
     }
 

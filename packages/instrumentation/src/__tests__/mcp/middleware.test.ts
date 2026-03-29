@@ -5,7 +5,6 @@ import {
   setupOTelForTests,
   findSpan,
   getSpanAttr,
-  getSpans,
   SpanStatusCode,
 } from "./test-utils.js";
 
