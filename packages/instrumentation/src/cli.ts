@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawn } from "node:child_process";
+import { createConnection } from "node:net";
 import {
   cpSync,
   existsSync,
@@ -103,6 +104,53 @@ function requireDocker() {
   }
 }
 
+const PORT_CONFIG = [
+  { env: "COLLECTOR_PORT", default: 4318, service: "OTel Collector" },
+  { env: "PROMETHEUS_PORT", default: 9090, service: "Prometheus" },
+  { env: "JAEGER_PORT", default: 16686, service: "Jaeger" },
+  { env: "GRAFANA_PORT", default: 3100, service: "Grafana" },
+] as const;
+
+function getPort(env: string, defaultPort: number): number {
+  const val = process.env[env];
+  return val ? parseInt(val, 10) : defaultPort;
+}
+
+function checkPort(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ port, host: "127.0.0.1" });
+    socket.setTimeout(500);
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true); // port is in use
+    });
+    socket.on("error", () => resolve(false)); // port is free
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function checkPorts() {
+  const conflicts: string[] = [];
+  for (const { env, default: defaultPort, service } of PORT_CONFIG) {
+    const port = getPort(env, defaultPort);
+    const inUse = await checkPort(port);
+    if (inUse) {
+      conflicts.push(
+        `  ❌ Port ${port} is already in use (${service})\n     Fix: stop the other service, or set ${env}=${port + 1}`,
+      );
+    }
+  }
+  if (conflicts.length > 0) {
+    console.error("Port conflicts detected:\n");
+    console.error(conflicts.join("\n\n"));
+    console.error();
+    process.exit(1);
+  }
+}
+
 function up() {
   requireDocker();
   const composeFile = requireInfra();
@@ -111,17 +159,24 @@ function up() {
   console.log(
     "   (first run downloads ~500MB of Docker images — this may take a few minutes)\n",
   );
-  execFileSync("docker", ["compose", "-f", composeFile, "up", "-d"], {
-    stdio: "inherit",
-  });
-  console.log();
-  status();
-  console.log("   Dashboards will be empty until data arrives.\n");
-  console.log("   Next steps:");
-  console.log(
-    "     npx toad-eye demo          ← send mock traffic, see data in Grafana",
-  );
-  console.log("     or add toad-eye to your app  (see README)");
+
+  // Check ports synchronously via async wrapper — CLI is short-lived
+  const checkAndStart = async () => {
+    await checkPorts();
+    execFileSync("docker", ["compose", "-f", composeFile, "up", "-d"], {
+      stdio: "inherit",
+    });
+    console.log();
+    status();
+    console.log("   Dashboards will be empty until data arrives.\n");
+    console.log("   Next steps:");
+    console.log(
+      "     npx toad-eye demo          ← send mock traffic, see data in Grafana",
+    );
+    console.log("     or add toad-eye to your app  (see README)");
+  };
+
+  void checkAndStart();
 }
 
 function down() {
