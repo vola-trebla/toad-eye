@@ -14,7 +14,7 @@ function smtpCacheKey(
 function formatMessage(alert: FiredAlert): string {
   const topModelsText =
     alert.topModels.length > 0
-      ? `\nTop models by spend:\n${alert.topModels.map((m) => `  • ${m.model}: $${m.value.toFixed(4)}`).join("\n")}`
+      ? `\nTop contributors:\n${alert.topModels.map((m) => `  • ${m.model}: ${m.value.toFixed(4)}`).join("\n")}`
       : "";
   return [
     `🚨 Alert: ${alert.rule.name}`,
@@ -40,6 +40,7 @@ async function sendTelegram(
         chat_id: config.chatId,
         text: formatMessage(alert),
       }),
+      signal: AbortSignal.timeout(10_000),
     },
   );
   if (!res.ok) throw new Error(`Telegram send failed: ${res.status}`);
@@ -53,6 +54,7 @@ async function sendSlackWebhook(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: formatMessage(alert) }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Slack webhook failed: ${res.status}`);
 }
@@ -64,6 +66,7 @@ async function sendWebhook(
   const res = await fetch(config.url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...config.headers },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({
       alertName: alert.rule.name,
       metric: alert.rule.metric,
