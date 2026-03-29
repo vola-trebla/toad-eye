@@ -45,6 +45,7 @@ const KNOWN_METRICS = new Set([
   "gen_ai_mcp_tool_errors_total",
   "gen_ai_mcp_resource_reads_total",
   "gen_ai_mcp_tool_callers_total",
+  "gen_ai_mcp_tool_hallucinations_total",
   // UpDownCounter (no suffix)
   "gen_ai_mcp_session_active",
 ]);

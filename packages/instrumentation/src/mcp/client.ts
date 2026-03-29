@@ -9,6 +9,7 @@
 import { createRequire } from "node:module";
 import { trace, context, propagation, SpanKind } from "@opentelemetry/api";
 import { MCP_METHODS, endSpanSuccess, endSpanError } from "./spans.js";
+import { recordMcpToolHallucination } from "./metrics.js";
 
 const require = createRequire(import.meta.url);
 
@@ -118,6 +119,11 @@ function patchClient(Client: any): boolean {
       return result;
     } catch (error) {
       endSpanError(span, error);
+      // JSON-RPC -32601 = Method not found = agent hallucinated a tool name
+      const code = (error as Record<string, unknown> | null)?.code;
+      if (code === -32601) {
+        recordMcpToolHallucination(toolName);
+      }
       throw error;
     }
   };

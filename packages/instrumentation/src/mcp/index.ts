@@ -9,3 +9,4 @@ export {
   enableMcpClientInstrumentation,
   disableMcpClientInstrumentation,
 } from "./client.js";
+export { recordMcpToolHallucination } from "./metrics.js";

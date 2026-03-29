@@ -177,6 +177,34 @@
       }
     },
     {
+      "title": "Tool Hallucination Rate",
+      "description": "Agent tried to call a non-existent tool (JSON-RPC -32601). Spikes indicate the LLM lost track of available tools.",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(gen_ai_mcp_tool_hallucinations_total[5m])) or vector(0)",
+          "legendFormat": "hallucinations/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "noValue": "No hallucinations detected"
+        },
+        "overrides": []
+      }
+    },
+    {
       "title": "Tool Call Rate by Tool",
       "type": "timeseries",
       "gridPos": {
