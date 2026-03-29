@@ -76,8 +76,9 @@ describe("enableMcpClientInstrumentation", () => {
 
   it("records error status on callTool failure", async () => {
     class FailingClient extends MockClient {
-      override async callTool() {
+      override async callTool(_params: Record<string, unknown>) {
         throw new TypeError("connection refused");
+        return undefined as never;
       }
     }
 
@@ -85,7 +86,10 @@ describe("enableMcpClientInstrumentation", () => {
     const client = new FailingClient();
 
     await expect(
-      client.callTool({ name: "broken", arguments: {} }),
+      client.callTool({ name: "broken", arguments: {} } as Record<
+        string,
+        unknown
+      >),
     ).rejects.toThrow("connection refused");
 
     const span = findSpan("tools/call broken");
