@@ -19,6 +19,7 @@ jobs:
       - run: npm run build --workspace=packages/instrumentation
       - run: npx tsc --noEmit
       - run: npm run format:check
+      - run: npm run lint
       - run: npm run validate:dashboards
       - run: npm run test --workspace=packages/instrumentation
 

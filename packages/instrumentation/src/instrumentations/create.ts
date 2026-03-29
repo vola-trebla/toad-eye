@@ -24,7 +24,6 @@ import {
   recordBudgetDowngraded,
 } from "../core/metrics.js";
 import { getConfig, getBudgetTracker } from "../core/tracer.js";
-import { ToadBudgetExceededError } from "../budget/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
 import type {

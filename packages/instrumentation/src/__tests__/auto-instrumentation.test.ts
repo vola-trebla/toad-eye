@@ -48,11 +48,11 @@ function buildGeminiSdk(modelName: string) {
   class GenerativeModel {
     model = modelName;
 
-    async generateContent(body: unknown) {
+    async generateContent(_body: unknown) {
       return { response: { text: () => "hello", usageMetadata: {} } };
     }
 
-    async generateContentStream(body: unknown) {
+    async generateContentStream(_body: unknown) {
       async function* stream() {
         yield { text: () => "chunk1", usageMetadata: {} };
         yield {
@@ -81,7 +81,7 @@ describe("Gemini model name extraction from thisArg", () => {
         {
           getPrototype: (m) => m?.GenerativeModel?.prototype,
           method: "generateContent",
-          extractRequest: (body, thisArg) => ({
+          extractRequest: (_body, thisArg) => ({
             prompt: "",
             model:
               (thisArg as { model?: string } | undefined)?.model ?? "unknown",
@@ -118,7 +118,7 @@ describe("Gemini model name extraction from thisArg", () => {
   });
 
   it("extractRequest receives thisArg with correct model", () => {
-    const extractRequest = vi.fn((body: unknown, thisArg?: unknown) => ({
+    const extractRequest = vi.fn((_body: unknown, thisArg?: unknown) => ({
       prompt: "test",
       model: (thisArg as { model?: string } | undefined)?.model ?? "unknown",
     }));
@@ -129,7 +129,7 @@ describe("Gemini model name extraction from thisArg", () => {
   });
 
   it("falls back to unknown when thisArg has no model", () => {
-    const extractRequest = (body: unknown, thisArg?: unknown) => ({
+    const extractRequest = (_body: unknown, thisArg?: unknown) => ({
       prompt: "",
       model: (thisArg as { model?: string } | undefined)?.model ?? "unknown",
     });
@@ -167,7 +167,7 @@ describe("streaming path quality metrics", () => {
       for (const c of chunks) yield c;
     }
 
-    let streamProduced: AsyncIterable<unknown> | undefined;
+    let _streamProduced: AsyncIterable<unknown> | undefined;
 
     const inst = createInstrumentation({
       name: "openai",
@@ -204,8 +204,8 @@ describe("streaming path quality metrics", () => {
     };
 
     // Bypass module loading — patch the prototype directly
-    const originalCreate = fakeProto.create;
-    const patchTarget = inst as unknown as { _patches?: unknown[] };
+    const _originalCreate = fakeProto.create;
+    const _patchTarget = inst as unknown as { _patches?: unknown[] };
 
     // Use a simpler approach: test the streaming accumulator logic directly
     const acc = { completion: "", inputTokens: 0, outputTokens: 0 };

@@ -95,7 +95,7 @@ describe("ToadEyeSpanEndProcessor", () => {
     });
 
     // Call onEnd directly — no need for a full provider
-    const span = exporter.getFinishedSpans()[0];
+    const _span = exporter.getFinishedSpans()[0];
     // Create a real span to pass
     const tracer = trace.getTracer("test");
     const testSpan = tracer.startSpan("direct-test");

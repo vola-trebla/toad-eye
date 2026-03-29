@@ -17,11 +17,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate:dashboards": "npx tsx scripts/validate-dashboards.ts",
+    "lint": "biome check",
+    "lint:fix": "biome check --write --unsafe",
     "prepare": "husky"
   },
   "author": "albertalov",
   "license": "ISC",
   "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
     "@types/node": "^25.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
