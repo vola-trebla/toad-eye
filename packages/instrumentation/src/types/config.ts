@@ -31,6 +31,9 @@ export interface ToadEyeConfig {
   readonly serviceName: string;
   readonly endpoint?: string | undefined;
 
+  /** Output mode: "otlp" (default) sends to OTel Collector, "console" prints spans to stderr (no Docker needed). */
+  readonly output?: "otlp" | "console" | undefined;
+
   // Cloud mode
   /** API key for toad-eye cloud. When set, transport switches to HTTPS cloud endpoint automatically. */
   readonly apiKey?: string | undefined;

@@ -25,6 +25,7 @@ import { resetMcpMetrics } from "../mcp/metrics.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
 import { ToadEyeSpanEndProcessor } from "./span-end-processor.js";
+import { ToadEyeConsoleExporter } from "./console-exporter.js";
 import type { LLMProvider } from "../types/index.js";
 
 const DEFAULT_ENDPOINT = "http://localhost:4318";
@@ -98,26 +99,33 @@ export function initObservability(config: ToadEyeConfig) {
   }
 
   validateConfig(config);
-  const { endpoint, headers, isCloudMode } = resolveTransport(config);
+
+  const isConsoleMode = config.output === "console";
+  const { endpoint, headers, isCloudMode } = isConsoleMode
+    ? { endpoint: "", headers: {}, isCloudMode: false }
+    : resolveTransport(config);
 
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: config.serviceName,
   });
 
-  const traceExporter = new OTLPTraceExporter({
-    url: `${endpoint}/v1/traces`,
-    headers,
-  });
+  const traceExporter = isConsoleMode
+    ? new ToadEyeConsoleExporter()
+    : new OTLPTraceExporter({
+        url: `${endpoint}/v1/traces`,
+        headers,
+      });
 
-  const metricExporter = new OTLPMetricExporter({
-    url: `${endpoint}/v1/metrics`,
-    headers,
-  });
-
-  const metricReader = new PeriodicExportingMetricReader({
-    exporter: metricExporter,
-    exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
-  });
+  // In console mode, skip metric export — no Prometheus to send to
+  const metricReader = isConsoleMode
+    ? undefined
+    : new PeriodicExportingMetricReader({
+        exporter: new OTLPMetricExporter({
+          url: `${endpoint}/v1/metrics`,
+          headers,
+        }),
+        exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
+      });
 
   // When custom SpanProcessors are needed (e.g., Vercel AI SDK, onSpanEnd),
   // we must also include a BatchSpanProcessor for trace export —
@@ -149,7 +157,7 @@ export function initObservability(config: ToadEyeConfig) {
   sdk = new NodeSDK({
     resource,
     traceExporter,
-    metricReader,
+    ...(metricReader !== undefined && { metricReader }),
     ...(spanProcessors.length > 0 && { spanProcessors }),
     ...(sampler !== undefined && { sampler }),
   });
@@ -158,9 +166,15 @@ export function initObservability(config: ToadEyeConfig) {
   currentConfig = config;
   initMetrics();
 
+  if (isConsoleMode) {
+    console.log(
+      `toad-eye: console mode — spans will be printed to stderr. No Docker needed.`,
+    );
+  }
+
   // Non-blocking connectivity check — warns the user if the OTel Collector is unreachable.
-  // Fire-and-forget: does not block initObservability(). Cloud mode skips this check.
-  if (!isCloudMode) {
+  // Fire-and-forget: does not block initObservability(). Cloud/console mode skips this check.
+  if (!isCloudMode && !isConsoleMode) {
     void fetch(`${endpoint}/v1/traces`, {
       method: "POST",
       body: "[]",
