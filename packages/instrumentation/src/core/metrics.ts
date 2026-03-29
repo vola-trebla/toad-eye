@@ -25,6 +25,7 @@ let responseEmpty: Counter;
 let responseLatencyPerToken: Histogram;
 let contextUtilization: Histogram;
 let contextBlocked: Counter;
+let thinkingRatio: Histogram;
 
 let initialized = false;
 
@@ -128,6 +129,11 @@ export function initMetrics() {
 
   contextBlocked = meter.createCounter(GEN_AI_METRICS.CONTEXT_BLOCKED, {
     description: "Number of LLM calls blocked by context guard",
+  });
+
+  thinkingRatio = meter.createHistogram(GEN_AI_METRICS.THINKING_RATIO, {
+    description:
+      "Ratio of thinking/reasoning tokens to total output (0.0–1.0). High values indicate deep reasoning.",
   });
 
   initialized = true;
@@ -317,6 +323,18 @@ export function recordContextUtilization(
 export function recordContextBlocked(model: string) {
   if (!isReady()) return;
   contextBlocked.add(1, {
+    [GEN_AI_ATTRS.REQUEST_MODEL]: model,
+  });
+}
+
+export function recordThinkingRatio(
+  ratio: number,
+  provider: string,
+  model: string,
+) {
+  if (!isReady()) return;
+  thinkingRatio.record(ratio, {
+    [GEN_AI_ATTRS.PROVIDER]: provider,
     [GEN_AI_ATTRS.REQUEST_MODEL]: model,
   });
 }

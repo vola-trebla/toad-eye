@@ -29,6 +29,8 @@ const KNOWN_METRICS = new Set([
   "gen_ai_mcp_tool_duration",
   // Histograms (unit: USD) → _USD_sum, _count, _bucket
   "gen_ai_client_request_cost_USD",
+  // Histograms (no unit)
+  "gen_ai_toad_eye_thinking_ratio",
   // Counters → _total
   "gen_ai_client_token_usage_total",
   "gen_ai_client_requests_total",
