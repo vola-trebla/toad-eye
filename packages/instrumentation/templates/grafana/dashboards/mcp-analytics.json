@@ -287,6 +287,7 @@
     "from": "now-1h",
     "to": "now"
   },
+  "refresh": "30s",
   "timepicker": {},
   "timezone": "browser",
   "title": "MCP Tool Analytics",
