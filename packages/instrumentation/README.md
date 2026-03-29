@@ -169,4 +169,4 @@ Full metrics and span attribute reference: [COMPATIBILITY.md](https://github.com
 
 ## Tech Stack
 
-TypeScript · OpenTelemetry SDK 2.x · Hono · Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector) · Vitest (278+ tests)
+TypeScript · OpenTelemetry SDK 2.x · Hono · Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector) · Vitest (285+ tests)
