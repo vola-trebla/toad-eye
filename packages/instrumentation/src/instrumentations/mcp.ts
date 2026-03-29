@@ -22,16 +22,26 @@ let mcpServerProto: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let originals: { tool: any; resource?: any; prompt?: any } | null = null;
 
-export function enableMcpInstrumentation(): boolean {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveServerClass(): any {
   try {
-    require.resolve(MODULE_NAME);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sdk = require(MODULE_NAME);
+    return sdk.McpServer ?? sdk.default?.McpServer;
   } catch {
-    return false;
+    return null;
   }
+}
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const sdk = require(MODULE_NAME);
-  const McpServer = sdk.McpServer ?? sdk.default?.McpServer;
+/**
+ * Enable MCP server auto-instrumentation.
+ * For ESM projects, pass McpServer class directly to avoid CJS/ESM module mismatch.
+ */
+export function enableMcpInstrumentation(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  McpServerClass?: any,
+): boolean {
+  const McpServer = McpServerClass ?? resolveServerClass();
 
   if (!McpServer?.prototype) return false;
   if (McpServer.prototype[PATCHED_FLAG]) return true;

@@ -78,6 +78,7 @@ export function enableMcpClientInstrumentation(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function patchClient(Client: any): boolean {
   if (!Client?.prototype) return false;
+  if (typeof Client.prototype.callTool !== "function") return false;
   if (Client.prototype[PATCHED_FLAG]) return true;
 
   const proto = Client.prototype;

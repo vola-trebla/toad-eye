@@ -66,8 +66,7 @@ function toSpanEndData(span: ReadableSpan): SpanEndData {
   return {
     traceId: ctx.traceId,
     spanId: ctx.spanId,
-    parentSpanId:
-      (span as unknown as { parentSpanId?: string }).parentSpanId || undefined,
+    parentSpanId: span.parentSpanContext?.spanId,
     name: span.name,
     kind: SPAN_KIND_MAP[span.kind] ?? "internal",
     status:
