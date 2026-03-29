@@ -45,7 +45,8 @@
                 "value": 500
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -87,7 +88,8 @@
                 "value": 50
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -129,7 +131,8 @@
                 "value": 1000
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -164,7 +167,8 @@
             "stacking": {
               "mode": "normal"
             }
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -199,7 +203,8 @@
             "stacking": {
               "mode": "normal"
             }
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -231,7 +236,8 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -263,7 +269,8 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }

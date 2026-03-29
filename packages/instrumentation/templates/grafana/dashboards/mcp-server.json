@@ -46,7 +46,8 @@
                 "value": 100
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -89,7 +90,8 @@
                 "value": 2000
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -132,7 +134,8 @@
                 "value": 0.1
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -167,7 +170,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -201,7 +205,8 @@
             "fillOpacity": 15,
             "pointSize": 5,
             "showPoints": "auto"
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       },
@@ -250,7 +255,8 @@
             "fillOpacity": 10,
             "pointSize": 5,
             "showPoints": "auto"
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       },
@@ -297,7 +303,8 @@
           },
           "color": {
             "mode": "palette-classic"
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       },
@@ -341,7 +348,8 @@
             "fillOpacity": 15,
             "pointSize": 5,
             "showPoints": "auto"
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       },
@@ -423,7 +431,8 @@
         "defaults": {
           "custom": {
             "align": "center"
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": [
           {

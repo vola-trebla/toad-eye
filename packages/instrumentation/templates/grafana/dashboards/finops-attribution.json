@@ -45,7 +45,8 @@
                 "value": 500
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -88,7 +89,8 @@
                 "value": 1000
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -114,7 +116,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -141,7 +144,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
-          "decimals": 4
+          "decimals": 4,
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -173,6 +177,11 @@
           "values": ["value", "percent"]
         },
         "pieType": "donut"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
       }
     },
     {
@@ -197,6 +206,11 @@
       ],
       "options": {
         "stacking": "normal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
       }
     },
     {
@@ -230,7 +244,12 @@
             }
           }
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
+      }
     },
     {
       "title": "Top 10 Users by Cost",
@@ -263,7 +282,12 @@
             }
           }
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
+      }
     },
     {
       "title": "Daily Cost Trend (by Team)",
@@ -298,7 +322,8 @@
             "stacking": {
               "mode": "normal"
             }
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -342,7 +367,12 @@
             }
           }
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
+      }
     }
   ],
   "schemaVersion": 39,

@@ -83,7 +83,8 @@
                 }
               }
             }
-          ]
+          ],
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -113,7 +114,8 @@
           "unit": "reqps",
           "custom": {
             "fillOpacity": 15
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -160,7 +162,8 @@
                 "value": 0.5
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -193,7 +196,8 @@
             "stacking": {
               "mode": "normal"
             }
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -241,7 +245,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
-          "decimals": 2
+          "decimals": 2,
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
