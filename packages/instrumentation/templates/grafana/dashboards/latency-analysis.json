@@ -45,7 +45,8 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -76,7 +77,8 @@
           "unit": "ms",
           "custom": {
             "fillOpacity": 50
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -108,7 +110,8 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -140,7 +143,8 @@
             "drawStyle": "line",
             "fillOpacity": 15,
             "lineWidth": 2
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }

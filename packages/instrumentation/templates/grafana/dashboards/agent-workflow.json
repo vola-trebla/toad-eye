@@ -46,7 +46,8 @@
                 "value": 20
               }
             ]
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -72,7 +73,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -98,7 +100,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -124,7 +127,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -157,6 +161,11 @@
           "values": ["value", "percent"]
         },
         "pieType": "donut"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
       }
     },
     {
@@ -179,7 +188,12 @@
           "legendFormat": "{{gen_ai_tool_name}}",
           "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data yet — run: npx toad-eye demo"
+        }
+      }
     },
     {
       "title": "Steps per Query Over Time",
@@ -211,7 +225,8 @@
           "unit": "short",
           "custom": {
             "fillOpacity": 10
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -244,7 +259,8 @@
             "stacking": {
               "mode": "normal"
             }
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }
@@ -274,7 +290,8 @@
         "defaults": {
           "custom": {
             "fillOpacity": 80
-          }
+          },
+          "noValue": "No data yet — run: npx toad-eye demo"
         },
         "overrides": []
       }

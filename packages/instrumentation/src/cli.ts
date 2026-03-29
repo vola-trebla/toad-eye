@@ -116,9 +116,12 @@ function up() {
   });
   console.log();
   status();
+  console.log("   Dashboards will be empty until data arrives.\n");
+  console.log("   Next steps:");
   console.log(
-    "   Run 'npx toad-eye demo' to send test data and verify the stack works.",
+    "     npx toad-eye demo          ← send mock traffic, see data in Grafana",
   );
+  console.log("     or add toad-eye to your app  (see README)");
 }
 
 function down() {
@@ -255,16 +258,31 @@ async function demo() {
 
   console.log("🐸👁️ toad-eye demo — sending mock LLM traffic");
   console.log("    Press Ctrl+C to stop\n");
-  console.log("✅ Stack verified! Add this to your app:\n");
-  console.log(
-    "   import { initObservability } from 'toad-eye';\n   initObservability({ serviceName: 'my-app', instrument: ['openai'] });\n",
-  );
 
   process.on("SIGINT", async () => {
     console.log("\n\u{1f44b} Shutting down...");
     await shutdown();
     process.exit(0);
   });
+
+  let opened = false;
+  function openGrafana() {
+    if (opened) return;
+    opened = true;
+    const url = "http://localhost:3100";
+    const cmd =
+      process.platform === "darwin"
+        ? "open"
+        : process.platform === "win32"
+          ? "start"
+          : "xdg-open";
+    try {
+      spawn(cmd, [url], { detached: true, stdio: "ignore" }).unref();
+      console.log(`\n  📊 Opened Grafana: ${url}\n`);
+    } catch {
+      console.log(`\n  📊 Open Grafana: ${url} (admin/admin)\n`);
+    }
+  }
 
   const tick = async () => {
     const { provider, model } = pickRandom(DEMO_MODELS);
@@ -275,6 +293,7 @@ async function demo() {
         simulateLLMCall(provider, model, prompt),
       );
       console.log(`  \u2705 [${provider}/${model}] ${prompt}`);
+      openGrafana();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(`  \u274c [${provider}/${model}] ${msg}`);
