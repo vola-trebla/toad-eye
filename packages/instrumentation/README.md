@@ -137,28 +137,48 @@ import { toadEyeMiddleware } from "toad-eye/mcp";
 initObservability({ serviceName: "my-mcp-server" });
 
 const server = new McpServer({ name: "my-server", version: "1.0.0" });
-toadEyeMiddleware(server); // every tool call, resource read, prompt — traced
+const dispose = toadEyeMiddleware(server); // every tool call, resource read, prompt — traced
 
 server.tool("calculate", { expression: z.string() }, async ({ expression }) => {
   return { content: [{ type: "text", text: String(eval(expression)) }] };
 });
+
+// On shutdown — decrements the active session counter
+dispose();
 ```
 
 Spans follow [OTel MCP semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/): `tools/call calculate`, `resources/read file:///docs`, `prompts/get greeting`.
 
 Every span includes: `mcp.method.name`, `mcp.session.id`, `mcp.protocol.version`, `network.transport`.
 
-Privacy by default — tool arguments and results are NOT recorded unless you opt in:
+Privacy by default — tool arguments and results are NOT recorded unless you opt in. Redaction is recursive (nested keys are also redacted):
 
 ```typescript
 toadEyeMiddleware(server, {
   recordInputs: true,
   recordOutputs: true,
-  redactKeys: ["apiKey", "token"],
+  redactKeys: ["apiKey", "token"], // works on nested objects too
 });
 ```
 
-Dedicated MCP dashboard in Grafana: tool call rate, duration p50/p95, error rate, resource reads, tool performance table.
+### End-to-end distributed tracing
+
+Instrument the MCP client to get full traces: LLM call → MCP tool call → tool execution → response, all linked in one trace.
+
+```typescript
+import { initObservability } from "toad-eye";
+import { enableMcpClientInstrumentation } from "toad-eye/mcp";
+
+initObservability({
+  serviceName: "my-agent",
+  instrument: ["mcp"], // auto-instrument MCP servers
+});
+enableMcpClientInstrumentation(); // patches Client.prototype for client spans
+```
+
+The client injects W3C `traceparent` into MCP `_meta` — the server middleware extracts it to link client and server spans. Works with both stdio and Streamable HTTP transports.
+
+3 dedicated MCP dashboards in Grafana: MCP Server (tool metrics), MCP End-to-End (latency breakdown, error propagation), MCP Tool Analytics (popularity, cost attribution).
 
 > Safe for stdio transport — OTel diagnostics are redirected to stderr.
 >
@@ -501,4 +521,4 @@ Set `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` to disable deprec
 - TypeScript, OpenTelemetry SDK 2.x, OTel GenAI semantic conventions
 - Hono (demo server + cloud ingestion server)
 - Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector)
-- Vitest (252+ tests)
+- Vitest (273+ tests)
