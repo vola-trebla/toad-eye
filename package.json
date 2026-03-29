@@ -16,6 +16,7 @@
     "load": "npm run load --workspace=demo",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "validate:dashboards": "npx tsx scripts/validate-dashboards.ts",
     "prepare": "husky"
   },
   "author": "albertalov",
