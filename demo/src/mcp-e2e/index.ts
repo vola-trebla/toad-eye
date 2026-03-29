@@ -28,8 +28,8 @@ initObservability({
   endpoint: process.env["OTEL_EXPORTER_ENDPOINT"] ?? "http://localhost:4318",
 });
 
-// Enable client-side instrumentation (patches Client.prototype)
-enableMcpClientInstrumentation();
+// Enable client-side instrumentation (pass Client class for ESM compatibility)
+enableMcpClientInstrumentation(Client);
 
 // --- Create MCP Server with tools ---
 
