@@ -33,6 +33,8 @@ export const GEN_AI_METRICS = {
   // Context utilization
   CONTEXT_UTILIZATION: "gen_ai.toad_eye.context_utilization",
   CONTEXT_BLOCKED: "gen_ai.toad_eye.context.blocked",
+  // Thinking/reasoning models
+  THINKING_RATIO: "gen_ai.toad_eye.thinking.ratio",
   // MCP metrics
   MCP_TOOL_DURATION: "gen_ai.mcp.tool.duration",
   MCP_TOOL_CALLS: "gen_ai.mcp.tool.calls",

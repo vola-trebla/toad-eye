@@ -15,6 +15,7 @@ import {
   recordResponseLatencyPerToken,
   recordContextUtilization,
   recordContextBlocked,
+  recordThinkingRatio,
 } from "./metrics.js";
 import { getConfig, getBudgetTracker } from "./tracer.js";
 import { calculateCost, getModelPricing } from "./pricing.js";
@@ -39,6 +40,10 @@ export interface LLMCallOutput {
   readonly outputTokens: number;
   /** Cost in USD. If omitted, auto-calculated from model pricing table. */
   readonly cost?: number | undefined;
+  /** Thinking/reasoning content from thinking models (o1, Claude extended thinking, Gemini). */
+  readonly thinkingContent?: string | undefined;
+  /** Thinking/reasoning tokens used (separate from outputTokens). */
+  readonly thinkingTokens?: number | undefined;
 }
 
 const tracer = trace.getTracer(INSTRUMENTATION_NAME);
@@ -194,6 +199,32 @@ function setSuccessAttributes(
     [GEN_AI_ATTRS.STATUS]: "success",
     [GEN_AI_ATTRS.FINISH_REASONS]: ["stop"],
   });
+
+  // Thinking model support (o1, Claude extended thinking, Gemini)
+  if (output.thinkingTokens !== undefined && output.thinkingTokens > 0) {
+    span.setAttribute("gen_ai.usage.reasoning_tokens", output.thinkingTokens);
+    const ratio =
+      output.thinkingTokens / (output.outputTokens + output.thinkingTokens);
+    span.setAttribute("gen_ai.toad_eye.thinking.ratio", ratio);
+    recordThinkingRatio(ratio, input.provider, input.model);
+  }
+  if (output.thinkingContent !== undefined) {
+    const config = getConfig();
+    const recordThinking = config?.recordContent !== false;
+    if (recordThinking) {
+      const processed = processContent(output.thinkingContent);
+      if (processed !== undefined) {
+        span.addEvent("gen_ai.thinking", {
+          "gen_ai.toad_eye.thinking.content": processed,
+        });
+      }
+    }
+    span.setAttribute(
+      "gen_ai.toad_eye.thinking.content_length",
+      output.thinkingContent.length,
+    );
+  }
+
   span.setStatus({ code: SpanStatusCode.OK });
 }
 
