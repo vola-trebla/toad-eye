@@ -50,17 +50,33 @@ function injectTraceContext(
   return params;
 }
 
-export function enableMcpClientInstrumentation(): boolean {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveClientClass(): any {
+  // Try CJS first (works when consumer uses require)
   try {
-    require.resolve("@modelcontextprotocol/sdk/client/index.js");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sdk = require("@modelcontextprotocol/sdk/client/index.js");
+    return sdk.Client ?? sdk.default?.Client;
   } catch {
-    return false;
+    // CJS failed — will try ESM in async path
+    return null;
   }
+}
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const sdk = require("@modelcontextprotocol/sdk/client/index.js");
-  const Client = sdk.Client ?? sdk.default?.Client;
+/**
+ * Enable MCP client instrumentation by auto-resolving the Client class.
+ * Works in CJS projects. For ESM projects, prefer passing the Client class directly.
+ */
+export function enableMcpClientInstrumentation(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ClientClass?: any,
+): boolean {
+  const Client = ClientClass ?? resolveClientClass();
+  return Client ? patchClient(Client) : false;
+}
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function patchClient(Client: any): boolean {
   if (!Client?.prototype) return false;
   if (Client.prototype[PATCHED_FLAG]) return true;
 
