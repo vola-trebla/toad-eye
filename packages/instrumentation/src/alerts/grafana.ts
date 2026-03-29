@@ -17,6 +17,7 @@ export async function postGrafanaAnnotation(
   const res = await fetch(`${grafanaUrl}/api/annotations`, {
     method: "POST",
     headers,
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({
       time: Date.now(),
       tags: ["toad-eye", "alert", alert.name],

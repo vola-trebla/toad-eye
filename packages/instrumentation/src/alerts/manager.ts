@@ -19,6 +19,7 @@ export class AlertManager {
   }
 
   start() {
+    if (this.intervalId !== undefined) return;
     const configured =
       this.config.evalIntervalSeconds ?? DEFAULT_EVAL_INTERVAL_SECONDS;
     const clampedSeconds = Math.max(configured, MIN_EVAL_INTERVAL_SECONDS);

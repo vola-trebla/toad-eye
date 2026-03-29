@@ -134,7 +134,7 @@ async function queryScalar(
   promql: string,
 ): Promise<number> {
   const url = `${prometheusUrl}/api/v1/query?query=${encodeURIComponent(promql)}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok)
     throw new Error(`Prometheus query failed: ${res.status} ${res.statusText}`);
   const data = (await res.json()) as {
@@ -151,7 +151,7 @@ async function queryTopModels(
 ): Promise<Array<{ model: string; value: number }>> {
   const promql = buildTopModelsQuery(metric, window);
   const url = `${prometheusUrl}/api/v1/query?query=${encodeURIComponent(promql)}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) return [];
   const labelKey = isMcpMetric(metric)
     ? "gen_ai_tool_name"
