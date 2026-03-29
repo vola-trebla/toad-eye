@@ -38,7 +38,7 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-toadEyeMiddleware(server, {
+const dispose = toadEyeMiddleware(server, {
   recordInputs: true,
   recordOutputs: true,
 });
@@ -133,6 +133,7 @@ async function main() {
 
   // Clean up
   await client.close();
+  dispose();
   await new Promise((r) => setTimeout(r, 2000));
   await shutdown();
 }

@@ -28,8 +28,9 @@ initObservability({
   endpoint: process.env["OTEL_EXPORTER_ENDPOINT"] ?? "http://localhost:4318",
 });
 
-// Track sessions
+// Track sessions and dispose handles
 const transports = new Map<string, StreamableHTTPServerTransport>();
+const disposeHandles = new Map<string, () => void>();
 
 function createMcpServer() {
   const server = new McpServer({
@@ -37,7 +38,7 @@ function createMcpServer() {
     version: "1.0.0",
   });
 
-  toadEyeMiddleware(server, {
+  const dispose = toadEyeMiddleware(server, {
     recordInputs: true,
     recordOutputs: true,
   });
@@ -63,7 +64,7 @@ function createMcpServer() {
     ],
   }));
 
-  return server;
+  return { server, dispose };
 }
 
 const httpServer = createServer(async (req, res) => {
@@ -90,7 +91,20 @@ const httpServer = createServer(async (req, res) => {
   // POST — tool calls and initialize
   if (req.method === "POST") {
     const body = await readBody(req);
-    const parsed = JSON.parse(body);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32700, message: "Parse error" },
+          id: null,
+        }),
+      );
+      return;
+    }
 
     if (sessionId && transports.has(sessionId)) {
       await transports.get(sessionId)!.handleRequest(req, res, parsed);
@@ -109,13 +123,16 @@ const httpServer = createServer(async (req, res) => {
       transport.onclose = () => {
         if (transport.sessionId) {
           transports.delete(transport.sessionId);
+          disposeHandles.get(transport.sessionId)?.();
+          disposeHandles.delete(transport.sessionId);
           console.error(`  Session closed: ${transport.sessionId}`);
         }
       };
 
-      const server = createMcpServer();
+      const { server, dispose } = createMcpServer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await server.connect(transport as any);
+      if (transport.sessionId) disposeHandles.set(transport.sessionId, dispose);
       await transport.handleRequest(req, res, parsed);
       return;
     }
@@ -157,10 +174,21 @@ const httpServer = createServer(async (req, res) => {
   res.end("Method Not Allowed");
 });
 
+const MAX_BODY_BYTES = 1_048_576; // 1 MB
+
 function readBody(req: import("node:http").IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error("Body too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks).toString()));
     req.on("error", reject);
   });
