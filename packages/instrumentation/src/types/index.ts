@@ -13,6 +13,10 @@ export const INSTRUMENTATION_NAME = "toad-eye";
 
 export type { LLMProvider, InstrumentTarget } from "./providers.js";
 export type { ToadEyeConfig, SamplingConfig } from "./config.js";
+export type {
+  SpanEndData,
+  OnSpanEndCallback,
+} from "../core/span-end-processor.js";
 export { GEN_AI_ATTRS, LLM_ATTRS } from "./attributes.js";
 export { GEN_AI_METRICS, LLM_METRICS } from "./metrics.js";
 export type { MetricName } from "./metrics.js";

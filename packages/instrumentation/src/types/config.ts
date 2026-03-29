@@ -4,6 +4,7 @@ import type {
   BudgetExceededMode,
   DowngradeCallback,
 } from "../budget/types.js";
+import type { OnSpanEndCallback } from "../core/span-end-processor.js";
 
 /** Sampling configuration. Tail sampling runs in OTel Collector, SDK sends all spans. */
 export interface SamplingConfig {
@@ -86,4 +87,8 @@ export interface ToadEyeConfig {
   readonly sessionId?: string | undefined;
   /** Dynamic session ID extractor — called per traceLLMCall to resolve session ID. */
   readonly sessionExtractor?: (() => string | undefined) | undefined;
+
+  // Eval hooks
+  /** Callback invoked when any span ends. Receives structured span data for eval pipelines. */
+  readonly onSpanEnd?: OnSpanEndCallback | undefined;
 }

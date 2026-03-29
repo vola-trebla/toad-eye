@@ -69,3 +69,7 @@ export { LLM_METRICS } from "./types/index.js";
 /** @deprecated Use GEN_AI_ATTRS instead */
 export { LLM_ATTRS } from "./types/index.js";
 export { ToadEyeAISpanProcessor, withToadEye } from "./vercel.js";
+export type {
+  SpanEndData,
+  OnSpanEndCallback,
+} from "./core/span-end-processor.js";

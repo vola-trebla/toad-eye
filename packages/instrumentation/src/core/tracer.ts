@@ -24,6 +24,7 @@ import {
 import { resetMcpMetrics } from "../mcp/metrics.js";
 import { BudgetTracker } from "../budget/index.js";
 import { ToadEyeAISpanProcessor } from "../vercel.js";
+import { ToadEyeSpanEndProcessor } from "./span-end-processor.js";
 import type { LLMProvider } from "../types/index.js";
 
 const DEFAULT_ENDPOINT = "http://localhost:4318";
@@ -118,11 +119,22 @@ export function initObservability(config: ToadEyeConfig) {
     exportIntervalMillis: isCloudMode ? 10_000 : 5_000,
   });
 
-  // When custom SpanProcessors are needed (e.g., Vercel AI SDK),
+  // When custom SpanProcessors are needed (e.g., Vercel AI SDK, onSpanEnd),
   // we must also include a BatchSpanProcessor for trace export —
   // NodeSDK won't create one automatically when spanProcessors is provided.
-  const spanProcessors = config.instrument?.includes("ai")
-    ? [new BatchSpanProcessor(traceExporter), new ToadEyeAISpanProcessor()]
+  const needsCustomProcessors =
+    config.instrument?.includes("ai") || config.onSpanEnd !== undefined;
+
+  const spanProcessors = needsCustomProcessors
+    ? [
+        new BatchSpanProcessor(traceExporter),
+        ...(config.instrument?.includes("ai")
+          ? [new ToadEyeAISpanProcessor()]
+          : []),
+        ...(config.onSpanEnd !== undefined
+          ? [new ToadEyeSpanEndProcessor(config.onSpanEnd)]
+          : []),
+      ]
     : [];
 
   // SDK-side head sampling (default: 1.0 = send everything to Collector)
