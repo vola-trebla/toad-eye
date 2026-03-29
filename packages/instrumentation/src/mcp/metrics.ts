@@ -21,6 +21,7 @@ const METER_NAME = "toad-eye-mcp";
 let toolDuration: Histogram;
 let toolCalls: Counter;
 let toolErrors: Counter;
+let toolHallucinations: Counter;
 let resourceReads: Counter;
 let sessionActive: UpDownCounter;
 let toolCallers: Counter;
@@ -45,6 +46,13 @@ function ensureInit() {
   toolErrors = meter.createCounter(GEN_AI_METRICS.MCP_TOOL_ERRORS, {
     description: "MCP tool errors by tool name and error type",
   });
+
+  toolHallucinations = meter.createCounter(
+    GEN_AI_METRICS.MCP_TOOL_HALLUCINATIONS,
+    {
+      description: "Agent tried to call a non-existent tool (JSON-RPC -32601)",
+    },
+  );
 
   resourceReads = meter.createCounter(GEN_AI_METRICS.MCP_RESOURCE_READS, {
     description: "MCP resource read count by URI",
@@ -104,6 +112,14 @@ export function recordMcpResourceRead(uri: string) {
 export function recordMcpSessionStart() {
   ensureInit();
   sessionActive.add(1);
+}
+
+export function recordMcpToolHallucination(toolName: string) {
+  ensureInit();
+  toolHallucinations.add(1, {
+    "gen_ai.tool.name": toolName,
+    "mcp.method.name": MCP_METHODS.TOOLS_CALL,
+  });
 }
 
 export function recordMcpSessionEnd() {

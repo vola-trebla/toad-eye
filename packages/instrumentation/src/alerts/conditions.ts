@@ -14,6 +14,7 @@ const METRIC_MAP: Record<string, string> = {
   "gen_ai.mcp.tool.duration": "gen_ai_mcp_tool_duration",
   "gen_ai.mcp.resource.reads": "gen_ai_mcp_resource_reads_total",
   "gen_ai.mcp.tool.callers": "gen_ai_mcp_tool_callers_total",
+  "gen_ai.mcp.tool.hallucinations": "gen_ai_mcp_tool_hallucinations_total",
   // Legacy names (backward compat)
   "llm.request.cost": "gen_ai_client_request_cost_USD_sum",
   "llm.request.duration": "gen_ai_client_operation_duration_milliseconds",
