@@ -419,6 +419,7 @@
     "from": "now-7d",
     "to": "now"
   },
+  "refresh": "1m",
   "timepicker": {},
   "timezone": "utc",
   "title": "toad-eye / FinOps Attribution",

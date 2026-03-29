@@ -166,7 +166,7 @@
       }
     },
     {
-      "title": "Error Breakdown by Type",
+      "title": "Error Breakdown by Model",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -180,8 +180,8 @@
       },
       "targets": [
         {
-          "expr": "sum by (gen_ai_provider_name, error_type) (rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\"}[5m]))",
-          "legendFormat": "{{gen_ai_provider_name}} — {{error_type}}",
+          "expr": "sum by (gen_ai_provider_name, gen_ai_request_model) (rate(gen_ai_client_errors_total{job=~\"$service\", gen_ai_provider_name=~\"$provider\"}[5m]))",
+          "legendFormat": "{{gen_ai_provider_name}} — {{gen_ai_request_model}}",
           "refId": "A"
         }
       ],
@@ -276,6 +276,7 @@
         },
         "query": "label_values(gen_ai_client_requests_total, gen_ai_provider_name)",
         "includeAll": true,
+        "allValue": ".*",
         "multi": true,
         "current": {
           "text": "All",
@@ -289,6 +290,7 @@
     "from": "now-6h",
     "to": "now"
   },
+  "refresh": "30s",
   "timepicker": {},
   "timezone": "utc",
   "title": "toad-eye / Provider Health",

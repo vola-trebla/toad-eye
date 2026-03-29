@@ -118,7 +118,7 @@
       },
       "targets": [
         {
-          "expr": "count(count by (gen_ai_agent_tool_name) (gen_ai_agent_tool_usage_total))",
+          "expr": "count(count by (gen_ai_tool_name) (gen_ai_agent_tool_usage_total))",
           "refId": "A"
         }
       ],
@@ -175,8 +175,8 @@
       },
       "targets": [
         {
-          "expr": "sort_desc(sum by (gen_ai_agent_tool_name) (gen_ai_agent_tool_usage_total))",
-          "legendFormat": "{{gen_ai_agent_tool_name}}",
+          "expr": "sort_desc(sum by (gen_ai_tool_name) (gen_ai_agent_tool_usage_total))",
+          "legendFormat": "{{gen_ai_tool_name}}",
           "refId": "A"
         }
       ]
@@ -231,8 +231,8 @@
       },
       "targets": [
         {
-          "expr": "sum by (gen_ai_agent_tool_name) (rate(gen_ai_agent_tool_usage_total[5m]))",
-          "legendFormat": "{{gen_ai_agent_tool_name}}",
+          "expr": "sum by (gen_ai_tool_name) (rate(gen_ai_agent_tool_usage_total[5m]))",
+          "legendFormat": "{{gen_ai_tool_name}}",
           "refId": "A"
         }
       ],
@@ -283,45 +283,13 @@
   "schemaVersion": 39,
   "tags": ["toad-eye", "agent"],
   "templating": {
-    "list": [
-      {
-        "name": "service",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": "label_values(gen_ai_client_requests_total, job)",
-        "includeAll": true,
-        "allValue": ".*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "multi": true
-      },
-      {
-        "name": "tool",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": "label_values(gen_ai_agent_tool_usage_total, gen_ai_agent_tool_name)",
-        "includeAll": true,
-        "multi": true,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "regex": ""
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-6h",
     "to": "now"
   },
+  "refresh": "30s",
   "timepicker": {},
   "timezone": "utc",
   "title": "toad-eye / Agent Workflow",

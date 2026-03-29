@@ -43,7 +43,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_operation_duration_sum[5m])) / sum(rate(gen_ai_client_operation_duration_count[5m])) or vector(0)",
+          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_sum[5m])) / sum(rate(gen_ai_client_operation_duration_milliseconds_count[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -124,7 +124,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(gen_ai_client_operation_duration_sum[5m])) / sum(rate(gen_ai_client_operation_duration_count[5m]))",
+          "expr": "sum(rate(gen_ai_client_operation_duration_milliseconds_sum[5m])) / sum(rate(gen_ai_client_operation_duration_milliseconds_count[5m]))",
           "legendFormat": "LLM Avg Latency",
           "refId": "A"
         },
@@ -315,6 +315,7 @@
     "from": "now-1h",
     "to": "now"
   },
+  "refresh": "30s",
   "timepicker": {},
   "timezone": "browser",
   "title": "MCP End-to-End",
