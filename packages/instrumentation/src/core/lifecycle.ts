@@ -77,7 +77,7 @@ export interface SuccessMetricsInput {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly completion: string;
-  readonly attrs?: Readonly<Record<string, string>>;
+  readonly attrs?: Readonly<Record<string, string>> | undefined;
 }
 
 /**
