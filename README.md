@@ -72,7 +72,9 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin). 11 dashboar
 
 > **Requires:** [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine + Compose plugin)
 
-<!-- TODO: add Grafana dashboard screenshot here -->
+![Grafana MCP Server Dashboard](demo/grafana-mcp-dashboard.png)
+
+![Jaeger E2E Trace](demo/jaeger-e2e-trace.png)
 
 ## Why toad-eye
 
