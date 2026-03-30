@@ -2,24 +2,16 @@ import { createHash } from "node:crypto";
 import { trace, type Span, SpanStatusCode } from "@opentelemetry/api";
 import type { LLMSpanAttributes, LLMProvider } from "../types/index.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
+import { recordThinkingRatio } from "./metrics.js";
+import { getConfig } from "./tracer.js";
+import { calculateCost } from "./pricing.js";
 import {
-  recordRequestDuration,
-  recordRequestCost,
-  recordTokens,
-  recordRequest,
-  recordError,
-  recordBudgetExceeded,
-  recordBudgetBlocked,
-  recordBudgetDowngraded,
-  recordResponseEmpty,
-  recordResponseLatencyPerToken,
-  recordContextUtilization,
-  recordContextBlocked,
-  recordThinkingRatio,
-} from "./metrics.js";
-import { getConfig, getBudgetTracker } from "./tracer.js";
-import { calculateCost, getModelPricing } from "./pricing.js";
-import { ToadBudgetExceededError } from "../budget/index.js";
+  performBudgetPreCheck,
+  recordSuccessMetrics,
+  evaluateContextGuard,
+  recordBudgetPostCheck,
+  handleErrorMetrics,
+} from "./lifecycle.js";
 
 /** Input for traceLLMCall — what the user knows before calling the LLM */
 export interface LLMCallInput {
@@ -173,16 +165,6 @@ function setBaseAttributes(span: Span, input: LLMCallInput) {
   });
 }
 
-function recordBaseMetrics(
-  duration: number,
-  provider: string,
-  model: string,
-  attrs?: Record<string, string>,
-) {
-  recordRequest(provider, model, attrs);
-  recordRequestDuration(duration, provider, model, attrs);
-}
-
 function setSuccessAttributes(
   span: Span,
   input: LLMCallInput,
@@ -253,32 +235,18 @@ export async function traceLLMCall(
     );
   }
 
-  const budget = getBudgetTracker();
-  let effectiveInput = input;
+  const userId = input.attributes?.[GEN_AI_ATTRS.USER_ID];
+  const { effectiveProvider, effectiveModel, estimatedCost, budget } =
+    performBudgetPreCheck(input.provider, input.model, userId);
 
-  // Estimated cost for reservation — reduces race window for concurrent requests.
-  // Uses conservative token estimates; actual cost is reconciled in recordCost.
-  const estimatedCost = budget ? calculateCost(input.model, 500, 200) : 0;
-
-  // Budget check BEFORE the LLM call
-  if (budget) {
-    const userId = input.attributes?.[GEN_AI_ATTRS.USER_ID];
-    const override = budget.checkBefore(
-      input.provider,
-      input.model,
-      userId,
-      estimatedCost,
-    );
-    if (override) {
-      // Downgrade mode — use modified provider/model
-      effectiveInput = {
-        ...input,
-        provider: override.provider as LLMSpanAttributes["provider"],
-        model: override.model,
-      };
-      recordBudgetDowngraded(override.budget);
-    }
-  }
+  const effectiveInput =
+    effectiveProvider !== input.provider || effectiveModel !== input.model
+      ? {
+          ...input,
+          provider: effectiveProvider as LLMSpanAttributes["provider"],
+          model: effectiveModel,
+        }
+      : input;
 
   const op = effectiveInput.operationName ?? "chat";
 
@@ -301,121 +269,48 @@ export async function traceLLMCall(
           );
 
         setSuccessAttributes(span, effectiveInput, output, resolvedCost);
-        recordBaseMetrics(
+
+        recordSuccessMetrics({
           duration,
-          effectiveInput.provider,
-          effectiveInput.model,
+          provider: effectiveInput.provider,
+          model: effectiveInput.model,
+          cost: resolvedCost,
+          inputTokens: output.inputTokens,
+          outputTokens: output.outputTokens,
+          completion: output.completion,
           attrs,
+        });
+
+        evaluateContextGuard(
+          span,
+          effectiveInput.model,
+          effectiveInput.provider,
+          output.inputTokens,
         );
-        recordRequestCost(
+
+        recordBudgetPostCheck(
+          budget,
           resolvedCost,
-          effectiveInput.provider,
           effectiveInput.model,
-          attrs,
+          effectiveInput.attributes?.[GEN_AI_ATTRS.USER_ID],
+          estimatedCost,
         );
-        recordTokens(
-          output.inputTokens + output.outputTokens,
-          effectiveInput.provider,
-          effectiveInput.model,
-          attrs,
-        );
-
-        // Proxy quality metrics — no extra dependencies, response text analysis only
-        if (output.completion.trim() === "") {
-          recordResponseEmpty(
-            effectiveInput.provider,
-            effectiveInput.model,
-            attrs,
-          );
-        }
-        if (output.outputTokens > 0) {
-          recordResponseLatencyPerToken(
-            duration / output.outputTokens,
-            effectiveInput.provider,
-            effectiveInput.model,
-            attrs,
-          );
-        }
-
-        // Context window utilization — ratio of input tokens to model's max context
-        const pricing = getModelPricing(effectiveInput.model);
-        if (pricing?.maxContextTokens && output.inputTokens > 0) {
-          const utilization = output.inputTokens / pricing.maxContextTokens;
-          span.setAttribute(GEN_AI_ATTRS.CONTEXT_UTILIZATION, utilization);
-          recordContextUtilization(
-            utilization,
-            effectiveInput.provider,
-            effectiveInput.model,
-          );
-
-          // Context guard — post-call warning when approaching limit.
-          // This warns about the CURRENT call's context usage so agents
-          // can compress context before the NEXT call.
-          const guard = getConfig()?.contextGuard;
-          if (guard) {
-            if (guard.alertAt !== undefined && utilization >= guard.alertAt) {
-              recordContextBlocked(effectiveInput.model);
-              span.addEvent("gen_ai.context.limit_exceeded", {
-                "gen_ai.toad_eye.context_utilization": utilization,
-                "gen_ai.toad_eye.context.threshold": guard.alertAt,
-              });
-              console.warn(
-                `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveInput.model} — exceeds alertAt threshold ${(guard.alertAt * 100).toFixed(0)}%. Compress context before next call.`,
-              );
-            } else if (
-              guard.warnAt !== undefined &&
-              utilization >= guard.warnAt
-            ) {
-              console.warn(
-                `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveInput.model} (${output.inputTokens}/${pricing.maxContextTokens} tokens)`,
-              );
-            }
-          }
-        }
-
-        // Budget recording AFTER the call — releases the cost reservation
-        if (budget) {
-          const userId = effectiveInput.attributes?.[GEN_AI_ATTRS.USER_ID];
-          const exceeded = budget.recordCost(
-            resolvedCost,
-            effectiveInput.model,
-            userId,
-            estimatedCost,
-          );
-          if (exceeded) {
-            recordBudgetExceeded(exceeded.budget);
-            console.warn(
-              `toad-eye: ${exceeded.budget} budget exceeded — limit $${exceeded.limit}, current $${exceeded.current.toFixed(2)}`,
-            );
-          }
-        }
 
         return output;
       } catch (error) {
         const duration = performance.now() - start;
         const message = error instanceof Error ? error.message : String(error);
-        const attrs = resolveAttributes(effectiveInput);
 
         setErrorAttributes(span, message);
-        recordBaseMetrics(
+        handleErrorMetrics(
+          error,
           duration,
           effectiveInput.provider,
           effectiveInput.model,
-          attrs,
+          budget,
+          estimatedCost,
+          resolveAttributes(effectiveInput),
         );
-
-        // Release cost reservation on any error (no cost was incurred)
-        if (budget) {
-          budget.releaseReservation(estimatedCost);
-        }
-
-        if (error instanceof ToadBudgetExceededError) {
-          // Budget blocks are intentional guardrails, not errors — record
-          // only the budget-specific metric to avoid inflating error rate
-          recordBudgetBlocked(error.budget);
-        } else {
-          recordError(effectiveInput.provider, effectiveInput.model, attrs);
-        }
 
         throw error;
       } finally {
