@@ -9,7 +9,7 @@ import {
 import { traceLLMCall, processContent } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
 import { calculateCost } from "../core/pricing.js";
-import { recordTimeToFirstToken } from "../core/metrics.js";
+import { recordTimeToFirstToken, recordError } from "../core/metrics.js";
 import { getConfig } from "../core/tracer.js";
 import {
   performBudgetPreCheck,
@@ -133,12 +133,17 @@ function createStreamingHandler(
     const sessionId = config?.sessionExtractor?.() ?? config?.sessionId;
     let ttftMs = 0;
 
+    const processedPrompt = processContent(req.prompt);
     span.setAttributes({
       [GEN_AI_ATTRS.PROVIDER]: effectiveProvider,
       [GEN_AI_ATTRS.REQUEST_MODEL]: effectiveModel,
       [GEN_AI_ATTRS.TEMPERATURE]: req.temperature ?? 1.0,
       [GEN_AI_ATTRS.OPERATION]: op,
       ...(sessionId !== undefined && { [GEN_AI_ATTRS.SESSION_ID]: sessionId }),
+      ...(processedPrompt !== undefined && {
+        [GEN_AI_ATTRS.PROMPT]: processedPrompt,
+      }),
+      ...config?.attributes,
     });
 
     let response: unknown;
@@ -150,6 +155,9 @@ function createStreamingHandler(
       const sanitized = processContent(message);
 
       span.setAttributes({
+        [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
+        [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
+        [GEN_AI_ATTRS.COST]: 0,
         [GEN_AI_ATTRS.STATUS]: "error",
         ...(sanitized !== undefined && { [GEN_AI_ATTRS.ERROR]: sanitized }),
       });
@@ -248,6 +256,8 @@ function createStreamingHandler(
             span.setStatus({ code: SpanStatusCode.OK });
           }
 
+          const attrs = config?.attributes;
+
           recordSuccessMetrics({
             duration,
             provider: effectiveProvider,
@@ -256,8 +266,13 @@ function createStreamingHandler(
             inputTokens: acc.inputTokens,
             outputTokens: acc.outputTokens,
             completion: acc.completion,
-            attrs: config?.attributes,
+            attrs,
           });
+
+          // SAFETY finish reason is an error for metrics
+          if (acc.finishReason === "SAFETY") {
+            recordError(effectiveProvider, effectiveModel, attrs);
+          }
 
           evaluateContextGuard(
             span,
@@ -278,8 +293,6 @@ function createStreamingHandler(
             }
           }
 
-          span.end();
-
           recordBudgetPostCheck(
             budget,
             cost,
@@ -287,6 +300,9 @@ function createStreamingHandler(
             userId,
             estimatedCost,
           );
+
+          // span.end() AFTER all span writes including budget post-check
+          span.end();
         },
         (err) => {
           const duration = performance.now() - start;
@@ -294,6 +310,9 @@ function createStreamingHandler(
           const sanitized = processContent(message);
 
           span.setAttributes({
+            [GEN_AI_ATTRS.INPUT_TOKENS]: 0,
+            [GEN_AI_ATTRS.OUTPUT_TOKENS]: 0,
+            [GEN_AI_ATTRS.COST]: 0,
             [GEN_AI_ATTRS.STATUS]: "error",
             ...(sanitized !== undefined && { [GEN_AI_ATTRS.ERROR]: sanitized }),
           });
