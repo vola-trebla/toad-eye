@@ -22,7 +22,9 @@ import {
   recordContextBlocked,
   recordBudgetExceeded,
   recordBudgetDowngraded,
+  recordBudgetBlocked,
 } from "../core/metrics.js";
+import { ToadBudgetExceededError } from "../budget/index.js";
 import { getConfig, getBudgetTracker } from "../core/tracer.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
@@ -172,20 +174,30 @@ function createStreamingHandler(
     } catch (err) {
       const duration = performance.now() - start;
       const message = err instanceof Error ? err.message : String(err);
+      const sanitized = processContent(message); // PII redaction (#309)
 
       // Release budget reservation — no cost was incurred
       if (budget) budget.releaseReservation(estimatedCost);
 
+      const attrs = config?.attributes;
+
       span.setAttributes({
         [GEN_AI_ATTRS.STATUS]: "error",
-        [GEN_AI_ATTRS.ERROR]: message,
+        ...(sanitized !== undefined && { [GEN_AI_ATTRS.ERROR]: sanitized }),
       });
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: sanitized ?? message,
+      });
       span.end();
 
-      recordRequest(effectiveProvider, effectiveModel);
-      recordRequestDuration(duration, effectiveProvider, effectiveModel);
-      recordError(effectiveProvider, effectiveModel);
+      recordRequest(effectiveProvider, effectiveModel, attrs);
+      recordRequestDuration(duration, effectiveProvider, effectiveModel, attrs);
+      if (err instanceof ToadBudgetExceededError) {
+        recordBudgetBlocked(effectiveModel);
+      } else {
+        recordError(effectiveProvider, effectiveModel, attrs);
+      }
       throw err;
     }
 
@@ -265,30 +277,39 @@ function createStreamingHandler(
           } else {
             span.setStatus({ code: SpanStatusCode.OK });
           }
-          span.end();
 
-          recordRequest(effectiveProvider, effectiveModel);
-          recordRequestDuration(duration, effectiveProvider, effectiveModel);
-          recordRequestCost(cost, effectiveProvider, effectiveModel);
+          // Resolve FinOps attrs for metrics (#311)
+          const attrs = config?.attributes;
+
+          recordRequest(effectiveProvider, effectiveModel, attrs);
+          recordRequestDuration(
+            duration,
+            effectiveProvider,
+            effectiveModel,
+            attrs,
+          );
+          recordRequestCost(cost, effectiveProvider, effectiveModel, attrs);
           recordTokens(
             acc.inputTokens + acc.outputTokens,
             effectiveProvider,
             effectiveModel,
+            attrs,
           );
 
           // Quality metrics
           if (acc.completion.trim() === "") {
-            recordResponseEmpty(effectiveProvider, effectiveModel);
+            recordResponseEmpty(effectiveProvider, effectiveModel, attrs);
           }
           if (acc.outputTokens > 0) {
             recordResponseLatencyPerToken(
               duration / acc.outputTokens,
               effectiveProvider,
               effectiveModel,
+              attrs,
             );
           }
 
-          // Context window utilization — ratio of input tokens to model's max context
+          // Context window utilization — BEFORE span.end() (#308)
           const pricing = getModelPricing(effectiveModel);
           if (pricing?.maxContextTokens && acc.inputTokens > 0) {
             const utilization = acc.inputTokens / pricing.maxContextTokens;
@@ -299,7 +320,6 @@ function createStreamingHandler(
               effectiveModel,
             );
 
-            // Context guard — post-stream warning
             const guard = config?.contextGuard;
             if (guard) {
               if (guard.alertAt !== undefined && utilization >= guard.alertAt) {
@@ -322,7 +342,7 @@ function createStreamingHandler(
             }
           }
 
-          // Prefill/decode latency split — TTFT = prefill, rest = decode
+          // Prefill/decode latency split
           if (ttftMs > 0) {
             const decodeMs = duration - ttftMs;
             span.setAttribute("gen_ai.toad_eye.latency.decode_ms", decodeMs);
@@ -334,7 +354,10 @@ function createStreamingHandler(
             }
           }
 
-          // Budget recording — releases the reservation made in checkBefore
+          // span.end() AFTER all attributes are set (#308)
+          span.end();
+
+          // Budget recording
           if (budget) {
             const exceeded = budget.recordCost(
               cost,
@@ -353,20 +376,35 @@ function createStreamingHandler(
         (err) => {
           const duration = performance.now() - start;
           const message = err instanceof Error ? err.message : String(err);
+          const sanitized = processContent(message); // PII redaction (#309)
 
           // Release budget reservation on stream error
           if (budget) budget.releaseReservation(estimatedCost);
 
+          const attrs = config?.attributes;
+
           span.setAttributes({
             [GEN_AI_ATTRS.STATUS]: "error",
-            [GEN_AI_ATTRS.ERROR]: message,
+            ...(sanitized !== undefined && { [GEN_AI_ATTRS.ERROR]: sanitized }),
           });
-          span.setStatus({ code: SpanStatusCode.ERROR, message });
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: sanitized ?? message,
+          });
           span.end();
 
-          recordRequest(effectiveProvider, effectiveModel);
-          recordRequestDuration(duration, effectiveProvider, effectiveModel);
-          recordError(effectiveProvider, effectiveModel);
+          recordRequest(effectiveProvider, effectiveModel, attrs);
+          recordRequestDuration(
+            duration,
+            effectiveProvider,
+            effectiveModel,
+            attrs,
+          );
+          if (err instanceof ToadBudgetExceededError) {
+            recordBudgetBlocked(effectiveModel);
+          } else {
+            recordError(effectiveProvider, effectiveModel, attrs);
+          }
         },
       ),
     );
