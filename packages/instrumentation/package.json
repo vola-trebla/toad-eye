@@ -1,6 +1,6 @@
 {
   "name": "toad-eye",
-  "version": "2.11.2",
+  "version": "2.12.0",
   "description": "Observability for MCP servers and LLM applications — traces, metrics, dashboards. One-line instrumentation for OpenAI, Anthropic, Gemini, and MCP. Self-hosted with Grafana + Prometheus + Jaeger.",
   "type": "module",
   "main": "dist/index.js",

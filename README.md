@@ -74,6 +74,18 @@ Open [localhost:3100](http://localhost:3100) (Grafana, admin/admin). 11 dashboar
 
 <!-- TODO: add Grafana dashboard screenshot here -->
 
+## Why toad-eye
+
+| Feature                      | toad-eye | Sentry MCP | Grafana Cloud (OpenLIT) |
+| ---------------------------- | -------- | ---------- | ----------------------- |
+| TypeScript-native            | ✅       | ✅         | ❌ (Python)             |
+| Self-hosted                  | ✅       | ❌         | ❌                      |
+| MCP E2E tracing              | ✅       | ❌         | ❌                      |
+| MCP-specific metrics         | ✅       | Partial    | Partial                 |
+| Privacy controls             | ✅       | ❌         | ❌                      |
+| Tool hallucination detection | ✅       | ❌         | ❌                      |
+| Budget guards                | ✅       | ❌         | ❌                      |
+
 ## What You Get
 
 **Instrumentation:** auto-instrument OpenAI, Anthropic, Gemini, Vercel AI SDK, and MCP servers — regular and streaming calls, with full cost tracking.
@@ -169,4 +181,4 @@ Full metrics and span attribute reference: [COMPATIBILITY.md](packages/instrumen
 
 ## Tech Stack
 
-TypeScript · OpenTelemetry SDK 2.x · Hono · Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector) · Vitest (285+ tests)
+TypeScript · OpenTelemetry SDK 2.x · Hono · Docker Compose (Prometheus, Jaeger, Grafana, OTel Collector) · Vitest (306+ tests)
