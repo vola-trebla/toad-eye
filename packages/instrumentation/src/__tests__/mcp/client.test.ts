@@ -118,6 +118,33 @@ describe("enableMcpClientInstrumentation", () => {
   });
 });
 
+describe("tool hallucination detection", () => {
+  it("does not throw on -32601 error (hallucination)", async () => {
+    class HallucinatingClient extends MockClient {
+      override async callTool(
+        _params: Record<string, unknown>,
+      ): Promise<never> {
+        const err = new Error("Method not found") as Error & { code: number };
+        err.code = -32601;
+        throw err;
+      }
+    }
+
+    enableMcpClientInstrumentation(HallucinatingClient);
+    const client = new HallucinatingClient();
+
+    await expect(
+      client.callTool({ name: "nonexistent" } as Record<string, unknown>),
+    ).rejects.toThrow("Method not found");
+
+    const span = findSpan("tools/call nonexistent");
+    expect(span).toBeDefined();
+    expect(span!.status.code).toBe(SpanStatusCode.ERROR);
+
+    disableMcpClientInstrumentation();
+  });
+});
+
 // Context propagation round-trip is verified in E2E demo (Jaeger shows
 // CLIENT→SERVER linked spans). Unit testing requires isolated module loading
 // which conflicts with shared prototype state across test cases.
