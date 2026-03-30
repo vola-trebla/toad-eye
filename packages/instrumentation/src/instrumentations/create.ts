@@ -8,24 +8,16 @@ import {
 } from "@opentelemetry/api";
 import { traceLLMCall, processContent } from "../core/spans.js";
 import type { LLMCallOutput } from "../core/spans.js";
-import { calculateCost, getModelPricing } from "../core/pricing.js";
+import { calculateCost } from "../core/pricing.js";
+import { recordTimeToFirstToken } from "../core/metrics.js";
+import { getConfig } from "../core/tracer.js";
 import {
-  recordRequestDuration,
-  recordRequestCost,
-  recordTokens,
-  recordRequest,
-  recordError,
-  recordTimeToFirstToken,
-  recordResponseEmpty,
-  recordResponseLatencyPerToken,
-  recordContextUtilization,
-  recordContextBlocked,
-  recordBudgetExceeded,
-  recordBudgetDowngraded,
-  recordBudgetBlocked,
-} from "../core/metrics.js";
-import { ToadBudgetExceededError } from "../budget/index.js";
-import { getConfig, getBudgetTracker } from "../core/tracer.js";
+  performBudgetPreCheck,
+  recordSuccessMetrics,
+  evaluateContextGuard,
+  recordBudgetPostCheck,
+  handleErrorMetrics,
+} from "../core/lifecycle.js";
 import { GEN_AI_ATTRS, INSTRUMENTATION_NAME } from "../types/index.js";
 import type { LLMProvider } from "../types/index.js";
 import type {
@@ -127,32 +119,13 @@ function createStreamingHandler(
       }
     }
 
-    // Pass thisArg so extractRequest can access instance properties (e.g., Gemini model name)
     const req = patch.extractRequest(body, thisArg);
     const start = performance.now();
-
-    // Budget check BEFORE the LLM call — mirrors traceLLMCall behavior
-    const budget = getBudgetTracker();
     const config = getConfig();
     const userId = config?.attributes?.[GEN_AI_ATTRS.USER_ID];
-    const estimatedCost = budget ? calculateCost(req.model, 500, 200) : 0;
 
-    let effectiveProvider: LLMProvider = providerName;
-    let effectiveModel = req.model;
-
-    if (budget) {
-      const override = budget.checkBefore(
-        providerName,
-        req.model,
-        userId,
-        estimatedCost,
-      );
-      if (override) {
-        effectiveProvider = override.provider as LLMProvider;
-        effectiveModel = override.model;
-        recordBudgetDowngraded(override.budget);
-      }
-    }
+    const { effectiveProvider, effectiveModel, estimatedCost, budget } =
+      performBudgetPreCheck(providerName, req.model, userId);
 
     const op = patch.operationName ?? "chat";
     const span: Span = tracer.startSpan(`${op} ${effectiveModel}`);
@@ -174,12 +147,7 @@ function createStreamingHandler(
     } catch (err) {
       const duration = performance.now() - start;
       const message = err instanceof Error ? err.message : String(err);
-      const sanitized = processContent(message); // PII redaction (#309)
-
-      // Release budget reservation — no cost was incurred
-      if (budget) budget.releaseReservation(estimatedCost);
-
-      const attrs = config?.attributes;
+      const sanitized = processContent(message);
 
       span.setAttributes({
         [GEN_AI_ATTRS.STATUS]: "error",
@@ -191,13 +159,15 @@ function createStreamingHandler(
       });
       span.end();
 
-      recordRequest(effectiveProvider, effectiveModel, attrs);
-      recordRequestDuration(duration, effectiveProvider, effectiveModel, attrs);
-      if (err instanceof ToadBudgetExceededError) {
-        recordBudgetBlocked(effectiveModel);
-      } else {
-        recordError(effectiveProvider, effectiveModel, attrs);
-      }
+      handleErrorMetrics(
+        err,
+        duration,
+        effectiveProvider,
+        effectiveModel,
+        budget,
+        estimatedCost,
+        config?.attributes,
+      );
       throw err;
     }
 
@@ -278,71 +248,25 @@ function createStreamingHandler(
             span.setStatus({ code: SpanStatusCode.OK });
           }
 
-          // Resolve FinOps attrs for metrics (#311)
-          const attrs = config?.attributes;
-
-          recordRequest(effectiveProvider, effectiveModel, attrs);
-          recordRequestDuration(
+          recordSuccessMetrics({
             duration,
-            effectiveProvider,
+            provider: effectiveProvider,
+            model: effectiveModel,
+            cost,
+            inputTokens: acc.inputTokens,
+            outputTokens: acc.outputTokens,
+            completion: acc.completion,
+            attrs: config?.attributes,
+          });
+
+          evaluateContextGuard(
+            span,
             effectiveModel,
-            attrs,
-          );
-          recordRequestCost(cost, effectiveProvider, effectiveModel, attrs);
-          recordTokens(
-            acc.inputTokens + acc.outputTokens,
             effectiveProvider,
-            effectiveModel,
-            attrs,
+            acc.inputTokens,
           );
 
-          // Quality metrics
-          if (acc.completion.trim() === "") {
-            recordResponseEmpty(effectiveProvider, effectiveModel, attrs);
-          }
-          if (acc.outputTokens > 0) {
-            recordResponseLatencyPerToken(
-              duration / acc.outputTokens,
-              effectiveProvider,
-              effectiveModel,
-              attrs,
-            );
-          }
-
-          // Context window utilization — BEFORE span.end() (#308)
-          const pricing = getModelPricing(effectiveModel);
-          if (pricing?.maxContextTokens && acc.inputTokens > 0) {
-            const utilization = acc.inputTokens / pricing.maxContextTokens;
-            span.setAttribute(GEN_AI_ATTRS.CONTEXT_UTILIZATION, utilization);
-            recordContextUtilization(
-              utilization,
-              effectiveProvider,
-              effectiveModel,
-            );
-
-            const guard = config?.contextGuard;
-            if (guard) {
-              if (guard.alertAt !== undefined && utilization >= guard.alertAt) {
-                recordContextBlocked(effectiveModel);
-                span.addEvent("gen_ai.context.limit_exceeded", {
-                  "gen_ai.toad_eye.context_utilization": utilization,
-                  "gen_ai.toad_eye.context.threshold": guard.alertAt,
-                });
-                console.warn(
-                  `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveModel} — exceeds alertAt threshold ${(guard.alertAt * 100).toFixed(0)}%. Compress context before next call.`,
-                );
-              } else if (
-                guard.warnAt !== undefined &&
-                utilization >= guard.warnAt
-              ) {
-                console.warn(
-                  `toad-eye: context window ${(utilization * 100).toFixed(0)}% full for ${effectiveModel} (${acc.inputTokens}/${pricing.maxContextTokens} tokens)`,
-                );
-              }
-            }
-          }
-
-          // Prefill/decode latency split
+          // Prefill/decode latency split (streaming-specific)
           if (ttftMs > 0) {
             const decodeMs = duration - ttftMs;
             span.setAttribute("gen_ai.toad_eye.latency.decode_ms", decodeMs);
@@ -354,34 +278,20 @@ function createStreamingHandler(
             }
           }
 
-          // span.end() AFTER all attributes are set (#308)
           span.end();
 
-          // Budget recording
-          if (budget) {
-            const exceeded = budget.recordCost(
-              cost,
-              effectiveModel,
-              userId,
-              estimatedCost,
-            );
-            if (exceeded) {
-              recordBudgetExceeded(exceeded.budget);
-              console.warn(
-                `toad-eye: ${exceeded.budget} budget exceeded — limit $${exceeded.limit}, current $${exceeded.current.toFixed(2)}`,
-              );
-            }
-          }
+          recordBudgetPostCheck(
+            budget,
+            cost,
+            effectiveModel,
+            userId,
+            estimatedCost,
+          );
         },
         (err) => {
           const duration = performance.now() - start;
           const message = err instanceof Error ? err.message : String(err);
-          const sanitized = processContent(message); // PII redaction (#309)
-
-          // Release budget reservation on stream error
-          if (budget) budget.releaseReservation(estimatedCost);
-
-          const attrs = config?.attributes;
+          const sanitized = processContent(message);
 
           span.setAttributes({
             [GEN_AI_ATTRS.STATUS]: "error",
@@ -393,18 +303,15 @@ function createStreamingHandler(
           });
           span.end();
 
-          recordRequest(effectiveProvider, effectiveModel, attrs);
-          recordRequestDuration(
+          handleErrorMetrics(
+            err,
             duration,
             effectiveProvider,
             effectiveModel,
-            attrs,
+            budget,
+            estimatedCost,
+            config?.attributes,
           );
-          if (err instanceof ToadBudgetExceededError) {
-            recordBudgetBlocked(effectiveModel);
-          } else {
-            recordError(effectiveProvider, effectiveModel, attrs);
-          }
         },
       ),
     );
