@@ -21,7 +21,7 @@ export async function postGrafanaAnnotation(
     body: JSON.stringify({
       time: Date.now(),
       tags: ["toad-eye", "alert", alert.name],
-      text: `🚨 ${alert.name}: ${alert.value.toFixed(4)} > ${alert.threshold}`,
+      text: `🚨 ${alert.name}: ${alert.value.toFixed(4)} (threshold: ${alert.threshold})`,
     }),
   });
   if (!res.ok) {

@@ -356,7 +356,9 @@ async function demo() {
   };
 
   const run = () => {
-    tick().then(() => setTimeout(run, DEMO_TICK_INTERVAL_MS));
+    tick()
+      .catch((err) => console.error("Demo error:", err))
+      .then(() => setTimeout(run, DEMO_TICK_INTERVAL_MS));
   };
   run();
 }
@@ -444,10 +446,10 @@ function runCli() {
       status();
       break;
     case "demo":
-      demo();
+      void demo();
       break;
     case "export-trace":
-      exportTraceCommand();
+      void exportTraceCommand();
       break;
     case "help":
     case "--help":
