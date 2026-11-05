@@ -22,8 +22,7 @@ export interface ToadMcpOptions {
 
   /** Hook called on each tool call span. Add custom attributes here. */
   readonly onToolCall?:
-    | ((span: Span, toolName: string, args: unknown) => void)
-    | undefined;
+    ((span: Span, toolName: string, args: unknown) => void) | undefined;
 
   /** Hook called on each resource read span. */
   readonly onResourceRead?: ((span: Span, uri: string) => void) | undefined;

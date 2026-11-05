@@ -7,8 +7,7 @@ export interface OtlpAnyValue {
   readonly doubleValue?: number | undefined;
   readonly boolValue?: boolean | undefined;
   readonly arrayValue?:
-    | { readonly values: readonly OtlpAnyValue[] }
-    | undefined;
+    { readonly values: readonly OtlpAnyValue[] } | undefined;
 }
 
 export interface OtlpKeyValue {
@@ -69,11 +68,9 @@ export interface OtlpHistogramDataPoint {
 export interface OtlpMetric {
   readonly name: string;
   readonly sum?:
-    | { readonly dataPoints: readonly OtlpNumberDataPoint[] }
-    | undefined;
+    { readonly dataPoints: readonly OtlpNumberDataPoint[] } | undefined;
   readonly gauge?:
-    | { readonly dataPoints: readonly OtlpNumberDataPoint[] }
-    | undefined;
+    { readonly dataPoints: readonly OtlpNumberDataPoint[] } | undefined;
   readonly histogram?:
     | {
         readonly dataPoints: readonly OtlpHistogramDataPoint[];

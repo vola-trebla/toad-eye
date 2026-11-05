@@ -1,6 +1,6 @@
 {
   "name": "toad-eye",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "Observability for MCP servers and LLM applications — traces, metrics, dashboards. One-line instrumentation for OpenAI, Anthropic, Gemini, and MCP. Self-hosted with Grafana + Prometheus + Jaeger.",
   "type": "module",
   "main": "dist/index.js",
@@ -87,23 +87,23 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.213.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
-    "@opentelemetry/resources": "^2.6.0",
-    "@opentelemetry/sdk-metrics": "^2.6.0",
-    "@opentelemetry/sdk-node": "^0.213.0",
-    "@opentelemetry/sdk-trace-base": "^2.6.0",
-    "@opentelemetry/sdk-trace-node": "^2.6.0",
-    "@opentelemetry/semantic-conventions": "^1.40.0",
-    "yaml": "^2.7.0"
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/core": "^3.1.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.301.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.0",
+    "@opentelemetry/resources": "^3.1.0",
+    "@opentelemetry/sdk-metrics": "^3.1.0",
+    "@opentelemetry/sdk-node": "^0.301.0",
+    "@opentelemetry/sdk-trace": "^3.1.0",
+    "@opentelemetry/semantic-conventions": "^1.44.0",
+    "yaml": "^2.9.1"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.30.0",
     "@google/generative-ai": ">=0.20.0",
+    "@modelcontextprotocol/sdk": ">=1.0.0",
     "nodemailer": ">=8.0.0",
-    "openai": ">=4.0.0",
-    "@modelcontextprotocol/sdk": ">=1.0.0"
+    "openai": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -123,7 +123,7 @@
     }
   },
   "devDependencies": {
-    "@types/nodemailer": "^7.0.11",
-    "vitest": "^4.1.0"
+    "@types/nodemailer": "^8.0.2",
+    "vitest": "^5.1.0"
   }
 }

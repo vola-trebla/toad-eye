@@ -1,5 +1,101 @@
 # Changelog
 
+## v2.13.0 (2026-11-05)
+
+### Chores
+
+- **OpenTelemetry 3.x** — migrate to `@opentelemetry/sdk-trace` 3.x (replaces deprecated `sdk-trace-base` / `sdk-trace-node`), `sdk-node` 0.301, `sdk-metrics` / `resources` 3.x, `api` 1.10. `BatchSpanProcessor` / `SimpleSpanProcessor` now take `{ exporter }` options. No public API changes.
+- **Dependencies** — `@modelcontextprotocol/sdk` 1.32, `openai` 7.x (demo), Vitest 5, Biome 2.6, Prettier 3.9, `@types/node` 26. `@opentelemetry/core` declared as a direct dependency (was transitive).
+- **Changelog** — backfill v2.7.0 – v2.12.0.
+
+## v2.12.0 (2026-03-30)
+
+### Refactoring
+
+- **Lifecycle module** — `core/lifecycle.ts` with shared orchestration (budget check, context guard, quality proxies, FinOps attributes). `traceLLMCall()` and `createStreamingHandler()` now call the same functions — closes the duplication flagged in review round 1. (#312, #313, #314)
+
+### Bug Fixes
+
+- **Streaming path** — span ordering, PII redaction, budget release and FinOps attributes diverged from the non-streaming path. (#308–#311)
+- **CLI robustness** — review round 3 fixes for `init` / `up` / `status` edge cases.
+
+### Tests
+
+- Coverage for console exporter, tool hallucination metric, thinking tokens. 306 tests total (258 instrumentation + 48 server).
+
+## v2.11.0 (2026-03-29)
+
+### Features
+
+- **Reasoning trace** — `gen_ai.toad_eye.reasoning.*` attributes and span events for thinking models (Anthropic extended thinking, OpenAI o-series). (#39)
+- **Light mode** — `initObservability({ exporter: "console" })` prints spans to stdout, no Docker required. (#296)
+- **Tool hallucination metric** — MCP `-32601` (method not found) tracked as `gen_ai.mcp.tool.hallucinations`, a distinct signal from ordinary errors. (#295)
+- **Port collision detection** — `toad-eye up` checks ports 3100 / 4318 / 9090 / 16686 before starting Docker. (#294)
+- **Empty dashboard UX** — no-data messages in panels, post-`up` guidance, auto-open Grafana. (#293)
+
+### Chores
+
+- Biome linter in CI. (#200)
+- Dashboard PromQL validation script, `npm run validate:dashboards`, runs in CI. (#203)
+- `readmeFilename` in `package.json` — fixes "no README" on npm.
+
+## v2.10.0 (2026-03-29)
+
+### Bug Fixes
+
+- **Review round 2** — `parentSpanId` on nested spans, ESM server auto-instrumentation, array redaction, demo and alerting robustness. (#282–#285)
+- **MCP client in ESM** — client instrumentation works in ESM projects. (#282)
+- **Grafana PromQL mismatches** — panels that stayed empty due to renamed metrics. (#284)
+
+### Tests
+
+- MCP client instrumentation unit tests. (#286)
+
+## v2.9.0 (2026-03-29)
+
+### Features
+
+- **`onSpanEnd` callback** — `initObservability({ onSpanEnd })` receives structured `SpanEndData` for every LLM / MCP span. Intended as the hook for eval pipelines (toad-eval). (#201)
+
+### Fixes
+
+- v2.9.1 / v2.9.2 — npm README packaging, test count in docs.
+
+## v2.8.0 (2026-03-28)
+
+### Features
+
+- **MCP auto-instrumentation** — `instrument: ["mcp"]` patches the MCP SDK server without `toadEyeMiddleware()`. (#236)
+- **MCP client instrumentation** — client-side spans with W3C trace context propagated over MCP `_meta`, giving end-to-end traces across client → server. (#241)
+- **MCP tool callers metric** — `gen_ai.mcp.tool.callers` for usage analytics. (#247)
+- **Grafana** — MCP End-to-End dashboard (#244), MCP Tool Analytics dashboard with cost attribution (#248, #249).
+- **Alerts** — MCP alert rule templates (#245); MCP metrics supported by the alerting engine (#265).
+- **Demos** — Streamable HTTP MCP server (#238), end-to-end distributed tracing demo (#243).
+
+### Bug Fixes
+
+- MCP span set as active context in tool / resource / prompt handlers. (#264)
+- MCP session lifecycle, deep redaction of nested payloads. (#267, #268)
+- Grafana annotation 401 — fallback to Basic Auth. (#246)
+
+### Chores
+
+- MCP SDK version compatibility CI job. (#240)
+- MCP DRY cleanup. (#269, #270)
+
+## v2.7.0 (2026-03-28)
+
+### Features
+
+- **MCP semconv alignment** — span names and attributes follow OTel MCP semantic conventions; `mcp.method.name` dimension on MCP metrics. (#232, #233, #234)
+- **MCP dashboard** — template variables and tool filter. (#235)
+- README rewritten MCP-first.
+
+### Bug Fixes
+
+- OTel Collector template — exporter type `otlphttp` (was `otlp_http`).
+- CLI `status` false positive, testing guide missing `shutdown()`.
+
 ## v2.6.1 (2026-03-23)
 
 ### Fixes

@@ -1,22 +1,11 @@
-import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeAll,
-  afterAll,
-  afterEach,
-} from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { trace, SpanStatusCode } from "@opentelemetry/api";
-import {
-  BasicTracerProvider,
-  SimpleSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+import { TracerProvider, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";
 import { ToadEyeConsoleExporter } from "../core/console-exporter.js";
 
 const exporter = new ToadEyeConsoleExporter();
-const provider = new BasicTracerProvider({
-  spanProcessors: [new SimpleSpanProcessor(exporter)],
+const provider = new TracerProvider({
+  spanProcessors: [new SimpleSpanProcessor({ exporter })],
 });
 
 let stderrOutput: string[] = [];

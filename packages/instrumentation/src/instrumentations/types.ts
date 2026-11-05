@@ -29,10 +29,7 @@ export interface StreamAccumulator {
 
 /** OTel GenAI operation types. Default is "chat". */
 export type OperationName =
-  | "chat"
-  | "text_completion"
-  | "embeddings"
-  | "generate_content";
+  "chat" | "text_completion" | "embeddings" | "generate_content";
 
 /** Describes a single method to monkey-patch on an SDK prototype. */
 export interface PatchTarget {

@@ -121,10 +121,8 @@ function ensureStdioSafe() {
   diag.setLogger(safeLogger, DiagLogLevel.WARN);
 }
 
-export interface ToadEyeMiddlewareDispose {
-  /** Call when the MCP server is shutting down to decrement the active session counter. */
-  (): void;
-}
+/** Call when the MCP server is shutting down to decrement the active session counter. */
+export type ToadEyeMiddlewareDispose = () => void;
 
 export function toadEyeMiddleware(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -180,8 +178,7 @@ export function toadEyeMiddleware(
       const firstArg = handlerArgs[0] as Record<string, unknown> | undefined;
       const meta = propagate
         ? ((firstArg as Record<string, unknown>)?._meta as
-            | Record<string, unknown>
-            | undefined)
+            Record<string, unknown> | undefined)
         : undefined;
       const parentCtx = propagate
         ? extractContextFromMeta(meta)
@@ -259,8 +256,7 @@ export function toadEyeMiddleware(
         const parentCtx = propagate
           ? extractContextFromMeta(
               (handlerArgs[0] as Record<string, unknown>)?._meta as
-                | Record<string, unknown>
-                | undefined,
+                Record<string, unknown> | undefined,
             )
           : context.active();
 
@@ -310,8 +306,7 @@ export function toadEyeMiddleware(
         const parentCtx = propagate
           ? extractContextFromMeta(
               (handlerArgs[0] as Record<string, unknown>)?._meta as
-                | Record<string, unknown>
-                | undefined,
+                Record<string, unknown> | undefined,
             )
           : context.active();
 

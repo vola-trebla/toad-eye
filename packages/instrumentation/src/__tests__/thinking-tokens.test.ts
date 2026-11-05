@@ -9,10 +9,10 @@ import {
 } from "vitest";
 import { trace } from "@opentelemetry/api";
 import {
-  BasicTracerProvider,
+  TracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+} from "@opentelemetry/sdk-trace";
 
 // Mock metrics and tracer to avoid real OTel init
 vi.mock("../core/metrics.js", () => ({
@@ -46,8 +46,8 @@ import { recordThinkingRatio } from "../core/metrics.js";
 import { getConfig } from "../core/tracer.js";
 
 const exporter = new InMemorySpanExporter();
-const provider = new BasicTracerProvider({
-  spanProcessors: [new SimpleSpanProcessor(exporter)],
+const provider = new TracerProvider({
+  spanProcessors: [new SimpleSpanProcessor({ exporter })],
 });
 
 beforeAll(() => {

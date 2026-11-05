@@ -21,10 +21,7 @@
  * ```
  */
 
-import type {
-  SpanProcessor,
-  ReadableSpan,
-} from "@opentelemetry/sdk-trace-base";
+import type { SpanProcessor, ReadableSpan } from "@opentelemetry/sdk-trace";
 import { calculateCost } from "./core/pricing.js";
 import {
   recordRequestCost,

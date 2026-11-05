@@ -7,7 +7,7 @@ import {
   TraceIdRatioBasedSampler,
   ParentBasedSampler,
   BatchSpanProcessor,
-} from "@opentelemetry/sdk-trace-node";
+} from "@opentelemetry/sdk-trace";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import type { ToadEyeConfig } from "../types/index.js";
 import { initMetrics, resetMetrics } from "./metrics.js";
@@ -135,7 +135,7 @@ export function initObservability(config: ToadEyeConfig) {
 
   const spanProcessors = needsCustomProcessors
     ? [
-        new BatchSpanProcessor(traceExporter),
+        new BatchSpanProcessor({ exporter: traceExporter }),
         ...(config.instrument?.includes("ai")
           ? [new ToadEyeAISpanProcessor()]
           : []),

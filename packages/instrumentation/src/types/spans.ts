@@ -14,11 +14,7 @@ export interface AgentStepInput {
   readonly toolName?: string | undefined;
   /** Tool type per OTel GenAI spec: function, extension, retrieval, builtin */
   readonly toolType?:
-    | "function"
-    | "extension"
-    | "retrieval"
-    | "builtin"
-    | undefined;
+    "function" | "extension" | "retrieval" | "builtin" | undefined;
   /** Duration of tool execution in milliseconds (for act steps). */
   readonly toolDurationMs?: number | undefined;
   /** Whether the tool execution succeeded or failed (for act steps). */
