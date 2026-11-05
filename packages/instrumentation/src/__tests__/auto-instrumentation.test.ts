@@ -72,7 +72,6 @@ function buildGeminiSdk(modelName: string) {
 // ---------------------------------------------------------------------------
 describe("Gemini model name extraction from thisArg", () => {
   it("non-streaming: uses this.model instead of hardcoded unknown", async () => {
-    const { traceLLMCall } = await import("../core/spans.js");
     const sdk = buildGeminiSdk("gemini-1.5-pro");
     const inst = createInstrumentation({
       name: "gemini",

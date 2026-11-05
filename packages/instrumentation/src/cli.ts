@@ -225,8 +225,7 @@ function status() {
 
     for (const svc of SERVICES) {
       const container = containers.find((c) => c.Service === svc.service) as
-        | ContainerInfo
-        | undefined;
+        ContainerInfo | undefined;
       const healthy = isContainerHealthy(container);
       const icon = healthy ? "\u{1f7e2}" : "\u{1f534}";
       const suffix =

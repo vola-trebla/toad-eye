@@ -13,14 +13,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
-    "@modelcontextprotocol/sdk": "^1.28.0",
-    "hono": "^4.12.8",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "hono": "^4.13.16",
     "toad-eye": "*",
     "zod": "^3.25.67"
   },
   "devDependencies": {
     "dotenv": "^17.3.1",
-    "openai": "^6.32.0"
+    "openai": "^7.52.0"
   },
   "license": "ISC"
 }

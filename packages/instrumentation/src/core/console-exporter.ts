@@ -10,7 +10,7 @@
  *   🐸 tools/call broken  [12ms] ❌ TypeError
  */
 
-import type { SpanExporter, ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import type { SpanExporter, ReadableSpan } from "@opentelemetry/sdk-trace";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { ExportResultCode, type ExportResult } from "@opentelemetry/core";
 

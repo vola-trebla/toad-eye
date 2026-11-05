@@ -5,10 +5,7 @@
  * SpanEndData object — user never touches OTel SDK internals.
  */
 
-import type {
-  SpanProcessor,
-  ReadableSpan,
-} from "@opentelemetry/sdk-trace-base";
+import type { SpanProcessor, ReadableSpan } from "@opentelemetry/sdk-trace";
 import { SpanKind, SpanStatusCode } from "@opentelemetry/api";
 
 /** Structured span data passed to the onSpanEnd callback. */

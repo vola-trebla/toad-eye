@@ -9,10 +9,10 @@ import {
 } from "vitest";
 import { trace, SpanStatusCode } from "@opentelemetry/api";
 import {
-  BasicTracerProvider,
+  TracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+} from "@opentelemetry/sdk-trace";
 import {
   ToadEyeSpanEndProcessor,
   type SpanEndData,
@@ -25,8 +25,8 @@ const callback = vi.fn((data: SpanEndData) => {
 });
 
 const processor = new ToadEyeSpanEndProcessor(callback);
-const provider = new BasicTracerProvider({
-  spanProcessors: [new SimpleSpanProcessor(exporter), processor],
+const provider = new TracerProvider({
+  spanProcessors: [new SimpleSpanProcessor({ exporter }), processor],
 });
 
 beforeAll(() => {
